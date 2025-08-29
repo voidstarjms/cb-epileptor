@@ -3,43 +3,67 @@ from matplotlib import pyplot as plt
 import argparse
 
 def main():
-    sim_duration = 120 * second
+    sim_duration = 1 * second
 
     tau = 1 * msecond
 
     num_cells = 1
 
+    Wmax = 0.00625
+
+    ### Population 1 (Hindmarsh-Rose)
+
+    # Population 1 parameters
+    a = 1
+    b = 3
+    c = 1
+    d = 5
+    s = 8
+    I_app_1 = 3.1
+    x_naught = -4.5
+    r = 0.000004
+
+    # Population 1 equations
     pop1_eqs = '''
-    dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app) / tau : 1
+    dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1 + sigma_1 * (x_bar - x)
+        + sigma_1 * (2 * Wmax * xi * sqrt(second) - Wmax)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x - x_naught + x_other_bar) - z) / tau : 1    
+    dz/dt = r * (s * (x - x_naught) - z) / tau : 1
 
-    x_bar : 1
-    z_bar : 1
-
-    a : 1
-    b : 1
-    c : 1
-    d : 1
-    s : 1
-    r : 1
-    x_naught : 1
-    I_syn_intra : amp
-    I_syn_inter : amp
-    I_app : 1
-    C_E : 1
-    sigma : amp ** -1
-
-    # Dummy variable for consistency
-    z_other : 1 (shared)
-
-    # This needs to be passed in throughout runtime
-    x_other_bar : 1 (shared)
+    x_bar : 1    
     '''
 
+    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler')
+    
+    # Population 1 gap junctions
+    sigma_1 = 1/50
+    gap_junction_eqs ='''
+    x_bar_post = x / num_cells : 1 (summed)
+    '''
+    gap_junctions_1 = Synapses(N1, N1, gap_junction_eqs)
+
+    ### Population 2 (Morris-Lecar)
+
+    # Population 2 parameters
+    Cm = 20 * ufarad
+    I_app_2 = 40 * uamp
+    v1 = 1.2 * mvolt
+    v2 = 18 * mvolt
+    v3 = 12 * mvolt
+    v4 = 17.4 * mvolt
+    phi = 0.067 * Hz
+    E_Ca = 120 * mvolt
+    E_K = -84 * mvolt
+    E_L = -60 * mvolt
+    gL = 2 * msiemens
+    gCa = 4 * msiemens
+    gK = 8 * msiemens
+
+    # Population 2 equations    
     pop2_eqs = '''
-    dv/dt = (I_app - gL * (v - E_L) - gK * n * (v - E_K) - gCa * m_inf *
-        (v - E_Ca) + I_syn_inter + I_syn_intra) / Cm : volt
+    dv/dt = (I_app_2 - gL * (v - E_L) - gK * n * (v - E_K) - gCa * m_inf *
+        (v - E_Ca) + sigma_2 * (2 * Wmax * xi * sqrt(second) - Wmax) +
+        sigma_2 * (x_bar - x)) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -47,164 +71,52 @@ def main():
     n_inf = 0.5 * (1 + tanh((v - v3) / v4)) : 1
 
     x = v/(20 * mV) : 1
-
+    
     x_bar : 1
-    z_bar : 1
-
-    Cm : farad
-    I_app : amp
-    I_syn_inter : amp
-    I_syn_intra : amp
-    v1 : volt
-    v2 : volt
-    v3 : volt
-    v4 : volt
-    phi : Hz
-    E_Ca : volt
-    E_K : volt
-    E_L : volt
-    gL : siemens
-    gCa : siemens
-    gK : siemens
-    C_E : 1
-    sigma : amp ** -1
-
-    # Pass z variable from other population
-    z_other : 1 (shared)
-    z = z_other : 1
-    
-    x_other_bar : 1 (shared)
     '''
-
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler')
-
-    #N1.x_contrib = linked_var(N1, 'x')
-    #N1.z_contrib = linked_var(N1, 'z')
-
-    N1.a = 1
-    N1.b = 3
-    N1.c = 1
-    N1.d = 5
-    N1.s = 8
-    N1.I_app = 3.1
-    N1.x_naught = -4.5
-    N1.r = 0.000004
-    N1.C_E = 0
-    N1.sigma = 0#1/50 * pA ** -1
-
+    
     N2 = NeuronGroup(num_cells, pop2_eqs, method='euler')
-
-    #N2.x_contrib = linked_var(N2, 'x')
-    #N2.z_contrib = linked_var(N2, 'z')
-
-    N2.Cm = 20 * ufarad
-    N2.I_app = 40 * uamp
-    N2.v1 = 1.2 * mvolt
-    N2.v2 = 18 * mvolt
-    N2.v3 = 12 * mvolt
-    N2.v4 = 17.4 * mvolt
-    N2.phi = 0.067 * Hz
-    N2.E_Ca = 120 * mvolt
-    N2.E_K = -84 * mvolt
-    N2.E_L = -60 * mvolt
-    N2.gL = 2 * msiemens
-    N2.gCa = 4 * msiemens
-    N2.gK = 8 * msiemens
-    N2.v = N2.E_L
-
-    universal_syn_eqs ='''
-    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_pre * mvolt - Vt) / Kp)) : mM
-
-    alpha : mmolar ** -1 * second ** -1
-    beta : second ** -1
-    '''
-
-    syn_intra_eqs ='''
-    I_syn_intra_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
-
-    #x_bar_post = x_pre / num_cells : 1 (summed)
-    #z_bar_post = z_pre / num_cells : 1 (summed)
-
-    G : siemens
-    E : volt
-    ''' + universal_syn_eqs
-
-    syn_inter_eqs ='''
-    I_syn_inter_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
-
-    #x_other_bar_post = x_pre / num_cells : 1 (summed)
-    #z_other_post = z_pre / num_cells : 1 (summed)
+    N2.v = E_L
     
-    G : siemens
-    E : volt
-    ''' + universal_syn_eqs
+    # Population 2 gap junctions
+    sigma_2 = 50 * uA
+    gap_junctions_2 = Synapses(N2, N2, gap_junction_eqs)
 
-    # Shared synapse parameters
-    Tmax = 1 * mM
-    Vt = 2 * mV
-    Kp = 5 * mV
+    # universal_syn_eqs ='''
+    # du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
+    # T = Tmax / (1 + exp(-(x_pre * mvolt - Vt) / Kp)) : mM
 
-    # Synapse coupling parameters
-    # 1 -> 1, 2 -> 2
-    G_intra = [0, 0] * usiemens
-    # 1 -> 2, 2 -> 1
-    G_inter = [0, 0] * usiemens
+    # alpha : mmolar ** -1 * second ** -1
+    # beta : second ** -1
+    # '''
 
-    # Excitatory synapse parameters
-    alpha_exc = 1.1 / mM / msecond
-    beta_exc = 0.19 / msecond
-    E_exc = 0 * mvolt
+    # syn_intra_eqs ='''
+    # I_syn_intra_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
 
-    # Intrapopulation excitatory synapses
-    S_exc_intra = Synapses(N1, N1, syn_intra_eqs, method='rk4')
-    S_exc_intra.connect()
-    S_exc_intra.alpha = alpha_exc
-    S_exc_intra.beta = beta_exc
-    S_exc_intra.E = E_exc
-    S_exc_intra.G = G_intra[0]
+    # G : siemens
+    # E : volt
+    # ''' + universal_syn_eqs
 
-    # Interpopulation excitatory synapses
-    S_exc_inter = Synapses(N1, N2, syn_inter_eqs, method='rk4')
-    S_exc_inter.connect()
-    S_exc_inter.alpha = alpha_exc
-    S_exc_inter.beta = beta_exc
-    S_exc_inter.E = E_exc
-    S_exc_inter.G = G_inter[0]
+    # syn_inter_eqs ='''
+    # I_syn_inter_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
 
-    # Inhibitory synapse parameters
-    alpha_inh = 5 / mM / msecond
-    beta_inh = 0.18 / msecond
-    E_inh = -80 * mvolt
+    # G : siemens
+    # E : volt
+    # ''' + universal_syn_eqs
 
-    # Intrapopulation inhibitory synapses
-    S_inh_intra = Synapses(N2, N2, syn_intra_eqs, method='rk4')
-    S_inh_intra.connect()
-    S_inh_intra.alpha = alpha_inh
-    S_inh_intra.beta = beta_inh
-    S_inh_intra.E = E_inh
-    S_inh_intra.G = G_intra[1]
-
-    # Interpopulation inhibitory synapses
-    S_inh_inter = Synapses(N2, N1, syn_inter_eqs, method='rk4')
-    S_inh_inter.connect()
-    S_inh_inter.alpha = alpha_inh
-    S_inh_inter.beta = beta_inh
-    S_inh_inter.E = E_inh
-    S_inh_inter.G = G_inter[1]
-
-    #### ADD GAP JUNCTIONS
-
-    # State monitors
-    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'x_bar'], record=True)
-    M_N2 = StateMonitor(N2, ['v', 'x', 'x_bar'], record=True)
-
+    # Neuron group state monitors
+    M_N1 = StateMonitor(N1, 'x', record=True)
+    M_N2 = StateMonitor(N2, 'x', record=True)
+    
     run(sim_duration)
 
-    plt.plot(M_N1.t, M_N1.x[0], label="Population 1")
-    #print(M_N1.x[0][0:10])
-    plt.xlabel("Time (s)")
-    plt.ylabel("x")
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    ax1.plot(M_N1.t, M_N1.x[0])
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("x1")
+    ax2.plot(M_N2.t, M_N2.x[0])
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("x2")
     plt.show()
 
 if __name__ == "__main__":
