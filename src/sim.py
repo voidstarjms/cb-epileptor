@@ -3,13 +3,13 @@ from matplotlib import pyplot as plt
 import argparse
 
 def main():
-    sim_duration = 1 * second
+    sim_duration = 60 * second
 
     tau = 1 * msecond
 
     num_cells = 1
 
-    Wmax = 0.00625
+    Wmax = 0
 
     ### Population 1 (Hindmarsh-Rose)
 
@@ -20,7 +20,7 @@ def main():
     d = 5
     s = 8
     I_app_1 = 3.1
-    x_naught = -4.5
+    x_naught = -1.6
     r = 0.000004
 
     # Population 1 equations
@@ -33,8 +33,11 @@ def main():
     x_bar : 1    
     '''
 
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler')
-    
+    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler') 
+    N1.x = x_naught
+    N1.y = 'c - d*x**2'
+    N1.z = 'r*(s*(x - x_naught))'
+
     # Population 1 gap junctions
     sigma_1 = 1/50
     gap_junction_eqs ='''
@@ -46,7 +49,7 @@ def main():
 
     # Population 2 parameters
     Cm = 20 * ufarad
-    I_app_2 = 40 * uamp
+    I_app_2 = 400 * uamp
     v1 = 1.2 * mvolt
     v2 = 18 * mvolt
     v3 = 12 * mvolt
@@ -77,6 +80,7 @@ def main():
     
     N2 = NeuronGroup(num_cells, pop2_eqs, method='euler')
     N2.v = E_L
+    N2.n = 'n_inf'
     
     # Population 2 gap junctions
     sigma_2 = 50 * uA
@@ -105,10 +109,14 @@ def main():
     # ''' + universal_syn_eqs
 
     # Neuron group state monitors
-    M_N1 = StateMonitor(N1, 'x', record=True)
+    M_N1 = StateMonitor(N1, ['x', 'y', 'z'], record=True)
     M_N2 = StateMonitor(N2, 'x', record=True)
     
     run(sim_duration)
+
+    print(M_N1.x[0][0:10])
+    print(M_N1.y[0][0:10])
+    print(M_N1.z[0][0:10])
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
     ax1.plot(M_N1.t, M_N1.x[0])
@@ -117,6 +125,7 @@ def main():
     ax2.plot(M_N2.t, M_N2.x[0])
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
+    #plt.savefig("figures/max_noise_60s.png", format="png")
     plt.show()
 
 if __name__ == "__main__":
