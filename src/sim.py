@@ -3,25 +3,27 @@ from matplotlib import pyplot as plt
 import argparse
 
 def main():
-    sim_duration = 60 * second
-
+    sim_duration = 1 * second
+    set_device('cpp_standalone')
     tau = 1 * msecond
+    defaultclock.dt = tau/200
 
     num_cells = 1
 
-    Wmax = 0
+    Wmax = 0.00625
 
     ### Population 1 (Hindmarsh-Rose)
 
     # Population 1 parameters
+    # NOTE: these parameters are from Brian docs, not Naze paper
     a = 1
     b = 3
     c = 1
     d = 5
-    s = 8
-    I_app_1 = 3.1
+    s = 4
+    I_app_1 = 2
     x_naught = -1.6
-    r = 0.000004
+    r = 0.001
 
     # Population 1 equations
     pop1_eqs = '''
@@ -46,33 +48,33 @@ def main():
     gap_junctions_1 = Synapses(N1, N1, gap_junction_eqs)
 
     ### Population 2 (Morris-Lecar)
-
+    # NOTE: these parameters are from Brian docs, not Naze paper
     # Population 2 parameters
     Cm = 20 * ufarad
-    I_app_2 = 400 * uamp
-    v1 = 1.2 * mvolt
-    v2 = 18 * mvolt
-    v3 = 12 * mvolt
-    v4 = 17.4 * mvolt
-    phi = 0.067 * Hz
-    E_Ca = 120 * mvolt
-    E_K = -84 * mvolt
-    E_L = -60 * mvolt
+    I_app_2 = 475 * uamp
+    v1 = 10 * mvolt
+    v2 = 15 * mvolt
+    v3 = -1 * mvolt
+    v4 = 14.5 * mvolt
+    phi = 1.0 / (15*ms)
+    E_Ca = 100 * mvolt
+    E_K = -70 * mvolt
+    E_L = -50 * mvolt
     gL = 2 * msiemens
     gCa = 4 * msiemens
     gK = 8 * msiemens
 
     # Population 2 equations    
     pop2_eqs = '''
-    dv/dt = (I_app_2 - gL * (v - E_L) - gK * n * (v - E_K) - gCa * m_inf *
-        (v - E_Ca) + sigma_2 * (2 * Wmax * xi * sqrt(second) - Wmax) +
+    dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
+        + sigma_2 * (2 * Wmax * xi * sqrt(second) - Wmax) +
         sigma_2 * (x_bar - x)) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
-    tau_n = 1 / cosh((v - v3) / (2 * v4)) : 1
     n_inf = 0.5 * (1 + tanh((v - v3) / v4)) : 1
-
+    tau_n = 1 / cosh((v - v3) / (2 * v4)) : 1
+    
     x = v/(20 * mV) : 1
     
     x_bar : 1
