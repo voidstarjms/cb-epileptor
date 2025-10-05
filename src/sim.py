@@ -3,14 +3,13 @@ from matplotlib import pyplot as plt
 import argparse
 
 def main():
-    sim_duration = 5 * second
-    #set_device('cpp_standalone')
+    sim_duration = 0.2 * second
     tau = 1 * msecond
     defaultclock.dt = tau/200
 
-    num_cells = 10
+    num_cells = 40
 
-    Wmax = 0#.00625
+    Wmax = 0#20
 
     ### Population 1 (Hindmarsh-Rose)
 
@@ -20,10 +19,10 @@ def main():
     b = 3
     c = 1
     d = 5
-    s = 4
-    I_app_1 = 2
-    x_naught = -1.6
-    r = 0.001
+    s = 8
+    I_app_1 = 3.1
+    x_naught = -4.5
+    r = 0.00002
 
     # Population 1 equations
     pop1_eqs = '''
@@ -64,14 +63,14 @@ def main():
     # Population 2 parameters
     Cm = 20 * ufarad
     I_app_2 = 40 * uamp
-    v1 = 10 * mvolt
-    v2 = 15 * mvolt
-    v3 = -1 * mvolt
-    v4 = 14.5 * mvolt
+    v1 = 1.2 * mvolt
+    v2 = 18 * mvolt
+    v3 = 12 * mvolt
+    v4 = 17.4 * mvolt
     phi = 1.0 / (15*ms)
-    E_Ca = 100 * mvolt
-    E_K = -70 * mvolt
-    E_L = -50 * mvolt
+    E_Ca = 120 * mvolt
+    E_K = -84 * mvolt
+    E_L = -60 * mvolt
     gL = 2 * msiemens
     gCa = 4 * msiemens
     gK = 8 * msiemens
