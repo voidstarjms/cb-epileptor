@@ -3,7 +3,7 @@
 ## Create a new branch:
 
 git checkout -b <branchname>
-Always create branches from the latest version of main
+Always create branches from the latest version of main. When pushing a new branch for the first time, do this: git push --set-upstream origin <branchname>. This links your local branch with a newly created remote branch in git
 
 # Switch branches:
 
