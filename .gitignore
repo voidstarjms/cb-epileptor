@@ -1,0 +1,6 @@
+# virtual environments
+.cn_venv
+
+# data
+.npz
+
