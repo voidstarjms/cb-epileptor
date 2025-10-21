@@ -1,4 +1,5 @@
 from brian2 import *
+from brian2tools import *
 from matplotlib import pyplot as plt
 import numpy as np
 import scipy
@@ -6,7 +7,7 @@ from scipy import signal
 import argparse
 
 def run_sim():
-    sim_duration = 60 * second
+    sim_duration = 15 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
 
@@ -16,7 +17,7 @@ def run_sim():
     # Table shows [1, 20] with no units, while text states [2.5, 20] * mV
     Wmax = 0.0025
 
-    coupling = 0.2
+    coupling = 1
 
     ### Population 1 (Hindmarsh-Rose)
 
@@ -26,10 +27,10 @@ def run_sim():
     b = 3
     c = 1
     d = 5
-    s = 8
-    I_app_1 = 3.1
-    x_naught = -2.5
-    r = 0.000004
+    s = 4
+    I_app_1 = 2
+    x_naught = -1.6
+    r = 0.001
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -48,8 +49,9 @@ def run_sim():
     I_syn_inter : amp
     '''
 
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 0', reset='')
-    N1.x = x_naught
+    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.9', reset='')
+    # Randomize initial values
+    N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
     N1.y = 'c - d*x**2'
     N1.z = 'r*(s*(x - x_naught))'
 
@@ -66,15 +68,15 @@ def run_sim():
     # NOTE: these parameters are from Brian docs, not Naze paper
     # Population 2 parameters
     Cm = 20 * ufarad
-    I_app_2 = 40 * uamp
-    v1 = 1.2 * mvolt
-    v2 = 18 * mvolt
-    v3 = 12 * mvolt
-    v4 = 17.4 * mvolt
+    I_app_2 = 400 * uamp
+    v1 = 10 * mvolt
+    v2 = 15 * mvolt
+    v3 = -1 * mvolt
+    v4 = 14.5 * mvolt
     phi = 1.0 / (15*ms)
-    E_Ca = 120 * mvolt
-    E_K = -84 * mvolt
-    E_L = -60 * mvolt
+    E_Ca = 100 * mvolt
+    E_K = -70 * mvolt
+    E_L = -50 * mvolt
     gL = 2 * msiemens
     gCa = 4 * msiemens
     gK = 8 * msiemens
@@ -84,7 +86,7 @@ def run_sim():
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + sigma_2 * (2 * Wmax * xi * sqrt(second) - Wmax +
-        coupling * (x_bar - x) - 0.3 * (z_bar - 3)) + I_syn_inter + I_syn_intra) / Cm : volt
+        coupling * (x_bar - x) - 0.3 * (z_bar - 3)) + I_syn_intra + I_syn_inter) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -99,8 +101,8 @@ def run_sim():
     I_syn_intra : amp
     '''
     
-    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='v > 0 * volt', reset='')
-    N2.v = E_L
+    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
+    N2.v = E_L * np.ones(num_cells) + randn(num_cells) * Wmax * volt
     N2.n = 'n_inf'
     
     # Population 2 gap junctions
@@ -139,8 +141,8 @@ def run_sim():
     beta_inh = 0.18 / msecond
     Esyn_exc = 0 * mV
     Esyn_inh = -80 * mV
-    G_intra = 0.1 * uS
-    G_inter = 0.2 * uS
+    G_intra = 0.2 * uS
+    G_inter = 0.1 * uS
 
     # Population 1 synapses to self
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler')
@@ -176,7 +178,7 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    run(1 * second)
+    run(60 * second)
 
     # Neuron group state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z'], record=True)
@@ -193,6 +195,12 @@ def run_sim():
     z1 = np.asarray(M_N1.z)
     x2 = np.asarray(M_N2.x)
     v2 = np.asarray(M_N2.v)
+    #n1_spikes = np.asarray(SM_N1.spike_trains())
+
+    brian_plot(SM_N1)
+    plt.show()
+    brian_plot(SM_N2)
+    plt.show()
 
     np.savez("output_data.npz", t=t, x1=x1, y1=y1, z1=z1, x2=x2, v2=v2)
 
@@ -214,14 +222,17 @@ def plot_output():
     # ax2.set_xlabel("Time (s)")
     # ax2.set_ylabel("x2")
 
-    mean_potential = 0.8 * np.mean(x1, axis=0) + 0.2 * np.mean(x2, axis=0)
+    pop1_mean = np.mean(x1, axis=0)
+    pop2_mean = np.mean(x2, axis=0)
+    mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-    ax1.plot(t, mean_potential)
+    ax1.plot(t, pop2_mean)
     
     fs = 1 / defaultclock.dt / Hz
     f, Pxx = signal.welch(mean_potential, fs=fs)
-    ax2.plot(f, Pxx)
+    ax2.semilogy(f, Pxx)
     plt.savefig("figures/interictal_power_spectrum.png", format="png")
+    plt.show()
 
     fig = plt.figure()
     f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
