@@ -7,11 +7,11 @@ from scipy import signal
 import argparse
 import os
 
-def run_sim():
+def run_sim(plot=False):
     sim_duration = 15 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
-
+    print("defaultclock.dt is: ",defaultclock.dt)
     num_cells = 40
 
     # Discrepancy in paper regarding Wmax
@@ -201,8 +201,10 @@ def run_sim():
     #n1_spikes = np.asarray(SM_N1.spike_trains())
 
     # these will need to be refactored to be consistent with the run modes.
-    plot_raster(SM_N1, 'Hindmarsh-Rose')
-    plot_raster(SM_N2, 'Morris-Lecar')
+    if plot:
+        # plot_raster(SM_N1, 'Hindmarsh-Rose')
+        # plot_raster(SM_N2, 'Morris-Lecar')
+        plot_output()
 
     # Save output data
     save_data(t, x1, y1, z1, x2, v2)
@@ -258,12 +260,25 @@ def plot_output():
     pop2_mean = np.mean(x2, axis=0)
     mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+    ax1.set_xlabel('Time (ms)')
+    ax1.set_ylabel('Mean Potential')
     ax1.plot(t, pop2_mean)
     
     fs = 1 / defaultclock.dt / Hz
-    f, Pxx = signal.welch(mean_potential, fs=fs)
+    print("fs is: ",fs)
+    f, Pxx = signal.welch(mean_potential, fs=20)
+    print("f is: ",f, "\n")
+    print("fs is: ",fs)
+
+    # find the correct index for plotting
+    #plot_index = f.searchsorted(500)
+    ax2.set_xlabel('Frequency (Hz)')
+    ax2.set_ylabel('Power Spectral Density')
+
     ax2.semilogy(f, Pxx)
-    plt.savefig(os.path.join(SAVE_DIR, "interictal_power_spectrum.png"), format="png")
+
+
+    plt.savefig(os.path.join(SAVE_DIR, "interictal_power_spectrum1.png"), format="png")
     plt.show()
 
     fig = plt.figure()
@@ -278,12 +293,14 @@ def main():
     # s - save simulation results
     # p - plot results
     run_mode = 'rp'
-
+    plot = False
+    if 'p' in run_mode:
+        plot = True
 
     if ('r' in run_mode):
-        run_sim()
-    if ('p' in run_mode):
-        plot_output()
+        run_sim(plot=plot)
+    # if ('p' in run_mode):
+    #     plot_output()
 
 if __name__ == "__main__":
     main()
