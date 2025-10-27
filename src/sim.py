@@ -5,6 +5,7 @@ import numpy as np
 import scipy
 from scipy import signal
 import argparse
+import os
 
 def run_sim():
     sim_duration = 15 * second
@@ -231,14 +232,20 @@ def plot_output():
     fs = 1 / defaultclock.dt / Hz
     f, Pxx = signal.welch(mean_potential, fs=fs)
     ax2.semilogy(f, Pxx)
-    plt.savefig("figures/interictal_power_spectrum.png", format="png")
+    
+    # Output directory
+    output_dir = "figures"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    plt.savefig(os.path.join(output_dir, "interictal_power_spectrum.png"), format="png")
     plt.show()
 
     fig = plt.figure()
     f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
 
-    plt.savefig("figures/interictal_spectrogram.png", format="png")
+    plt.savefig(os.path.join(output_dir, "interictal_spectrogram.png"), format="png")
+    plt.show()
 
 def main():
     ### Run mode string
@@ -248,9 +255,13 @@ def main():
     run_mode = 'rp'
 
     if ('r' in run_mode):
+        print("Running simulation...")
         run_sim()
+        print("Simulation complete.")
     if ('p' in run_mode):
+        print("Generating plots...")
         plot_output()
+        print(f"Plots saved to 'figures' directory.")
 
 if __name__ == "__main__":
     main()
