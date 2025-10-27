@@ -252,7 +252,11 @@ def main():
     # r - run simulation
     # s - save simulation results
     # p - plot results
-    run_mode = 'rp'
+    parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
+    parser.add_argument('-m', '--mode', type=str, default='rp', 
+                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot. Default is 'rp'.")
+    args = parser.parse_args()
+    run_mode = args.mode
 
     if ('r' in run_mode):
         print("Running simulation...")
