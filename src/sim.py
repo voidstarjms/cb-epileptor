@@ -5,12 +5,13 @@ import numpy as np
 import scipy
 from scipy import signal
 import argparse
+import os
 
 def run_sim():
     sim_duration = 240 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
-
+    print("defaultclock.dt is: ",defaultclock.dt)
     num_cells = 40
 
     # Discrepancy in paper regarding Wmax
@@ -189,6 +190,8 @@ def run_sim():
     
     run(sim_duration)
     
+    
+    
     t = np.asarray(M_N1.t)
     x1 = np.asarray(M_N1.x)
     y1 = np.asarray(M_N1.y)
@@ -197,14 +200,45 @@ def run_sim():
     v2 = np.asarray(M_N2.v)
     #n1_spikes = np.asarray(SM_N1.spike_trains())
 
-    # brian_plot(SM_N1)
-    # plt.show()
-    # brian_plot(SM_N2)
-    # plt.show()
+    # these will need to be refactored to be consistent with the run modes.
+    if plot:
+        # plot_raster(SM_N1, 'Hindmarsh-Rose')
+        # plot_raster(SM_N2, 'Morris-Lecar')
+        plot_output()
 
+    # Save output data
+    save_data(t, x1, y1, z1, x2, v2)
+
+def save_data(t, x1, y1, z1, x2, v2):
+    SAVE_DIR = 'data/'
+    if not os.path.exists(SAVE_DIR):
+        os.makedirs(SAVE_DIR)
+    
     np.savez("output_data.npz", t=t, x1=x1, y1=y1, z1=z1, x2=x2, v2=v2)
 
+def plot_raster(moni, name):
+    """
+    Takes in a spikemonitor object and plots a raster
+    """
+    SAVE_DIR = 'figures/'
+    if not os.path.exists(SAVE_DIR):
+        os.makedirs(SAVE_DIR)
+    
+    
+    plt.figure(figsize=(12, 8))
+    plt.plot(moni.t/ms, moni.i, '.k', markersize=2)
+    plt.title(f'{name} - Raster')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron Index')
+    plt.grid(True, alpha=0.3)
+    plt.savefig(SAVE_DIR + f"{name}_raster.png", format="png", dpi=300, bbox_inches='tight')
+    plt.show()
+
 def plot_output():
+    SAVE_DIR = 'figures/'
+    if not os.path.exists(SAVE_DIR):
+        os.makedirs(SAVE_DIR)
+    
     arrs = np.load("output_data.npz")
 
     t = arrs['t']
@@ -237,23 +271,34 @@ def plot_output():
     pop2_mean = np.mean(x2, axis=0)
     mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+    ax1.set_xlabel('Time (ms)')
+    ax1.set_ylabel('Mean Potential')
     ax1.plot(t, pop2_mean)
     ax1.set_xlabel("Time (s)")
     ax1.set_ylabel("Weighted mean potential (a.u.)")
     
     fs = 1 / defaultclock.dt / Hz
-    f, Pxx = signal.welch(mean_potential, fs=fs)
+    print("fs is: ",fs)
+    f, Pxx = signal.welch(mean_potential, fs=20)
+    print("f is: ",f, "\n")
+    print("fs is: ",fs)
+
+    # find the correct index for plotting
+    #plot_index = f.searchsorted(500)
+    ax2.set_xlabel('Frequency (Hz)')
+    ax2.set_ylabel('Power Spectral Density')
+
     ax2.semilogy(f, Pxx)
-    ax2.set_xlabel("Frequency (Hz)")
-    ax2.set_ylabel("Amplitude (a.u.)")
-    plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
+
+
+    plt.savefig(os.path.join(SAVE_DIR, "interictal_power_spectrum1.png"), format="png")
     plt.show()
 
     fig = plt.figure()
     f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
 
-    plt.savefig("figures/interictal_spectrogram_hi_r.png", format="png")
+    plt.savefig(os.path.join(SAVE_DIR, "interictal_spectrogram.png"), format="png")
 
 def main():
     ### Run mode string
@@ -261,11 +306,14 @@ def main():
     # s - save simulation results
     # p - plot results
     run_mode = 'rp'
+    plot = False
+    if 'p' in run_mode:
+        plot = True
 
     if ('r' in run_mode):
-        run_sim()
-    if ('p' in run_mode):
-        plot_output()
+        run_sim(plot=plot)
+    # if ('p' in run_mode):
+    #     plot_output()
 
 if __name__ == "__main__":
     main()
