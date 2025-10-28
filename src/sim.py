@@ -7,7 +7,7 @@ from scipy import signal
 import argparse
 
 def run_sim():
-    sim_duration = 240 * second
+    sim_duration = 30 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
 
@@ -30,7 +30,7 @@ def run_sim():
     s = 8
     I_app_1 = 3.1
     x_naught = 3
-    r = 0.000004 / msecond
+    r = 0.0003 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -86,7 +86,7 @@ def run_sim():
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + sigma_2 * (Wmax * xi * sqrt(second)
         + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
-        + I_syn_intra + I_syn_inter) / Cm : volt
+        + 20 * (I_syn_intra + I_syn_inter)) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -178,11 +178,11 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    #run(10 * second)
+    run(1 * second)
 
     # Neuron group state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z'], record=True)
-    M_N2 = StateMonitor(N2, ['x', 'v'], record=True)
+    M_N2 = StateMonitor(N2, ['x', 'n'], record=True)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
@@ -194,7 +194,8 @@ def run_sim():
     y1 = np.asarray(M_N1.y)
     z1 = np.asarray(M_N1.z)
     x2 = np.asarray(M_N2.x)
-    v2 = np.asarray(M_N2.v)
+    n2 = np.asarray(M_N2.n)
+
     #n1_spikes = np.asarray(SM_N1.spike_trains())
 
     # brian_plot(SM_N1)
@@ -202,7 +203,7 @@ def run_sim():
     # brian_plot(SM_N2)
     # plt.show()
 
-    np.savez("output_data.npz", t=t, x1=x1, y1=y1, z1=z1, x2=x2, v2=v2)
+    np.savez("output_data.npz", t=t, x1=x1, y1=y1, z1=z1, x2=x2, n2=n2)
 
 def plot_output():
     arrs = np.load("output_data.npz")
@@ -212,7 +213,7 @@ def plot_output():
     y1 = arrs['y1']
     z1 = arrs['z1']
     x2 = arrs['x2']
-    v2 = arrs['v2']
+    n2 = arrs['n2']
 
     # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
     # ax1.plot(t, x1[0])
@@ -222,38 +223,47 @@ def plot_output():
     # ax2.set_xlabel("Time (s)")
     # ax2.set_ylabel("x2")
 
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("x")
-    ax2.plot(t, y1[0])
-    ax2.set_ylabel("y")
-    ax3.plot(t, z1[0])
-    ax3.set_ylabel("z")
-    plt.savefig("figures/interictal_pop1_hi_r.png", format="png")
-    plt.show()
+    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    # ax1.plot(t, x1[0])
+    # ax1.set_ylabel("Neuron 0 x")
+    # ax2.plot(t, y1[0])
+    # ax2.set_ylabel("Neuron 0 y")
+    # ax3.plot(t, z1[0])
+    # ax3.set_ylabel("Neuron 0 z")
+    # ax3.set_xlabel("Time (s)")
 
-    pop1_mean = np.mean(x1, axis=0)
-    pop2_mean = np.mean(x2, axis=0)
-    mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-    ax1.plot(t, pop2_mean)
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("Weighted mean potential (a.u.)")
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x2[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
+    ax2.set_xlabel("Time (s)")
     
-    fs = 1 / defaultclock.dt / Hz
-    f, Pxx = signal.welch(mean_potential, fs=fs)
-    ax2.semilogy(f, Pxx)
-    ax2.set_xlabel("Frequency (Hz)")
-    ax2.set_ylabel("Amplitude (a.u.)")
-    plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
+    #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
+    plt.savefig("figures/interictal_pop2_test.png", format="png")
     plt.show()
+    
+    # pop1_mean = np.mean(x1, axis=0)
+    # pop2_mean = np.mean(x2, axis=0)
+    # mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
+    # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+    # ax1.plot(t, pop2_mean)
+    # ax1.set_xlabel("Time (s)")
+    # ax1.set_ylabel("Weighted mean potential (a.u.)")
+    
+    # fs = 1 / defaultclock.dt / Hz
+    # f, Pxx = signal.welch(mean_potential, fs=fs)
+    # ax2.semilogy(f, Pxx)
+    # ax2.set_xlabel("Frequency (Hz)")
+    # ax2.set_ylabel("Amplitude (a.u.)")
+    # plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
+    # plt.show()
 
-    fig = plt.figure()
-    f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
-    fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
+    # fig = plt.figure()
+    # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
+    # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
 
-    plt.savefig("figures/interictal_spectrogram_hi_r.png", format="png")
+    # plt.savefig("figures/interictal_spectrogram_hi_r.png", format="png")
 
 def main():
     ### Run mode string
