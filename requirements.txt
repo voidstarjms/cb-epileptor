@@ -1,4 +1,6 @@
 brian2
+brian2tools
 matplotlib
 scipy
 numpy
+brian2tools
