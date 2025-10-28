@@ -305,15 +305,20 @@ def main():
     # r - run simulation
     # s - save simulation results
     # p - plot results
-    run_mode = 'rp'
-    plot = False
-    if 'p' in run_mode:
-        plot = True
+    parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
+    parser.add_argument('-m', '--mode', type=str, default='rp', 
+                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot. Default is 'rp'.")
+    args = parser.parse_args()
+    run_mode = args.mode
 
     if ('r' in run_mode):
-        run_sim(plot=plot)
-    # if ('p' in run_mode):
-    #     plot_output()
+        print("Running simulation...")
+        run_sim()
+        print("Simulation complete.")
+    if ('p' in run_mode):
+        print("Generating plots...")
+        plot_output()
+        print(f"Plots saved to 'figures' directory.")
 
 if __name__ == "__main__":
     main()
