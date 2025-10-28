@@ -5,12 +5,19 @@ import numpy as np
 import scipy
 from scipy import signal
 import argparse
+import os
+
+
+# File paths and directories
+DATA_DIR = 'data/'
+FIGURES_DIR = 'figures/'
+OUTPUT_DATA_FILE = 'output_data.npz'
 
 def run_sim():
-    sim_duration = 30 * second
+    sim_duration = 15 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
-
+    print("defaultclock.dt is: ", defaultclock.dt)
     num_cells = 40
 
     # Discrepancy in paper regarding Wmax
@@ -189,6 +196,8 @@ def run_sim():
     
     run(sim_duration)
     
+    
+    
     t = np.asarray(M_N1.t)
     x1 = np.asarray(M_N1.x)
     y1 = np.asarray(M_N1.y)
@@ -198,15 +207,38 @@ def run_sim():
 
     #n1_spikes = np.asarray(SM_N1.spike_trains())
 
-    # brian_plot(SM_N1)
-    # plt.show()
-    # brian_plot(SM_N2)
-    # plt.show()
 
-    np.savez("output_data.npz", t=t, x1=x1, y1=y1, z1=z1, x2=x2, n2=n2)
+    # Save output data
+    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, x2=x2, v2=v2)
+    # save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
+    # save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+
+# kwargs collects args into a dict, allows flexible arguments to be passed in
+def save_data(filename, **kwargs):
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    
+    np.savez(os.path.join(DATA_DIR, filename), **kwargs)
+
+def plot_raster(fig_name, data_filename):
+    if not os.path.exists(FIGURES_DIR):
+        os.makedirs(FIGURES_DIR)
+    moni = np.load(os.path.join(DATA_DIR, data_filename))
+    
+    plt.figure(figsize=(12, 8))
+    plt.plot(moni['t']/ms, moni['i'], '.k', markersize=2)
+    plt.title(f'{fig_name} - Raster')
+    plt.xlabel('Time (ms)')
+    plt.ylabel('Neuron Index')
+    plt.grid(True, alpha=0.3)
+    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format="png", dpi=300, bbox_inches='tight')
+    plt.show()
 
 def plot_output():
-    arrs = np.load("output_data.npz")
+    if not os.path.exists(FIGURES_DIR):
+        os.makedirs(FIGURES_DIR)
+    
+    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
 
     t = arrs['t']
     x1 = arrs['x1']
@@ -240,7 +272,7 @@ def plot_output():
     ax2.set_xlabel("Time (s)")
     
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
-    plt.savefig("figures/interictal_pop2_test.png", format="png")
+    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop2_test.png"), format="png")
     plt.show()
     
     # pop1_mean = np.mean(x1, axis=0)
@@ -263,19 +295,28 @@ def plot_output():
     # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
 
-    # plt.savefig("figures/interictal_spectrogram_hi_r.png", format="png")
 
 def main():
     ### Run mode string
     # r - run simulation
-    # s - save simulation results
     # p - plot results
-    run_mode = 'rp'
+    parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
+    parser.add_argument('-m', '--mode', type=str, default='rp', 
+                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot. Default is 'rp'.")
+    args = parser.parse_args()
+    run_mode = args.mode
 
     if ('r' in run_mode):
+        print("Running simulation...")
         run_sim()
+        print("Simulation complete.")
     if ('p' in run_mode):
+        print("Generating plots...")
         plot_output()
+        plot_raster("N1", "Spike_Monitor_N1.npz")
+        plot_raster("N2", "Spike_Monitor_N2.npz")
+        print(f"Plots saved to 'figures' directory.")
+        
 
 if __name__ == "__main__":
     main()
