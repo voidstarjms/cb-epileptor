@@ -36,7 +36,7 @@ def run_sim():
     d = 5
     s = 8
     I_app_1 = 3.1
-    x_naught = 3
+    x_naught = -3
     r = 0.0003 / msecond
     sigma_1 = 1/50
     
@@ -185,7 +185,7 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    run(1 * second)
+    # run(1 * second)
 
     # Neuron group state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z'], record=True)
@@ -209,9 +209,9 @@ def run_sim():
 
 
     # Save output data
-    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, x2=x2, v2=v2)
-    # save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
-    # save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, x2=x2, n2=n2)
+    save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
+    save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
 # kwargs collects args into a dict, allows flexible arguments to be passed in
 def save_data(filename, **kwargs):
@@ -247,23 +247,26 @@ def plot_output():
     x2 = arrs['x2']
     n2 = arrs['n2']
 
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-    # ax1.plot(t, x1[0])
-    # ax1.set_xlabel("Time (s)")
-    # ax1.set_ylabel("x1")
-    # ax2.plot(t, x2[0])
-    # ax2.set_xlabel("Time (s)")
-    # ax2.set_ylabel("x2")
+    # One neuron from both pops 
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("x1")
+    ax2.plot(t, x2[0])
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("x2")
 
-    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    # ax1.plot(t, x1[0])
-    # ax1.set_ylabel("Neuron 0 x")
-    # ax2.plot(t, y1[0])
-    # ax2.set_ylabel("Neuron 0 y")
-    # ax3.plot(t, z1[0])
-    # ax3.set_ylabel("Neuron 0 z")
-    # ax3.set_xlabel("Time (s)")
+    # All pop 1 variables
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, y1[0])
+    ax2.set_ylabel("Neuron 0 y")
+    ax3.plot(t, z1[0])
+    ax3.set_ylabel("Neuron 0 z")
+    ax3.set_xlabel("Time (s)")
 
+    # All pop2 variables
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
     ax1.plot(t, x2[0])
     ax1.set_ylabel("Neuron 0 x")
