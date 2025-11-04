@@ -14,11 +14,13 @@ FIGURES_DIR = 'figures/'
 OUTPUT_DATA_FILE = 'output_data.npz'
 
 def run_sim():
-    sim_duration = 15 * second
+    sim_duration = 240 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
     num_cells = 40
+
+    ISOLATE = 1
 
     # Discrepancy in paper regarding Wmax
     # Table shows [1, 20] with no units, while text states [2.5, 20] * mV
@@ -37,16 +39,17 @@ def run_sim():
     s = 8
     I_app_1 = 3.1
     x_naught = -3
-    r = 0.00002 / msecond
+    r = 0.000004 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + coupling * (x_bar - x) + Wmax * xi * sqrt(second)
-        + sigma_1 * (I_syn_intra + I_syn_inter) / amp) / tau : 1
+        + ISOLATE * (coupling * (x_bar - x)
+        + Wmax * xi * sqrt(second)
+        + sigma_1 * (I_syn_intra + I_syn_inter) / amp)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + x2_bar - x_naught) - z_bar) : 1
+    dz/dt = r * (s * (x + ISOLATE * x2_bar - x_naught) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
@@ -91,9 +94,9 @@ def run_sim():
     # Population 2 equations    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
-        + sigma_2 * (Wmax * xi * sqrt(second)
-        + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
-        + 20 * (I_syn_intra + I_syn_inter)) / Cm : volt
+        + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
+        + 20 * coupling * (x_bar - x) - 0.3 * (z_bar - 3))
+        + 20 * (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -120,9 +123,9 @@ def run_sim():
     gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs)
     gap_junctions_2.connect()
 
-    syn_eqs ='''
+    hindmarsh_rose_syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * mvolt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -130,13 +133,31 @@ def run_sim():
     beta : second ** -1
     '''
 
-    intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
-    ''' + syn_eqs
+    morris_lecar_syn_eqs='''
+    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
+    T = Tmax / (1 + exp(-(20 * x_bar_pre * volt - Vt) / Kp)) : mM
 
-    inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
-    ''' + syn_eqs
+    G : siemens
+    E : volt
+    alpha : mmolar ** -1 * second ** -1
+    beta : second ** -1
+    '''
+
+    hr_intra_syn_eqs = '''
+    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    ''' + hindmarsh_rose_syn_eqs
+
+    hr_inter_syn_eqs = '''
+    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    ''' + hindmarsh_rose_syn_eqs
+
+    ml_intra_syn_eqs = '''
+    I_syn_intra_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
+    ''' +  morris_lecar_syn_eqs
+
+    ml_inter_syn_eqs = '''
+    I_syn_inter_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
+    ''' + morris_lecar_syn_eqs
 
     # Synapse parameters
     Vt = 2 * mV
@@ -152,7 +173,7 @@ def run_sim():
     G_inter = 0.1 * uS
 
     # Population 1 synapses to self
-    S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler')
+    S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler')
     S1_to_1.connect()
     S1_to_1.E = Esyn_exc
     S1_to_1.alpha = alpha_exc
@@ -160,9 +181,8 @@ def run_sim():
     S1_to_1.G = G_intra
 
     # Population 1 synapses to pop 2
-    S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler')
+    S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler')
     S1_to_2.connect()
-    S1_to_2.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = Esyn_exc
     S1_to_2.alpha = alpha_exc
@@ -170,7 +190,7 @@ def run_sim():
     S1_to_2.G = G_inter
 
     # Population 2 synapses to self
-    S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler')
+    S2_to_2 = Synapses(N2, N2, ml_intra_syn_eqs, method='euler')
     S2_to_2.connect()
     S2_to_2.E = Esyn_inh
     S2_to_2.alpha = alpha_inh
@@ -178,7 +198,7 @@ def run_sim():
     S2_to_2.G = G_intra
 
     # Population 2 synapses to pop 1
-    S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler')
+    S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler')
     S2_to_1.connect()
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = Esyn_inh
@@ -189,8 +209,8 @@ def run_sim():
     # run(1 * second)
 
     # Neuron group state monitors
-    M_N1 = StateMonitor(N1, ['x', 'y', 'z'], record=True)
-    M_N2 = StateMonitor(N2, ['x', 'n'], record=True)
+    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
+    M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
@@ -203,16 +223,18 @@ def run_sim():
     x1 = np.asarray(M_N1.x)
     y1 = np.asarray(M_N1.y)
     z1 = np.asarray(M_N1.z)
+    I_syn_inter_1 = np.asarray(M_N1.I_syn_inter)
     x2 = np.asarray(M_N2.x)
     n2 = np.asarray(M_N2.n)
+    I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
 
     #n1_spikes = np.asarray(SM_N1.spike_trains())
 
 
     # Save output data
-    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, x2=x2, n2=n2)
-    save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
-    save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
+    # save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
+    # save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
 # kwargs collects args into a dict, allows flexible arguments to be passed in
 def save_data(filename, **kwargs):
@@ -245,8 +267,10 @@ def plot_output():
     x1 = arrs['x1']
     y1 = arrs['y1']
     z1 = arrs['z1']
+    I_syn_inter_1 = arrs['I_syn_inter_1']
     x2 = arrs['x2']
     n2 = arrs['n2']
+    I_syn_inter_2 = arrs['I_syn_inter_2']
 
     # One neuron from both pops 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
@@ -257,14 +281,24 @@ def plot_output():
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
 
-    # # All pop 1 variables
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, y1[0])
+    ax2.set_ylabel("Neuron 0 y")
+    ax3.plot(t, z1[0])
+    ax3.set_ylabel("Neuron 0 z")
+    ax4.plot(t, I_syn_inter_1[0])
+    ax4.set_ylabel("Neuron 0 I_{syn, inter}")
+    ax4.set_xlabel("Time (s)")
+
     # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    # ax1.plot(t, x1[0])
+    # ax1.plot(t, x2[0])
     # ax1.set_ylabel("Neuron 0 x")
-    # ax2.plot(t, y1[0])
-    # ax2.set_ylabel("Neuron 0 y")
-    # ax3.plot(t, z1[0])
-    # ax3.set_ylabel("Neuron 0 z")
+    # ax2.plot(t, n2[0])
+    # ax2.set_ylabel("Neuron 0 n")
+    # ax3.plot(t, I_syn_inter_2[0])
+    # ax3.set_ylabel("Neuron 0 I_{syn, inter}")
     # ax3.set_xlabel("Time (s)")
 
     # Calculate the mean across all neurons (axis=0)
@@ -312,7 +346,7 @@ def plot_output():
     ax2.set_xlabel("Time (s)")
     
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
-    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop2_test.png"), format="png")
+    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop1_fixedx2feed.png"), format="png")
     plt.show()
     
     # pop1_mean = np.mean(x1, axis=0)
