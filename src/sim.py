@@ -37,7 +37,7 @@ def run_sim():
     s = 8
     I_app_1 = 3.1
     x_naught = -3
-    r = 0.0003 / msecond
+    r = 0.00002 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -180,6 +180,7 @@ def run_sim():
     # Population 2 synapses to pop 1
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler')
     S2_to_1.connect()
+    S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = Esyn_inh
     S2_to_1.alpha = alpha_inh
     S2_to_1.beta = beta_inh
@@ -256,6 +257,42 @@ def plot_output():
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
 
+    # # All pop 1 variables
+    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    # ax1.plot(t, x1[0])
+    # ax1.set_ylabel("Neuron 0 x")
+    # ax2.plot(t, y1[0])
+    # ax2.set_ylabel("Neuron 0 y")
+    # ax3.plot(t, z1[0])
+    # ax3.set_ylabel("Neuron 0 z")
+    # ax3.set_xlabel("Time (s)")
+
+    # Calculate the mean across all neurons (axis=0)
+    x1_mean = np.mean(x1, axis=0)
+    y1_mean = np.mean(y1, axis=0)
+    z1_mean = np.mean(z1, axis=0)
+
+    # All pop 1 variables (Figure 2 - Now Averaged)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x1_mean)
+    ax1.set_ylabel("Mean x1") # Updated label
+    ax2.plot(t, y1_mean)
+    ax2.set_ylabel("Mean y1") # Updated label
+    ax3.plot(t, z1_mean)
+    ax3.set_ylabel("Mean z1") # Updated label
+    
+    ax3.set_xlabel("Time (s)")
+
+    # All pop2 variables
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x2[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
+    ax2.set_xlabel("Time (s)")
+    
     # All pop 1 variables
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
     ax1.plot(t, x1[0])
@@ -297,7 +334,6 @@ def plot_output():
     # fig = plt.figure()
     # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
-
 
 def main():
     ### Run mode string
