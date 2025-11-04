@@ -6,7 +6,7 @@ import scipy
 from scipy import signal
 import argparse
 import os
-import plotting as ph # (Plotting help idk what to call it)
+import plotting as ph # (ph = Plotting help -- idk what to call it)
 import config
 
 DATA_DIR = config.DATA_DIR
@@ -14,7 +14,7 @@ FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 def run_sim():
-    sim_duration = 60 * second
+    sim_duration = 120 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
@@ -206,9 +206,10 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    # run(1 * second)
+    run(1 * second)
 
     # Neuron group state monitors
+    # Can set dt param to record at a different time step
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
@@ -236,6 +237,9 @@ def run_sim():
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
+    print(len(SM_N1.i))
+    print(len(SM_N2.i))
+
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
@@ -251,10 +255,52 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    ph.plot_both(t, x1, x2)
-    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
-    ph.plot_hr_mean(t, x1, y1, z1)
-    ph.plot_ml_single(t, x2, n2)
+    bin_size = 100
+    steps_per_bin = bin_size * 20
+    num_bins = len(t)//steps_per_bin
+    
+    new_t = np.array([t[i*steps_per_bin] for i in range(num_bins)])
+    new_x1 = x1.reshape(x1.shape[0], -1, steps_per_bin).mean(axis=2)
+    new_x2 = x2.reshape(x2.shape[0], -1, steps_per_bin).mean(axis=2)
+    new_y1 = y1.reshape(y1.shape[0], -1, steps_per_bin).mean(axis=2)
+    new_z1 = z1.reshape(z1.shape[0], -1, steps_per_bin).mean(axis=2)
+    new_n2 = n2.reshape(n2.shape[0], -1, steps_per_bin).mean(axis=2)
+    new_I = I_syn_inter_1.reshape(I_syn_inter_1.shape[0], -1, steps_per_bin).mean(axis=2)
+
+    ph.plot_both(new_t, new_x1, new_x2)
+    ph.plot_hr_single(new_t, new_x1, new_y1, new_z1, new_I)
+    ph.plot_hr_mean(new_t, new_x1, new_y1, new_z1)
+    ph.plot_ml_single(new_t, new_x2, new_n2)
+
+
+def eda():
+    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
+
+    t = arrs['t']
+    x1 = arrs['x1']
+    y1 = arrs['y1']
+    z1 = arrs['z1']
+    I_syn_inter_1 = arrs['I_syn_inter_1']
+    x2 = arrs['x2']
+    n2 = arrs['n2']
+    I_syn_inter_2 = arrs['I_syn_inter_2']
+
+    print(f"Length of t is: {t.shape}")
+    print(f"Length of x1 is: {x1.shape}")
+    print(f"Length of ISYNINTER is: {I_syn_inter_1.shape}")
+    print(f"Length of x2 is: {x2.shape}")
+
+    bin_freq = 100
+    num_ticks = bin_freq * 20
+    meow = len(t)//num_ticks
+    new_x1 = np.array([x1[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_x2 = np.array([x2[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
+    # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
+    print(new_t.shape)
+    
+
+
 
 
 def main():
@@ -277,6 +323,8 @@ def main():
         ph.plot_raster("N1", "Spike_Monitor_N1.npz")
         ph.plot_raster("N2", "Spike_Monitor_N2.npz")
         print(f"Plots saved to 'figures' directory.")
+    if ('t' in run_mode):
+        eda()
         
 
 if __name__ == "__main__":
