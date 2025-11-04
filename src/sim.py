@@ -206,7 +206,7 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    #run(1 * second)
+    # run(1 * second)
 
     # Neuron group state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
@@ -272,13 +272,14 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-    # ax1.plot(t, x1[0])
-    # ax1.set_xlabel("Time (s)")
-    # ax1.set_ylabel("x1")
-    # ax2.plot(t, x2[0])
-    # ax2.set_xlabel("Time (s)")
-    # ax2.set_ylabel("x2")
+    # One neuron from both pops 
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("x1")
+    ax2.plot(t, x2[0])
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("x2")
 
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
     ax1.plot(t, x1[0])
@@ -299,6 +300,50 @@ def plot_output():
     # ax3.plot(t, I_syn_inter_2[0])
     # ax3.set_ylabel("Neuron 0 I_{syn, inter}")
     # ax3.set_xlabel("Time (s)")
+
+    # Calculate the mean across all neurons (axis=0)
+    x1_mean = np.mean(x1, axis=0)
+    y1_mean = np.mean(y1, axis=0)
+    z1_mean = np.mean(z1, axis=0)
+
+    # All pop 1 variables (Figure 2 - Now Averaged)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x1_mean)
+    ax1.set_ylabel("Mean x1") # Updated label
+    ax2.plot(t, y1_mean)
+    ax2.set_ylabel("Mean y1") # Updated label
+    ax3.plot(t, z1_mean)
+    ax3.set_ylabel("Mean z1") # Updated label
+    
+    ax3.set_xlabel("Time (s)")
+
+    # All pop2 variables
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x2[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
+    ax2.set_xlabel("Time (s)")
+    
+    # All pop 1 variables
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, y1[0])
+    ax2.set_ylabel("Neuron 0 y")
+    ax3.plot(t, z1[0])
+    ax3.set_ylabel("Neuron 0 z")
+    ax3.set_xlabel("Time (s)")
+
+    # All pop2 variables
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x2[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
+    ax2.set_xlabel("Time (s)")
     
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
     plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop1_fixedx2feed.png"), format="png")
@@ -323,7 +368,6 @@ def plot_output():
     # fig = plt.figure()
     # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
-
 
 def main():
     ### Run mode string
