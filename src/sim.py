@@ -14,7 +14,7 @@ FIGURES_DIR = 'figures/'
 OUTPUT_DATA_FILE = 'output_data.npz'
 
 def run_sim():
-    sim_duration = 60 * second
+    sim_duration = 240 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
@@ -38,8 +38,8 @@ def run_sim():
     d = 5
     s = 8
     I_app_1 = 3.1
-    x_naught = -1.6
-    r = 0.0003 / msecond
+    x_naught = -3
+    r = 0.000004 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -95,7 +95,7 @@ def run_sim():
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
+        + 20 * coupling * (x_bar - x) - 0.3 * (z_bar - 3))
         + 20 * (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -183,7 +183,6 @@ def run_sim():
     # Population 1 synapses to pop 2
     S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler')
     S1_to_2.connect()
-    S1_to_2.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = Esyn_exc
     S1_to_2.alpha = alpha_exc
@@ -201,6 +200,7 @@ def run_sim():
     # Population 2 synapses to pop 1
     S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler')
     S2_to_1.connect()
+    S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = Esyn_inh
     S2_to_1.alpha = alpha_inh
     S2_to_1.beta = beta_inh
@@ -301,7 +301,7 @@ def plot_output():
     # ax3.set_xlabel("Time (s)")
     
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
-    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop1.png"), format="png")
+    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop1_fixedx2feed.png"), format="png")
     plt.show()
     
     # pop1_mean = np.mean(x1, axis=0)
