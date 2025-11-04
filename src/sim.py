@@ -293,6 +293,24 @@ def plot_output():
     ax2.set_ylabel("Neuron 0 n")
     ax2.set_xlabel("Time (s)")
     
+    # All pop 1 variables
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x1[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, y1[0])
+    ax2.set_ylabel("Neuron 0 y")
+    ax3.plot(t, z1[0])
+    ax3.set_ylabel("Neuron 0 z")
+    ax3.set_xlabel("Time (s)")
+
+    # All pop2 variables
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    ax1.plot(t, x2[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
+    ax2.set_xlabel("Time (s)")
+    
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
     plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop2_test.png"), format="png")
     plt.show()
