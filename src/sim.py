@@ -6,15 +6,15 @@ import scipy
 from scipy import signal
 import argparse
 import os
+import plotting as ph # (Plotting help idk what to call it)
+import config
 
-
-# File paths and directories
-DATA_DIR = 'data/'
-FIGURES_DIR = 'figures/'
-OUTPUT_DATA_FILE = 'output_data.npz'
+DATA_DIR = config.DATA_DIR
+FIGURES_DIR = config.FIGURES_DIR
+OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 def run_sim():
-    sim_duration = 240 * second
+    sim_duration = 60 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
@@ -39,7 +39,7 @@ def run_sim():
     s = 8
     I_app_1 = 3.1
     x_naught = -3
-    r = 0.000004 / msecond
+    r = 0.000008 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -232,30 +232,9 @@ def run_sim():
 
 
     # Save output data
-    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
-    # save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
-    # save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
-
-# kwargs collects args into a dict, allows flexible arguments to be passed in
-def save_data(filename, **kwargs):
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    
-    np.savez(os.path.join(DATA_DIR, filename), **kwargs)
-
-def plot_raster(fig_name, data_filename):
-    if not os.path.exists(FIGURES_DIR):
-        os.makedirs(FIGURES_DIR)
-    moni = np.load(os.path.join(DATA_DIR, data_filename))
-    
-    plt.figure(figsize=(12, 8))
-    plt.plot(moni['t']/ms, moni['i'], '.k', markersize=2)
-    plt.title(f'{fig_name} - Raster')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron Index')
-    plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format="png", dpi=300, bbox_inches='tight')
-    plt.show()
+    ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
+    ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
+    ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -272,102 +251,11 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # One neuron from both pops 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_xlabel("Time (s)")
-    ax1.set_ylabel("x1")
-    ax2.plot(t, x2[0])
-    ax2.set_xlabel("Time (s)")
-    ax2.set_ylabel("x2")
+    ph.plot_both(t, x1, x2)
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    ph.plot_hr_mean(t, x1, y1, z1)
+    ph.plot_ml_single(t, x2, n2)
 
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, y1[0])
-    ax2.set_ylabel("Neuron 0 y")
-    ax3.plot(t, z1[0])
-    ax3.set_ylabel("Neuron 0 z")
-    ax4.plot(t, I_syn_inter_1[0])
-    ax4.set_ylabel("Neuron 0 I_{syn, inter}")
-    ax4.set_xlabel("Time (s)")
-
-    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    # ax1.plot(t, x2[0])
-    # ax1.set_ylabel("Neuron 0 x")
-    # ax2.plot(t, n2[0])
-    # ax2.set_ylabel("Neuron 0 n")
-    # ax3.plot(t, I_syn_inter_2[0])
-    # ax3.set_ylabel("Neuron 0 I_{syn, inter}")
-    # ax3.set_xlabel("Time (s)")
-
-    # Calculate the mean across all neurons (axis=0)
-    x1_mean = np.mean(x1, axis=0)
-    y1_mean = np.mean(y1, axis=0)
-    z1_mean = np.mean(z1, axis=0)
-
-    # All pop 1 variables (Figure 2 - Now Averaged)
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    
-    # Plot the averaged data instead of just neuron 0
-    ax1.plot(t, x1_mean)
-    ax1.set_ylabel("Mean x1") # Updated label
-    ax2.plot(t, y1_mean)
-    ax2.set_ylabel("Mean y1") # Updated label
-    ax3.plot(t, z1_mean)
-    ax3.set_ylabel("Mean z1") # Updated label
-    
-    ax3.set_xlabel("Time (s)")
-
-    # All pop2 variables
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x2[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, n2[0])
-    ax2.set_ylabel("Neuron 0 n")
-    ax2.set_xlabel("Time (s)")
-    
-    # All pop 1 variables
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, y1[0])
-    ax2.set_ylabel("Neuron 0 y")
-    ax3.plot(t, z1[0])
-    ax3.set_ylabel("Neuron 0 z")
-    ax3.set_xlabel("Time (s)")
-
-    # All pop2 variables
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x2[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, n2[0])
-    ax2.set_ylabel("Neuron 0 n")
-    ax2.set_xlabel("Time (s)")
-    
-    #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
-    plt.savefig(os.path.join(FIGURES_DIR, "interictal_pop1_fixedx2feed.png"), format="png")
-    plt.show()
-    
-    # pop1_mean = np.mean(x1, axis=0)
-    # pop2_mean = np.mean(x2, axis=0)
-    # mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
-    # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-    # ax1.plot(t, pop2_mean)
-    # ax1.set_xlabel("Time (s)")
-    # ax1.set_ylabel("Weighted mean potential (a.u.)")
-    
-    # fs = 1 / defaultclock.dt / Hz
-    # f, Pxx = signal.welch(mean_potential, fs=fs)
-    # ax2.semilogy(f, Pxx)
-    # ax2.set_xlabel("Frequency (Hz)")
-    # ax2.set_ylabel("Amplitude (a.u.)")
-    # plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
-    # plt.show()
-
-    # fig = plt.figure()
-    # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
-    # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
 
 def main():
     ### Run mode string
@@ -386,8 +274,8 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-        plot_raster("N1", "Spike_Monitor_N1.npz")
-        plot_raster("N2", "Spike_Monitor_N2.npz")
+        ph.plot_raster("N1", "Spike_Monitor_N1.npz")
+        ph.plot_raster("N2", "Spike_Monitor_N2.npz")
         print(f"Plots saved to 'figures' directory.")
         
 
