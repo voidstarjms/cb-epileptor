@@ -256,14 +256,32 @@ def plot_output():
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
 
-    # All pop 1 variables
+    # # All pop 1 variables
+    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    # ax1.plot(t, x1[0])
+    # ax1.set_ylabel("Neuron 0 x")
+    # ax2.plot(t, y1[0])
+    # ax2.set_ylabel("Neuron 0 y")
+    # ax3.plot(t, z1[0])
+    # ax3.set_ylabel("Neuron 0 z")
+    # ax3.set_xlabel("Time (s)")
+
+    # Calculate the mean across all neurons (axis=0)
+    x1_mean = np.mean(x1, axis=0)
+    y1_mean = np.mean(y1, axis=0)
+    z1_mean = np.mean(z1, axis=0)
+
+    # All pop 1 variables (Figure 2 - Now Averaged)
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, y1[0])
-    ax2.set_ylabel("Neuron 0 y")
-    ax3.plot(t, z1[0])
-    ax3.set_ylabel("Neuron 0 z")
+    
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x1_mean)
+    ax1.set_ylabel("Mean x1") # Updated label
+    ax2.plot(t, y1_mean)
+    ax2.set_ylabel("Mean y1") # Updated label
+    ax3.plot(t, z1_mean)
+    ax3.set_ylabel("Mean z1") # Updated label
+    
     ax3.set_xlabel("Time (s)")
 
     # All pop2 variables
