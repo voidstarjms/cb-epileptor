@@ -37,7 +37,7 @@ def run_sim():
     s = 8
     I_app_1 = 3.1
     x_naught = -3
-    r = 0.0003 / msecond
+    r = 0.00002 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -180,6 +180,7 @@ def run_sim():
     # Population 2 synapses to pop 1
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler')
     S2_to_1.connect()
+    S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = Esyn_inh
     S2_to_1.alpha = alpha_inh
     S2_to_1.beta = beta_inh
