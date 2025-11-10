@@ -6,12 +6,12 @@ import scipy
 from scipy import signal
 import argparse
 import os
+import plotting as ph # (ph = Plotting help -- idk what to call it)
+import config
 
-
-# File paths and directories
-DATA_DIR = 'data/'
-FIGURES_DIR = 'figures/'
-OUTPUT_DATA_FILE = 'output_data.npz'
+DATA_DIR = config.DATA_DIR
+FIGURES_DIR = config.FIGURES_DIR
+OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 def run_sim():
     sim_duration = 60 * second
@@ -38,8 +38,8 @@ def run_sim():
     d = 5
     s = 8
     I_app_1 = 3.1
-    x_naught = -1.6
-    r = 0.00002 / msecond
+    x_naught = -3
+    r = 0.000008 / msecond
     sigma_1 = 1/50
     
     # Population 1 equations
@@ -252,9 +252,10 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    # run(1 * second)
+    run(1 * second)
 
     # Neuron group state monitors
+    # Can set dt param to record at a different time step
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
@@ -276,30 +277,12 @@ def run_sim():
 
 
     # Save output data
-    save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
-    # save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
-    # save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+    ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
+    ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
+    ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
-# kwargs collects args into a dict, allows flexible arguments to be passed in
-def save_data(filename, **kwargs):
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    
-    np.savez(os.path.join(DATA_DIR, filename), **kwargs)
-
-def plot_raster(fig_name, data_filename):
-    if not os.path.exists(FIGURES_DIR):
-        os.makedirs(FIGURES_DIR)
-    moni = np.load(os.path.join(DATA_DIR, data_filename))
-    
-    plt.figure(figsize=(12, 8))
-    plt.plot(moni['t']/ms, moni['i'], '.k', markersize=2)
-    plt.title(f'{fig_name} - Raster')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron Index')
-    plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format="png", dpi=300, bbox_inches='tight')
-    plt.show()
+    print(len(SM_N1.i))
+    print(len(SM_N2.i))
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -401,9 +384,11 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-        # plot_raster("N1", "Spike_Monitor_N1.npz")
-        # plot_raster("N2", "Spike_Monitor_N2.npz")
+        ph.plot_raster("N1", "Spike_Monitor_N1.npz")
+        ph.plot_raster("N2", "Spike_Monitor_N2.npz")
         print(f"Plots saved to 'figures' directory.")
+    if ('t' in run_mode):
+        eda()
         
 
 if __name__ == "__main__":
