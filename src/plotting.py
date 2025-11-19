@@ -104,6 +104,29 @@ def plot_both(t, x1, x2):
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
     plt.show()
+
+
+def plot_both_avg(t, x1, y1, z1, x2, n):
+    # neurons averaged from both pops 
+    x1_mean = np.mean(x1, axis=0)
+    y1_mean = np.mean(y1, axis=0)
+    z1_mean = np.mean(z1, axis=0)
+    x2_mean = np.mean(x2, axis=0)
+    n_mean = np.mean(n, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig.suptitle("Mean Neuron From Each Population")
+    ax1.plot(t, x1_mean)
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("x1")
+    ax2.plot(t, x2_mean)
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("x2")
+
+
+    #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
+    plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
+    plt.show()
     
 def plot_mean_potential():
     pass

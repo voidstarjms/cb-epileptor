@@ -6,7 +6,7 @@ import scipy
 from scipy import signal
 import argparse
 import os
-import plotting as ph # (ph = Plotting help -- idk what to call it)
+import plotting as ph # (Plotting help idk what to call it)
 import config
 
 DATA_DIR = config.DATA_DIR
@@ -14,35 +14,41 @@ FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 def run_sim():
-    sim_duration = 120 * second
+    sim_duration = 60 * second
+    # change defaultclock to fix raster smearing
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
     num_cells = 40
 
+    # ISOLATE = 0: populations are decoupled (independent)
+    # ISOLATE = 1: populations are coupled (normal mode)
     ISOLATE = 1
 
     # Discrepancy in paper regarding Wmax
     # Table shows [1, 20] with no units, while text states [2.5, 20] * mV
-    Wmax = 0.004
+    Wmax = 0.006
 
     coupling = 1
 
     ### Population 1 (Hindmarsh-Rose)
 
-    # Population 1 parameters
-    # NOTE: these parameters are from Brian docs, not Naze paper
-    a = 1
-    b = 3
-    c = 1
-    d = 5
-    s = 8
-    I_app_1 = 3.1
-    x_naught = -3
-    r = 0.000008 / msecond
-    sigma_1 = 1/50
+    # Population 1 parameters - Set for chaotic bursting behavior
+    # Classic Hindmarsh-Rose parameters for independent operation
+    a = 1.0
+    b = 3.0
+    c = 1.0
+    d = 5.0
+    s = 8.0  # codebase default
+    I_app_1 = 3.1  # Applied current in bursting regime (3.0-3.5 for bursting)
+    x_naught = -2  # Resting potential
+    r = 0.0002 / msecond  # Slow adaptation (typical: 0.001-0.01)
+    sigma_1 = 1/50 # No noise coupling when isolated
     
     # Population 1 equations
+    # When ISOLATE=0: all coupling (intra and inter) is removed
+    # When ISOLATE=1: normal coupled behavior
+
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
         + ISOLATE * (coupling * (x_bar - x)
@@ -58,7 +64,8 @@ def run_sim():
     I_syn_inter : amp
     '''
 
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
+    # refractory based on voltage
+    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='', refractory=5*ms)
     # Randomize initial values
     N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
     N1.y = 'c - d*x**2'
@@ -74,29 +81,29 @@ def run_sim():
     gap_junctions_1.connect()
 
     ### Population 2 (Morris-Lecar)
-    # NOTE: these parameters are from Brian docs, not Naze paper
-    # Population 2 parameters
-    Cm = 20 * ufarad
-    I_app_2 = 40 * uamp
-    v1 = 1.2 * mvolt
-    v2 = 18 * mvolt
-    v3 = 12 * mvolt
-    v4 = 17.4 * mvolt
-    phi = 1.0 / (15*ms)
-    E_Ca = 120 * mvolt
-    E_K = -84 * mvolt
-    E_L = -60 * mvolt
-    gL = 2 * msiemens
-    gCa = 4 * msiemens
-    gK = 8 * msiemens
-    sigma_2 = 50 * uA
+    # Population 2 parameters - Set for oscillatory/repetitive spiking behavior
+    # Classic Morris-Lecar Type I (SNIC) parameters
+    Cm = 20 * ufarad  # Membrane capacitance
+    I_app_2 = 40 * uamp  # Applied current for sustained spiking -- 80 for sepeparate morris lecar
+    v1 = -1.2 * mvolt  # Ca activation midpoint
+    v2 = 18 * mvolt  # Ca activation slope
+    v3 = 12 * mvolt  # K activation midpoint
+    v4 = 17.4 * mvolt  # K activation slope (larger = slower activation)
+    phi = 0.067 / msecond  # K channel time scale (faster for more regular spiking)
+    E_Ca = 120 * mvolt  # Ca reversal potential
+    E_K = -84 * mvolt  # K reversal potential
+    E_L = -60 * mvolt  # Leak reversal potential
+    gL = 2 * msiemens  # Leak conductance
+    gCa = 4.0 * msiemens  # Ca conductance
+    gK = 8.0 * msiemens  # K conductance
+    sigma_2 = 50 * uA  
     
     # Population 2 equations    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + 20 * coupling * (x_bar - x) - 0.3 * (z_bar - 3))
-        + 20 * (I_syn_intra + I_syn_inter))) / Cm : volt
+        + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
+        + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -111,7 +118,7 @@ def run_sim():
     I_syn_intra : amp
     '''
     
-    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
+    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='', refractory=5*ms)
     N2.v = E_L * np.ones(num_cells) + randn(num_cells) * Wmax * volt
     N2.n = 'n_inf'
     
@@ -135,7 +142,7 @@ def run_sim():
 
     morris_lecar_syn_eqs='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(20 * x_bar_pre * volt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -152,11 +159,11 @@ def run_sim():
     ''' + hindmarsh_rose_syn_eqs
 
     ml_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
+    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
     ''' +  morris_lecar_syn_eqs
 
     ml_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
+    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
     ''' + morris_lecar_syn_eqs
 
     # Synapse parameters
@@ -169,8 +176,8 @@ def run_sim():
     beta_inh = 0.18 / msecond
     Esyn_exc = 0 * mV
     Esyn_inh = -80 * mV
-    G_intra = 0.2 * uS
-    G_inter = 0.1 * uS
+    G_intra = 0.1 * uS
+    G_inter = 0.2 * uS
 
     # Population 1 synapses to self
     S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler')
@@ -206,7 +213,7 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    run(1 * second)
+    # run(1 * second)
 
     # Neuron group state monitors
     # Can set dt param to record at a different time step
@@ -237,9 +244,6 @@ def run_sim():
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
-    print(len(SM_N1.i))
-    print(len(SM_N2.i))
-
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
@@ -255,23 +259,30 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    bin_size = 100
+    bin_size = 1
     steps_per_bin = bin_size * 20
     num_bins = len(t)//steps_per_bin
-    
+    new_x1 = np.array([x1[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
+    new_x2 = np.array([x2[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
     new_t = np.array([t[i*steps_per_bin] for i in range(num_bins)])
-    new_x1 = x1.reshape(x1.shape[0], -1, steps_per_bin).mean(axis=2)
-    new_x2 = x2.reshape(x2.shape[0], -1, steps_per_bin).mean(axis=2)
+
     new_y1 = y1.reshape(y1.shape[0], -1, steps_per_bin).mean(axis=2)
     new_z1 = z1.reshape(z1.shape[0], -1, steps_per_bin).mean(axis=2)
     new_n2 = n2.reshape(n2.shape[0], -1, steps_per_bin).mean(axis=2)
+
     new_I = I_syn_inter_1.reshape(I_syn_inter_1.shape[0], -1, steps_per_bin).mean(axis=2)
 
-    ph.plot_both(new_t, new_x1, new_x2)
-    ph.plot_hr_single(new_t, new_x1, new_y1, new_z1, new_I)
-    ph.plot_hr_mean(new_t, new_x1, new_y1, new_z1)
-    ph.plot_ml_single(new_t, new_x2, new_n2)
+    # ph.plot_both(new_t, new_x1, new_x2)
+    # ph.plot_hr_single(new_t, new_x1, new_y1, new_z1, new_I)
+    # ph.plot_hr_mean(new_t, new_x1, new_y1, new_z1)
+    # ph.plot_ml_single(new_t, new_x2, new_n2)
 
+
+    ph.plot_both(t, x1, x2)
+    ph.plot_both_avg(t, x1, y1, z1, x2, n2)
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    ph.plot_hr_mean(t, x1, y1, z1)
+    ph.plot_ml_single(t, x2, n2)
 
 def eda():
     arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
