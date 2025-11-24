@@ -12,14 +12,15 @@ import config
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
-
+sim_duration = 60 * second
+num_cells = 40
 def run_sim():
-    sim_duration = 60 * second
+
     # change defaultclock to fix raster smearing
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
-    num_cells = 40
+    
 
     # ISOLATE = 0: populations are decoupled (independent)
     # ISOLATE = 1: populations are coupled (normal mode)
@@ -267,8 +268,11 @@ def plot_output():
 
     spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
-    ph.pop1("pop1", t, x1, spike_matrix_1)
-    ph.pop1("pop2", t, x2, spike_matrix_2)
+
+    global num_cells
+    global sim_duration
+    ph.pop1("pop1_test", t, x1, spike_matrix_1, num_cells, sim_duration/second)
+    ph.pop2("pop2_test", t, x2, spike_matrix_2, num_cells, sim_duration/second)
 
     # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
     # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
@@ -299,58 +303,34 @@ def eda():
     # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
     print(new_t.shape)
 
-# this does the same as the histogram version but worse
-def create_spike_matrix(data_name):
-    arrs = np.load(os.path.join(DATA_DIR, data_name))
-    spike_times = arrs['t']  # All spike times
-    neuron_indices = arrs['i']  # Corresponding neuron indices
-    # Define time bins
-    sim_duration = 60 
-    dt = 0.1  # 100ms
-    time_bins = np.arange(0, sim_duration, dt)
-    num_bins = len(time_bins)
-    num_neurons = 40
-    
-    # Create empty spike matrix
-    spike_matrix = np.zeros((num_neurons, num_bins))
-    
-    # Bin the spikes
-    bin_indices = np.digitize(spike_times, time_bins)-1
-    
-    # Fill the matrix
-    for idx in range(len(bin_indices)):
-        bin_idx = bin_indices[idx]
-        if bin_idx <= 15:
-            # filter out initial warmup 'spikes'
-            continue
-        neuron = neuron_indices[idx]
-        spike_matrix[neuron][bin_idx] += 1
-
-    return spike_matrix
-
 def create_spike_matrix_histo(data_name):
     """Create spike matrix for imshow to plot raster plots"""
     arrs = np.load(os.path.join(DATA_DIR, data_name))
     spike_times = arrs['t']  # All spike times
     neuron_indices = arrs['i']  # Corresponding neuron indices
 
+    
+    global sim_duration
+    global num_cells
+
     # Define time bins
-    sim_duration = 60
-    dt = 0.01  # 10ms
-    warmup_time = 2  # Skip warup period - spikes dont count
+    duration = sim_duration/second
+    dt = 0.01  # 10ms per bin
+    warmup_time = 1.5  # Skip warup period - spikes dont count
 
     # Filter warmup spikes
     valid = spike_times > warmup_time
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
 
-    num_neurons = 40
+   
 
     # Create bin edges (need +1 for right edge)
-    time_bins = np.arange(0, sim_duration + dt, dt)
-    neuron_bins = np.arange(0, num_neurons + 1)
+    time_bins = np.arange(0, duration + dt, dt)
+    neuron_bins = np.arange(0, num_cells + 1)
 
-    # x = rows, y = columns -- this is flipped from math coordinates, so swap everything accordingly 
+    # x = rows, y = columns -- this is flipped from math coordinates, so swap everything accordingly
+    # histogram2d returns (neuron x time) when passed (neuron_indices, spike_times)
     spike_matrix, neuron_edges, time_edges = np.histogram2d(
         neuron_indices, # x
         spike_times,    # y
@@ -377,11 +357,10 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-
         print(f"Plots saved to 'figures' directory.")
     if ('t' in run_mode):
         # testing features
-        create_spike_matrix_histo()
+        create_spike_matrix_histo("Spike_Monitor_N1.npz")
 
 if __name__ == "__main__":
     main()
