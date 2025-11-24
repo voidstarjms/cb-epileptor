@@ -38,7 +38,8 @@ def run_sim():
     c = 1.0
     d = 5.0
     s = 8.0  # codebase default
-    I_app_1 = 3.1  
+    I_app_1 = 3.1
+    x_naught = -2  
     r = 0.0002 / msecond  
     sigma_1 = 1/50 
     
