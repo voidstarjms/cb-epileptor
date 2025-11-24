@@ -17,7 +17,29 @@ def save_data(filename, **kwargs):
     
     np.savez(os.path.join(DATA_DIR, filename), **kwargs)
 
-# TODO: fix binning and smearing
+
+def pop1(fig_name, t, x, spike_matrix):
+    
+    x_mean = np.mean(x, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=False)
+    fig.suptitle("All Hindmarsh Rose Variables - All Neurons Averaged")
+
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x_mean)
+    ax1.set_ylabel("Mean x1") # Updated label
+    
+
+    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+                   origin='lower')
+
+    ax2.set_xlabel('Time bin (100ms)', fontsize=12)
+    ax2.set_ylabel('Neuron index', fontsize=12)
+    ax2.set_title('Population 1 Spike Raster (Spike Count)', fontsize=14)
+    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
+    plt.show()
+
+
 def plot_raster(fig_name, data_filename):
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)

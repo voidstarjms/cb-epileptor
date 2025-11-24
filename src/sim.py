@@ -65,7 +65,7 @@ def run_sim():
     '''
 
     # refractory based on voltage
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='', refractory=5*ms)
+    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
     # Randomize initial values
     N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
     N1.y = 'c - d*x**2'
@@ -118,7 +118,7 @@ def run_sim():
     I_syn_intra : amp
     '''
     
-    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='', refractory=5*ms)
+    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
     N2.v = E_L * np.ones(num_cells) + randn(num_cells) * Wmax * volt
     N2.n = 'n_inf'
     
@@ -236,13 +236,23 @@ def run_sim():
     n2 = np.asarray(M_N2.n)
     I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
 
-    #n1_spikes = np.asarray(SM_N1.spike_trains())
+    train = SM_N1.spike_trains()
+    # print(train.keys())
+    # print(len(train))
 
+    # for key in train:
+    #     print(len(train[key]))
+    #     print(train[key])
 
+    print(len(SM_N1.t))
+    print(len(SM_N1.i))
     # Save output data
     ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+
+
+    
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -260,17 +270,17 @@ def plot_output():
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
     bin_size = 1
-    steps_per_bin = bin_size * 20
-    num_bins = len(t)//steps_per_bin
-    new_x1 = np.array([x1[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
-    new_x2 = np.array([x2[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
-    new_t = np.array([t[i*steps_per_bin] for i in range(num_bins)])
+    # steps_per_bin = bin_size * 20
+    # num_bins = len(t)//steps_per_bin
+    # new_x1 = np.array([x1[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
+    # new_x2 = np.array([x2[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
+    # new_t = np.array([t[i*steps_per_bin] for i in range(num_bins)])
 
-    new_y1 = y1.reshape(y1.shape[0], -1, steps_per_bin).mean(axis=2)
-    new_z1 = z1.reshape(z1.shape[0], -1, steps_per_bin).mean(axis=2)
-    new_n2 = n2.reshape(n2.shape[0], -1, steps_per_bin).mean(axis=2)
+    # new_y1 = y1.reshape(y1.shape[0], -1, steps_per_bin).mean(axis=2)
+    # new_z1 = z1.reshape(z1.shape[0], -1, steps_per_bin).mean(axis=2)
+    # new_n2 = n2.reshape(n2.shape[0], -1, steps_per_bin).mean(axis=2)
 
-    new_I = I_syn_inter_1.reshape(I_syn_inter_1.shape[0], -1, steps_per_bin).mean(axis=2)
+    # new_I = I_syn_inter_1.reshape(I_syn_inter_1.shape[0], -1, steps_per_bin).mean(axis=2)
 
     # ph.plot_both(new_t, new_x1, new_x2)
     # ph.plot_hr_single(new_t, new_x1, new_y1, new_z1, new_I)
@@ -283,6 +293,12 @@ def plot_output():
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_hr_mean(t, x1, y1, z1)
     ph.plot_ml_single(t, x2, n2)
+
+    spike_matrix = create_spike_matrix()
+    ph.pop1("pop1", t, x1, spike_matrix)
+
+    # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
+    # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
 
 def eda():
     arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
@@ -309,10 +325,35 @@ def eda():
     new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
     # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
     print(new_t.shape)
+
+def create_spike_matrix():
+    arrs = np.load(os.path.join(DATA_DIR, "Spike_Monitor_N1.npz"))
+    spike_times = arrs['t']  # All spike times
+    neuron_indices = arrs['i']  # Corresponding neuron indices
     
+    # Define time bins
+    sim_duration = 60 
+    dt = 0.1  # 100ms
+    time_bins = np.arange(0, sim_duration, dt)
+    num_bins = len(time_bins)
+    num_neurons = 40
+    
+    # Create empty spike matrix
+    spike_matrix = np.zeros((num_neurons, num_bins))
+    
+    # Bin the spikes
+    bin_indices = np.digitize(spike_times, time_bins)-1
+    
+    # Fill the matrix
+    for idx in range(len(bin_indices)):
+        bin_idx = bin_indices[idx]
+        if bin_idx <= 15:
+            # filter out initial warmup 'spikes'
+            continue
+        neuron = neuron_indices[idx]
+        spike_matrix[neuron][bin_idx] += 1
 
-
-
+    return spike_matrix
 
 def main():
     ### Run mode string
@@ -331,12 +372,11 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-        ph.plot_raster("N1", "Spike_Monitor_N1.npz")
-        ph.plot_raster("N2", "Spike_Monitor_N2.npz")
+
         print(f"Plots saved to 'figures' directory.")
     if ('t' in run_mode):
-        eda()
-        
+        # eda()
+        create_spike_matrix()
 
 if __name__ == "__main__":
     main()
