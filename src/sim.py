@@ -33,23 +33,16 @@ def run_sim():
     coupling = 1
 
     ### Population 1 (Hindmarsh-Rose)
-
-    # Population 1 parameters - Set for chaotic bursting behavior
-    # Classic Hindmarsh-Rose parameters for independent operation
     a = 1.0
     b = 3.0
     c = 1.0
     d = 5.0
     s = 8.0  # codebase default
-    I_app_1 = 3.1  # Applied current in bursting regime (3.0-3.5 for bursting)
-    x_naught = -2  # Resting potential
-    r = 0.0002 / msecond  # Slow adaptation (typical: 0.001-0.01)
-    sigma_1 = 1/50 # No noise coupling when isolated
+    I_app_1 = 3.1  
+    r = 0.0002 / msecond  
+    sigma_1 = 1/50 
     
     # Population 1 equations
-    # When ISOLATE=0: all coupling (intra and inter) is removed
-    # When ISOLATE=1: normal coupled behavior
-
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
         + ISOLATE * (coupling * (x_bar - x)
@@ -65,8 +58,9 @@ def run_sim():
     I_syn_inter : amp
     '''
 
-    # refractory based on voltage
+    # refractory based on voltage to stop smearing?
     N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
+
     # Randomize initial values
     N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
     N1.y = 'c - d*x**2'
@@ -82,21 +76,20 @@ def run_sim():
     gap_junctions_1.connect()
 
     ### Population 2 (Morris-Lecar)
-    # Population 2 parameters - Set for oscillatory/repetitive spiking behavior
-    # Classic Morris-Lecar Type I (SNIC) parameters
-    Cm = 20 * ufarad  # Membrane capacitance
-    I_app_2 = 40 * uamp  # Applied current for sustained spiking -- 80 for sepeparate morris lecar
-    v1 = -1.2 * mvolt  # Ca activation midpoint
-    v2 = 18 * mvolt  # Ca activation slope
-    v3 = 12 * mvolt  # K activation midpoint
-    v4 = 17.4 * mvolt  # K activation slope (larger = slower activation)
-    phi = 0.067 / msecond  # K channel time scale (faster for more regular spiking)
-    E_Ca = 120 * mvolt  # Ca reversal potential
-    E_K = -84 * mvolt  # K reversal potential
-    E_L = -60 * mvolt  # Leak reversal potential
-    gL = 2 * msiemens  # Leak conductance
-    gCa = 4.0 * msiemens  # Ca conductance
-    gK = 8.0 * msiemens  # K conductance
+
+    Cm = 20 * ufarad  
+    I_app_2 = 40 * uamp  
+    v1 = -1.2 * mvolt  
+    v2 = 18 * mvolt  
+    v3 = 12 * mvolt  
+    v4 = 17.4 * mvolt  
+    phi = 0.067 / msecond  
+    E_Ca = 120 * mvolt  
+    E_K = -84 * mvolt  
+    E_L = -60 * mvolt  
+    gL = 2 * msiemens  
+    gCa = 4.0 * msiemens  
+    gK = 8.0 * msiemens  
     sigma_2 = 50 * uA  
     
     # Population 2 equations    
@@ -214,7 +207,6 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    # run(1 * second)
 
     # Neuron group state monitors
     # Can set dt param to record at a different time step
@@ -244,7 +236,6 @@ def run_sim():
 
 
     
-
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
@@ -271,8 +262,8 @@ def plot_output():
 
     global num_cells
     global sim_duration
-    ph.pop1("pop1_test", t, x1, spike_matrix_1, num_cells, sim_duration/second)
-    ph.pop2("pop2_test", t, x2, spike_matrix_2, num_cells, sim_duration/second)
+    ph.pop1("pop1", t, x1, spike_matrix_1, num_cells, sim_duration/second)
+    ph.pop2("pop2", t, x2, spike_matrix_2, num_cells, sim_duration/second)
 
     # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
     # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
@@ -315,15 +306,13 @@ def create_spike_matrix_histo(data_name):
 
     # Define time bins
     duration = sim_duration/second
-    dt = 0.01  # 10ms per bin
+    dt = 0.1  # 100ms per bin
     warmup_time = 1.5  # Skip warup period - spikes dont count
 
     # Filter warmup spikes
     valid = spike_times > warmup_time
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
-
-   
 
     # Create bin edges (need +1 for right edge)
     time_bins = np.arange(0, duration + dt, dt)
