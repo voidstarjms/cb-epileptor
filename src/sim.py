@@ -236,16 +236,6 @@ def run_sim():
     n2 = np.asarray(M_N2.n)
     I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
 
-    train = SM_N1.spike_trains()
-    # print(train.keys())
-    # print(len(train))
-
-    # for key in train:
-    #     print(len(train[key]))
-    #     print(train[key])
-
-    print(len(SM_N1.t))
-    print(len(SM_N1.i))
     # Save output data
     ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
@@ -269,33 +259,16 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    bin_size = 1
-    # steps_per_bin = bin_size * 20
-    # num_bins = len(t)//steps_per_bin
-    # new_x1 = np.array([x1[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
-    # new_x2 = np.array([x2[:, i*steps_per_bin:i*steps_per_bin+steps_per_bin].mean(axis=1) for i in range(num_bins)]).T
-    # new_t = np.array([t[i*steps_per_bin] for i in range(num_bins)])
-
-    # new_y1 = y1.reshape(y1.shape[0], -1, steps_per_bin).mean(axis=2)
-    # new_z1 = z1.reshape(z1.shape[0], -1, steps_per_bin).mean(axis=2)
-    # new_n2 = n2.reshape(n2.shape[0], -1, steps_per_bin).mean(axis=2)
-
-    # new_I = I_syn_inter_1.reshape(I_syn_inter_1.shape[0], -1, steps_per_bin).mean(axis=2)
-
-    # ph.plot_both(new_t, new_x1, new_x2)
-    # ph.plot_hr_single(new_t, new_x1, new_y1, new_z1, new_I)
-    # ph.plot_hr_mean(new_t, new_x1, new_y1, new_z1)
-    # ph.plot_ml_single(new_t, new_x2, new_n2)
-
-
     ph.plot_both(t, x1, x2)
     ph.plot_both_avg(t, x1, y1, z1, x2, n2)
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_hr_mean(t, x1, y1, z1)
     ph.plot_ml_single(t, x2, n2)
 
-    spike_matrix = create_spike_matrix()
-    ph.pop1("pop1", t, x1, spike_matrix)
+    spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
+    spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
+    ph.pop1("pop1", t, x1, spike_matrix_1)
+    ph.pop1("pop2", t, x2, spike_matrix_2)
 
     # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
     # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
@@ -326,11 +299,11 @@ def eda():
     # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
     print(new_t.shape)
 
-def create_spike_matrix():
-    arrs = np.load(os.path.join(DATA_DIR, "Spike_Monitor_N1.npz"))
+# this does the same as the histogram version but worse
+def create_spike_matrix(data_name):
+    arrs = np.load(os.path.join(DATA_DIR, data_name))
     spike_times = arrs['t']  # All spike times
     neuron_indices = arrs['i']  # Corresponding neuron indices
-    
     # Define time bins
     sim_duration = 60 
     dt = 0.1  # 100ms
@@ -355,6 +328,38 @@ def create_spike_matrix():
 
     return spike_matrix
 
+def create_spike_matrix_histo(data_name):
+    """Create spike matrix for imshow to plot raster plots"""
+    arrs = np.load(os.path.join(DATA_DIR, data_name))
+    spike_times = arrs['t']  # All spike times
+    neuron_indices = arrs['i']  # Corresponding neuron indices
+
+    # Define time bins
+    sim_duration = 60
+    dt = 0.01  # 10ms
+    warmup_time = 2  # Skip warup period - spikes dont count
+
+    # Filter warmup spikes
+    valid = spike_times > warmup_time
+    spike_times = spike_times[valid]
+    neuron_indices = neuron_indices[valid]
+
+    num_neurons = 40
+
+    # Create bin edges (need +1 for right edge)
+    time_bins = np.arange(0, sim_duration + dt, dt)
+    neuron_bins = np.arange(0, num_neurons + 1)
+
+    # x = rows, y = columns -- this is flipped from math coordinates, so swap everything accordingly 
+    spike_matrix, neuron_edges, time_edges = np.histogram2d(
+        neuron_indices, # x
+        spike_times,    # y
+        bins=[neuron_bins, time_bins]
+    )
+
+    return spike_matrix
+
+
 def main():
     ### Run mode string
     # r - run simulation
@@ -375,8 +380,8 @@ def main():
 
         print(f"Plots saved to 'figures' directory.")
     if ('t' in run_mode):
-        # eda()
-        create_spike_matrix()
+        # testing features
+        create_spike_matrix_histo()
 
 if __name__ == "__main__":
     main()

@@ -27,13 +27,13 @@ def pop1(fig_name, t, x, spike_matrix):
 
     # Plot the averaged data instead of just neuron 0
     ax1.plot(t, x_mean)
-    ax1.set_ylabel("Mean x1") # Updated label
+    ax1.set_ylabel("Mean x") # Updated label
     
 
     ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
                    origin='lower')
 
-    ax2.set_xlabel('Time bin (100ms)', fontsize=12)
+    ax2.set_xlabel('Time bin (10ms)', fontsize=12)
     ax2.set_ylabel('Neuron index', fontsize=12)
     ax2.set_title('Population 1 Spike Raster (Spike Count)', fontsize=14)
     plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
