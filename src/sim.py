@@ -6,20 +6,23 @@ import scipy
 from scipy import signal
 import argparse
 import os
-import plotting as ph # (ph = Plotting help -- idk what to call it)
+import plotting as ph # (Plotting help idk what to call it)
 import config
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
-
+sim_duration = 60 * second
+num_cells = 40
 def run_sim():
     sim_duration = 60 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
-    num_cells = 40
+    
 
+    # ISOLATE = 0: populations are decoupled (independent)
+    # ISOLATE = 1: populations are coupled (normal mode)
     ISOLATE = 1
 
     # Discrepancy in paper regarding Wmax
@@ -29,18 +32,15 @@ def run_sim():
     coupling = 1
 
     ### Population 1 (Hindmarsh-Rose)
-
-    # Population 1 parameters
-    # NOTE: these parameters are from Brian docs, not Naze paper
-    a = 1
-    b = 3
-    c = 1
-    d = 5
-    s = 8
+    a = 1.0
+    b = 3.0
+    c = 1.0
+    d = 5.0
+    s = 8.0  # codebase default
     I_app_1 = 3.1
-    x_naught = -3
-    r = 0.000008 / msecond
-    sigma_1 = 1/50
+    x_naught = -2  
+    r = 0.0002 / msecond  
+    sigma_1 = 1/50 
     
     # Population 1 equations
     pop1_eqs = '''
@@ -59,7 +59,9 @@ def run_sim():
     I_syn_inter_slow : amp
     '''
 
+    # refractory based on voltage to stop smearing?
     N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
+
     # Randomize initial values
     N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
     N1.y = 'c - d*x**2'
@@ -252,7 +254,6 @@ def run_sim():
     S2_to_1.beta = beta_inh
     S2_to_1.G = G_inter
 
-    run(1 * second)
 
     # Neuron group state monitors
     # Can set dt param to record at a different time step
@@ -273,17 +274,13 @@ def run_sim():
     n2 = np.asarray(M_N2.n)
     I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
 
-    #n1_spikes = np.asarray(SM_N1.spike_trains())
-
-
     # Save output data
     ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
-    print(len(SM_N1.i))
-    print(len(SM_N2.i))
 
+    
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
@@ -384,12 +381,10 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-        ph.plot_raster("N1", "Spike_Monitor_N1.npz")
-        ph.plot_raster("N2", "Spike_Monitor_N2.npz")
         print(f"Plots saved to 'figures' directory.")
     if ('t' in run_mode):
-        eda()
-        
+        # testing features
+        create_spike_matrix_histo("Spike_Monitor_N1.npz")
 
 if __name__ == "__main__":
     main()
