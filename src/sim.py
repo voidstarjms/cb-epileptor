@@ -39,6 +39,7 @@ def run_sim():
     d = 5.0
     s = 8.0  # codebase default
     I_app_1 = 3.1  
+    x_naught = -2.0
     r = 0.0002 / msecond  
     sigma_1 = 1/50 
     
@@ -265,8 +266,6 @@ def plot_output():
     ph.pop1("pop1", t, x1, spike_matrix_1, num_cells, sim_duration/second)
     ph.pop2("pop2", t, x2, spike_matrix_2, num_cells, sim_duration/second)
 
-    # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
-    # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
 
 def eda():
     arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
@@ -300,7 +299,6 @@ def create_spike_matrix_histo(data_name):
     spike_times = arrs['t']  # All spike times
     neuron_indices = arrs['i']  # Corresponding neuron indices
 
-    
     global sim_duration
     global num_cells
 
@@ -310,9 +308,9 @@ def create_spike_matrix_histo(data_name):
     warmup_time = 1.5  # Skip warup period - spikes dont count
 
     # Filter warmup spikes
-    valid = spike_times > warmup_time
-    spike_times = spike_times[valid]
-    neuron_indices = neuron_indices[valid]
+    valid = spike_times > warmup_time   # boolean mask
+    spike_times = spike_times[valid]    # filter using mask
+    neuron_indices = neuron_indices[valid]  
 
     # Create bin edges (need +1 for right edge)
     time_bins = np.arange(0, duration + dt, dt)
