@@ -37,8 +37,8 @@ def run_sim():
     c = 1.0
     d = 5.0
     s = 8.0  # codebase default
-    I_app_1 = 3.1
-    x_naught = -2  
+    I_app_1 = 3.1  
+    x_naught = -2.0
     r = 0.0002 / msecond  
     sigma_1 = 1/50 
     
@@ -296,73 +296,79 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # One neuron from both pops 
-    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-    # ax1.plot(t, x1[0])
-    # ax1.set_xlabel("Time (s)")
-    # ax1.set_ylabel("x1")
-    # ax2.plot(t, x2[0])
-    # ax2.set_xlabel("Time (s)")
-    # ax2.set_ylabel("x2")
+    ph.plot_both(t, x1, x2)
+    ph.plot_both_avg(t, x1, y1, z1, x2, n2)
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    ph.plot_hr_mean(t, x1, y1, z1)
+    ph.plot_ml_single(t, x2, n2)
 
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
-    ax1.plot(t, x1[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, y1[0])
-    ax2.set_ylabel("Neuron 0 y")
-    ax3.plot(t, z1[0])
-    ax3.set_ylabel("Neuron 0 z")
-    ax4.plot(t, I_syn_inter_1[0])
-    ax4.set_ylabel("Neuron 0 I_{syn, inter}")
-    ax4.set_xlabel("Time (s)")
+    spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
+    spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
-    # fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    # ax1.plot(t, x2[0])
-    # ax1.set_ylabel("Neuron 0 x")
-    # ax2.plot(t, n2[0])
-    # ax2.set_ylabel("Neuron 0 n")
-    # ax3.plot(t, I_syn_inter_2[0])
-    # ax3.set_ylabel("Neuron 0 I_{syn, inter}")
-    # ax3.set_xlabel("Time (s)")
+    global num_cells
+    global sim_duration
+    ph.pop1("pop1", t, x1, spike_matrix_1, num_cells, sim_duration/second)
+    ph.pop2("pop2", t, x2, spike_matrix_2, num_cells, sim_duration/second)
 
-    # Calculate the mean across all neurons (axis=0)
-    x1_mean = np.mean(x1, axis=0)
-    y1_mean = np.mean(y1, axis=0)
-    z1_mean = np.mean(z1, axis=0)
 
-    # All pop 1 variables (Figure 2 - Now Averaged)
-    #fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    
-    # Plot the averaged data instead of just neuron 0
-    # ax1.plot(t, x1_mean)
-    # ax1.set_ylabel("Mean x1") # Updated label
-    # ax2.plot(t, y1_mean)
-    # ax2.set_ylabel("Mean y1") # Updated label
-    # ax3.plot(t, z1_mean)
-    # ax3.set_ylabel("Mean z1") # Updated label
-    # ax3.set_xlabel("Time (s)")
+def eda():
+    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
 
-    # x2_mean = np.mean(x2, axis=0)
-    # mean_potential = 0.8 * x1_mean + 0.2 * x2_mean
-    # plt.plot(t, mean_potential)
-    # plt.xlabel("Time (s)")
-    # plt.ylabel("Weighted mean potential (a.u.)")
-    
-    #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
-    plt.savefig(os.path.join(FIGURES_DIR, "single_neuron_pop1_with_slowsyn.png"), format="png")
-    plt.show()
-    
-    # fs = 1 / defaultclock.dt / Hz
-    # f, Pxx = signal.welch(mean_potential, fs=fs)
-    # ax2.semilogy(f, Pxx)
-    # ax2.set_xlabel("Frequency (Hz)")
-    # ax2.set_ylabel("Amplitude (a.u.)")
-    # plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
-    # plt.show()
+    t = arrs['t']
+    x1 = arrs['x1']
+    y1 = arrs['y1']
+    z1 = arrs['z1']
+    I_syn_inter_1 = arrs['I_syn_inter_1']
+    x2 = arrs['x2']
+    n2 = arrs['n2']
+    I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # fig = plt.figure()
-    # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
-    # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
+    print(f"Length of t is: {t.shape}")
+    print(f"Length of x1 is: {x1.shape}")
+    print(f"Length of ISYNINTER is: {I_syn_inter_1.shape}")
+    print(f"Length of x2 is: {x2.shape}")
+
+    bin_freq = 100
+    num_ticks = bin_freq * 20
+    meow = len(t)//num_ticks
+    new_x1 = np.array([x1[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_x2 = np.array([x2[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
+    # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
+    print(new_t.shape)
+
+def create_spike_matrix_histo(data_name):
+    """Create spike matrix for imshow to plot raster plots"""
+    arrs = np.load(os.path.join(DATA_DIR, data_name))
+    spike_times = arrs['t']  # All spike times
+    neuron_indices = arrs['i']  # Corresponding neuron indices
+
+    global sim_duration
+    global num_cells
+
+    # Define time bins
+    duration = sim_duration/second
+    dt = 0.1  # 100ms per bin
+    warmup_time = 1.5  # Skip warup period - spikes dont count
+
+    # Filter warmup spikes
+    valid = spike_times > warmup_time   # boolean mask
+    spike_times = spike_times[valid]    # filter using mask
+    neuron_indices = neuron_indices[valid]  
+
+    # Create bin edges (need +1 for right edge)
+    time_bins = np.arange(0, duration + dt, dt)
+    neuron_bins = np.arange(0, num_cells + 1)
+
+    # x = rows, y = columns -- this is flipped from math coordinates, so swap everything accordingly
+    # histogram2d returns (neuron x time) when passed (neuron_indices, spike_times)
+    spike_matrix, neuron_edges, time_edges = np.histogram2d(
+        neuron_indices, # x
+        spike_times,    # y
+        bins=[neuron_bins, time_bins]
+    )
+
+    return spike_matrix
 
 def main():
     ### Run mode string
