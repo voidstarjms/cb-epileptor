@@ -329,7 +329,6 @@ def create_spike_matrix_histo(data_name):
 
     return spike_matrix
 
-
 def main():
     ### Run mode string
     # r - run simulation
