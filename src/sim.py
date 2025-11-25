@@ -15,8 +15,7 @@ OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 sim_duration = 60 * second
 num_cells = 40
 def run_sim():
-
-    # change defaultclock to fix raster smearing
+    sim_duration = 60 * second
     tau = 1 * msecond
     defaultclock.dt = tau / 20
     print("defaultclock.dt is: ", defaultclock.dt)
@@ -48,7 +47,7 @@ def run_sim():
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
         + ISOLATE * (coupling * (x_bar - x)
         + Wmax * xi * sqrt(second)
-        + sigma_1 * (I_syn_intra + I_syn_inter) / amp)) / tau : 1
+        + sigma_1 * (I_syn_intra + I_syn_inter + I_syn_inter_slow) / amp)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
     dz/dt = r * (s * (x + ISOLATE * x2_bar - x_naught) - z_bar) : 1
 
@@ -57,6 +56,7 @@ def run_sim():
     x2_bar : 1
     I_syn_intra : amp
     I_syn_inter : amp
+    I_syn_inter_slow : amp
     '''
 
     # refractory based on voltage to stop smearing?
@@ -77,28 +77,29 @@ def run_sim():
     gap_junctions_1.connect()
 
     ### Population 2 (Morris-Lecar)
-
-    Cm = 20 * ufarad  
-    I_app_2 = 40 * uamp  
-    v1 = -1.2 * mvolt  
-    v2 = 18 * mvolt  
-    v3 = 12 * mvolt  
-    v4 = 17.4 * mvolt  
-    phi = 0.067 / msecond  
-    E_Ca = 120 * mvolt  
-    E_K = -84 * mvolt  
-    E_L = -60 * mvolt  
-    gL = 2 * msiemens  
-    gCa = 4.0 * msiemens  
-    gK = 8.0 * msiemens  
-    sigma_2 = 50 * uA  
+    # NOTE: these parameters are from Brian docs, not Naze paper
+    # Population 2 parameters
+    Cm = 20 * ufarad
+    I_app_2 = 40 * uamp
+    v1 = 1.2 * mvolt
+    v2 = 18 * mvolt
+    v3 = 12 * mvolt
+    v4 = 17.4 * mvolt
+    phi = 1.0 / (15*ms)
+    E_Ca = 120 * mvolt
+    E_K = -84 * mvolt
+    E_L = -60 * mvolt
+    gL = 2 * msiemens
+    gCa = 4 * msiemens
+    gK = 8 * msiemens
+    sigma_2 = 50 * uamp
     
     # Population 2 equations    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
         + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
-        + (I_syn_intra + I_syn_inter))) / Cm : volt
+        + I_syn_intra + I_syn_inter + I_syn_intra_slow)) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -111,6 +112,7 @@ def run_sim():
     z_bar : 1
     I_syn_inter : amp
     I_syn_intra : amp
+    I_syn_intra_slow : amp
     '''
     
     N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
@@ -127,7 +129,7 @@ def run_sim():
 
     hindmarsh_rose_syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * mvolt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -137,7 +139,7 @@ def run_sim():
 
     morris_lecar_syn_eqs='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * mvolt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -146,33 +148,59 @@ def run_sim():
     '''
 
     hr_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    I_syn_intra_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
     ''' + hindmarsh_rose_syn_eqs
 
     hr_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    I_syn_inter_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
     ''' + hindmarsh_rose_syn_eqs
 
     ml_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    I_syn_intra_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
     ''' +  morris_lecar_syn_eqs
 
     ml_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
+    I_syn_inter_post = (-G * u * (x_post * mvolt - E)) : amp (summed)
     ''' + morris_lecar_syn_eqs
+
+    slow_syn_eqs = '''
+    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
+    ds/dt = (K3 * u - K4 * s) / tau : 1 (clock-driven)
+    T = Tmax / (1 + exp(-(x_bar_pre * mvolt - Vt) / Kp)) : mM
+
+    G : siemens
+    E : volt
+    alpha : mmolar ** -1 * second ** -1
+    beta : second ** -1
+    n_syn : 1
+    '''
+
+    ml_inter_slow_syn_eqs = '''
+    I_syn_inter_slow_post = (-G * s ** n_syn * (x_post * mvolt - E) / (Kd - s ** n_syn)) : amp (summed)
+    ''' + slow_syn_eqs
+
+    ml_intra_slow_syn_eqs = '''
+    I_syn_intra_slow_post = (-G * s ** n_syn * (x_post * mvolt - E) / (Kd - s ** n_syn)) : amp (summed)
+    ''' + slow_syn_eqs
 
     # Synapse parameters
     Vt = 2 * mV
     Kp = 5 * mV
-    Tmax = 1 * mmolar
+    Tmax = 0.5 * mmolar
     alpha_exc = 1.1 / (mmolar * msecond)
     alpha_inh = 5 / (mmolar * msecond)
+    alpha_inh_slow = 0.09 / (mmolar * msecond)
     beta_exc = 0.19 / msecond
     beta_inh = 0.18 / msecond
+    beta_inh_slow = 0.0012 / msecond
     Esyn_exc = 0 * mV
     Esyn_inh = -80 * mV
+    Esyn_inh_slow = -95 * mV
     G_intra = 0.1 * uS
     G_inter = 0.2 * uS
+    K3 = 0.18
+    K4 = 0.034
+    Kd = 100
 
     # Population 1 synapses to self
     S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler')
@@ -199,6 +227,24 @@ def run_sim():
     S2_to_2.beta = beta_inh
     S2_to_2.G = G_intra
 
+    # Population 2 slow synapses to self
+    S2_to_2_slow = Synapses(N2, N2, ml_intra_slow_syn_eqs, method='euler')
+    S2_to_2_slow.connect()
+    S2_to_2_slow.E = Esyn_inh_slow
+    S2_to_2_slow.alpha = alpha_inh_slow
+    S2_to_2_slow.beta = beta_inh_slow
+    S2_to_2_slow.G = G_intra
+    S2_to_2_slow.n_syn = 4
+
+    # Population 2 slow synapses to population 1
+    S2_to_1_slow = Synapses(N2, N1, ml_inter_slow_syn_eqs, method='euler')
+    S2_to_1_slow.connect()
+    S2_to_1_slow.E = Esyn_inh_slow
+    S2_to_1_slow.alpha = alpha_inh_slow
+    S2_to_1_slow.beta = beta_inh_slow
+    S2_to_1_slow.G = G_inter
+    S2_to_1_slow.n_syn = 4
+
     # Population 2 synapses to pop 1
     S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler')
     S2_to_1.connect()
@@ -218,8 +264,6 @@ def run_sim():
     SM_N2 = SpikeMonitor(N2)
     
     run(sim_duration)
-    
-    
     
     t = np.asarray(M_N1.t)
     x1 = np.asarray(M_N1.x)
