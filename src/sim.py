@@ -2,46 +2,34 @@ from brian2 import *
 from brian2tools import *
 from matplotlib import pyplot as plt
 import numpy as np
-import scipy
-from scipy import signal
 import argparse
 import os
-import plotting as ph # (Plotting help idk what to call it)
+import shutil # Added for file operations
+import datetime  # Added for timestamping
+import plotting as ph 
 import config
+import params  # New params file
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
-sim_duration = 60 * second
-num_cells = 40
-def run_sim():
 
-    # change defaultclock to fix raster smearing
-    tau = 1 * msecond
-    defaultclock.dt = tau / 20
-    print("defaultclock.dt is: ", defaultclock.dt)
+def backup_params():
+    # Saves a copy of params.py to the data directory with a timestamp
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
     
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"params_{timestamp}.py"
+    shutil.copy("params.py", os.path.join(DATA_DIR, backup_name))
+    print(f"Parameter file backed up to: {os.path.join(DATA_DIR, backup_name)}")
 
-    # ISOLATE = 0: populations are decoupled (independent)
-    # ISOLATE = 1: populations are coupled (normal mode)
-    ISOLATE = 1
+def run_sim():
+    # Archive parameters before running
+    backup_params()
 
-    # Discrepancy in paper regarding Wmax
-    # Table shows [1, 20] with no units, while text states [2.5, 20] * mV
-    Wmax = 0.006
-
-    coupling = 1
-
-    ### Population 1 (Hindmarsh-Rose)
-    a = 1.0
-    b = 3.0
-    c = 1.0
-    d = 5.0
-    s = 8.0  # codebase default
-    I_app_1 = 3.1
-    x_naught = -2  
-    r = 0.0002 / msecond  
-    sigma_1 = 1/50 
+    defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
+    print("defaultclock.dt is: ", defaultclock.dt)
     
     # Population 1 equations
     pop1_eqs = '''
@@ -59,11 +47,21 @@ def run_sim():
     I_syn_inter : amp
     '''
 
-    # refractory based on voltage to stop smearing?
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
+    pop1_namespace = {
+        'a': params.HR_A, 'b': params.HR_B, 'c': params.HR_C, 
+        'd': params.HR_D, 's': params.HR_S, 'I_app_1': params.HR_I_APP,
+        'x_naught': params.HR_X_NAUGHT, 'r': params.HR_R, 
+        'sigma_1': params.HR_SIGMA, 'tau': params.TAU_CLOCK,
+        'ISOLATE': params.ISOLATE, 'coupling': params.COUPLING_STRENGTH,
+        'Wmax': params.W_MAX
+    }
 
-    # Randomize initial values
-    N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
+    N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler', 
+                     threshold=params.HR_THRESHOLD, reset='',
+                     namespace=pop1_namespace)
+    
+    # UPDATED: Use params.* variables
+    N1.x = np.ones(params.NUM_CELLS) * params.HR_X_NAUGHT + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
@@ -73,25 +71,9 @@ def run_sim():
     z_bar_post = z_pre / num_cells : 1 (summed)
     '''
 
-    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs)
+    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_1.connect()
 
-    ### Population 2 (Morris-Lecar)
-
-    Cm = 20 * ufarad  
-    I_app_2 = 40 * uamp  
-    v1 = -1.2 * mvolt  
-    v2 = 18 * mvolt  
-    v3 = 12 * mvolt  
-    v4 = 17.4 * mvolt  
-    phi = 0.067 / msecond  
-    E_Ca = 120 * mvolt  
-    E_K = -84 * mvolt  
-    E_L = -60 * mvolt  
-    gL = 2 * msiemens  
-    gCa = 4.0 * msiemens  
-    gK = 8.0 * msiemens  
-    sigma_2 = 50 * uA  
     
     # Population 2 equations    
     pop2_eqs = '''
@@ -113,8 +95,23 @@ def run_sim():
     I_syn_intra : amp
     '''
     
-    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
-    N2.v = E_L * np.ones(num_cells) + randn(num_cells) * Wmax * volt
+    pop2_namespace = {
+        'Cm': params.ML_CM, 'I_app_2': params.ML_I_APP, 'gL': params.ML_GL,
+        'E_L': params.ML_E_L, 'gK': params.ML_GK, 'E_K': params.ML_E_K,
+        'gCa': params.ML_GCA, 'E_Ca': params.ML_E_CA, 
+        'v1': params.ML_V1, 'v2': params.ML_V2, 'v3': params.ML_V3, 'v4': params.ML_V4,
+        'phi': params.ML_PHI, 'sigma_2': params.ML_SIGMA,
+        'Wmax': params.W_MAX, 'coupling': params.COUPLING_STRENGTH,
+        'ISOLATE': params.ISOLATE
+    }
+
+    N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler', 
+                     threshold=params.ML_THRESHOLD, reset='',
+                     namespace=pop2_namespace)
+    
+    # UPDATED: Use params.* variables for initialization
+    N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
+           randn(params.NUM_CELLS) * params.W_MAX * volt
     N2.n = 'n_inf'
     
     # Population 2 state variable averaging
@@ -122,8 +119,16 @@ def run_sim():
     x_bar_post = x_pre / num_cells : 1 (summed)
     '''
 
-    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs)
+    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_2.connect()
+
+
+    # Synapses
+    syn_namespace = {
+        'Tmax': params.SYN_TMAX,
+        'Vt': params.SYN_VT,
+        'Kp': params.SYN_KP
+    }
 
     hindmarsh_rose_syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
@@ -161,65 +166,45 @@ def run_sim():
     I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
     ''' + morris_lecar_syn_eqs
 
-    # Synapse parameters
-    Vt = 2 * mV
-    Kp = 5 * mV
-    Tmax = 1 * mmolar
-    alpha_exc = 1.1 / (mmolar * msecond)
-    alpha_inh = 5 / (mmolar * msecond)
-    beta_exc = 0.19 / msecond
-    beta_inh = 0.18 / msecond
-    Esyn_exc = 0 * mV
-    Esyn_inh = -80 * mV
-    G_intra = 0.1 * uS
-    G_inter = 0.2 * uS
-
-    # Population 1 synapses to self
-    S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler')
+    # UPDATED: Pass namespace to all Synapses
+    S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect()
-    S1_to_1.E = Esyn_exc
-    S1_to_1.alpha = alpha_exc
-    S1_to_1.beta = beta_exc
-    S1_to_1.G = G_intra
+    S1_to_1.E = params.SYN_E_EXC
+    S1_to_1.alpha = params.SYN_ALPHA_EXC
+    S1_to_1.beta = params.SYN_BETA_EXC
+    S1_to_1.G = params.G_INTRA
 
-    # Population 1 synapses to pop 2
-    S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler')
+    S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
-    S1_to_2.E = Esyn_exc
-    S1_to_2.alpha = alpha_exc
-    S1_to_2.beta = beta_exc
-    S1_to_2.G = G_inter
+    S1_to_2.E = params.SYN_E_EXC
+    S1_to_2.alpha = params.SYN_ALPHA_EXC
+    S1_to_2.beta = params.SYN_BETA_EXC
+    S1_to_2.G = params.G_INTER
 
-    # Population 2 synapses to self
-    S2_to_2 = Synapses(N2, N2, ml_intra_syn_eqs, method='euler')
+    S2_to_2 = Synapses(N2, N2, ml_intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect()
-    S2_to_2.E = Esyn_inh
-    S2_to_2.alpha = alpha_inh
-    S2_to_2.beta = beta_inh
-    S2_to_2.G = G_intra
+    S2_to_2.E = params.SYN_E_INH
+    S2_to_2.alpha = params.SYN_ALPHA_INH
+    S2_to_2.beta = params.SYN_BETA_INH
+    S2_to_2.G = params.G_INTRA
 
-    # Population 2 synapses to pop 1
-    S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler')
+    S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
-    S2_to_1.E = Esyn_inh
-    S2_to_1.alpha = alpha_inh
-    S2_to_1.beta = beta_inh
-    S2_to_1.G = G_inter
+    S2_to_1.E = params.SYN_E_INH
+    S2_to_1.alpha = params.SYN_ALPHA_INH
+    S2_to_1.beta = params.SYN_BETA_INH
+    S2_to_1.G = params.G_INTER
 
-
-    # Neuron group state monitors
-    # Can set dt param to record at a different time step
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
     
-    run(sim_duration)
-    
-    
+    run(params.SIM_DURATION)
+
     
     t = np.asarray(M_N1.t)
     x1 = np.asarray(M_N1.x)
@@ -236,7 +221,6 @@ def run_sim():
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
 
 
-    
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
@@ -261,13 +245,10 @@ def plot_output():
     spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
-    global num_cells
-    global sim_duration
-    ph.pop1("pop1", t, x1, spike_matrix_1, num_cells, sim_duration/second)
-    ph.pop2("pop2", t, x2, spike_matrix_2, num_cells, sim_duration/second)
+    # Pass params directly
+    ph.pop1("pop1", t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.pop2("pop2", t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
 
-    # ph.plot_raster("N1", "Spike_Monitor_N1.npz", t, x1)
-    # ph.plot_raster("N2", "Spike_Monitor_N2.npz", t, x2)
 
 def eda():
     arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
@@ -298,37 +279,29 @@ def eda():
 def create_spike_matrix_histo(data_name):
     """Create spike matrix for imshow to plot raster plots"""
     arrs = np.load(os.path.join(DATA_DIR, data_name))
-    spike_times = arrs['t']  # All spike times
-    neuron_indices = arrs['i']  # Corresponding neuron indices
+    spike_times = arrs['t'] 
+    neuron_indices = arrs['i'] 
 
+    # Use params variables
+    duration = params.SIM_DURATION/second
     
-    global sim_duration
-    global num_cells
-
-    # Define time bins
-    duration = sim_duration/second
     dt = 0.1  # 100ms per bin
-    warmup_time = 1.5  # Skip warup period - spikes dont count
+    warmup_time = 1.5 
 
-    # Filter warmup spikes
     valid = spike_times > warmup_time
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
 
-    # Create bin edges (need +1 for right edge)
     time_bins = np.arange(0, duration + dt, dt)
-    neuron_bins = np.arange(0, num_cells + 1)
+    neuron_bins = np.arange(0, params.NUM_CELLS + 1)
 
-    # x = rows, y = columns -- this is flipped from math coordinates, so swap everything accordingly
-    # histogram2d returns (neuron x time) when passed (neuron_indices, spike_times)
     spike_matrix, neuron_edges, time_edges = np.histogram2d(
-        neuron_indices, # x
-        spike_times,    # y
+        neuron_indices, 
+        spike_times,   
         bins=[neuron_bins, time_bins]
     )
 
     return spike_matrix
-
 
 def main():
     ### Run mode string
