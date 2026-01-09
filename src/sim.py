@@ -130,9 +130,11 @@ def run_sim():
         'Kp': params.SYN_KP
     }
 
-    hindmarsh_rose_syn_eqs ='''
+    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
+
+    syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -140,41 +142,23 @@ def run_sim():
     beta : second ** -1
     '''
 
-    morris_lecar_syn_eqs='''
-    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
+    intra_syn_eqs = '''
+    I_syn_intra_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    ''' + syn_eqs
 
-    G : siemens
-    E : volt
-    alpha : mmolar ** -1 * second ** -1
-    beta : second ** -1
-    '''
-
-    hr_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' + hindmarsh_rose_syn_eqs
-
-    hr_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' + hindmarsh_rose_syn_eqs
-
-    ml_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' +  morris_lecar_syn_eqs
-
-    ml_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' + morris_lecar_syn_eqs
+    inter_syn_eqs = '''
+    I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    ''' + syn_eqs
 
     # UPDATED: Pass namespace to all Synapses
-    S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler', namespace=syn_namespace)
+    S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect()
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC
     S1_to_1.G = params.G_INTRA
 
-    S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler', namespace=syn_namespace)
+    S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = params.SYN_E_EXC
@@ -182,14 +166,14 @@ def run_sim():
     S1_to_2.beta = params.SYN_BETA_EXC
     S1_to_2.G = params.G_INTER
 
-    S2_to_2 = Synapses(N2, N2, ml_intra_syn_eqs, method='euler', namespace=syn_namespace)
+    S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect()
     S2_to_2.E = params.SYN_E_INH
     S2_to_2.alpha = params.SYN_ALPHA_INH
     S2_to_2.beta = params.SYN_BETA_INH
     S2_to_2.G = params.G_INTRA
 
-    S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler', namespace=syn_namespace)
+    S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = params.SYN_E_INH
