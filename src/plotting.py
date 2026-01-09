@@ -23,14 +23,14 @@ def pop1(fig_name, t, x, spike_matrix, num_cells, sim_duration):
     x_mean = np.mean(x, axis=0)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
-    fig.suptitle("All Hindmarsh Rose Variables - All Neurons Averaged")
+    fig.suptitle("Hindmarsh Rose Spiking")
 
     # Plot the averaged data instead of just neuron 0
     ax1.plot(t, x_mean)
-    ax1.set_ylabel("Mean x") # Updated label
+    ax1.set_ylabel("Mean x1") # Updated label
     
 
-    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+    ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells])
 
     ax2.set_xlabel('Time (s)', fontsize=12)
@@ -52,7 +52,7 @@ def pop2(fig_name, t, x, spike_matrix, num_cells, sim_duration):
     ax1.set_ylabel("Mean x2") # Updated label
     
 
-    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+    ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells])
 
     ax2.set_xlabel('Time (s)', fontsize=12)
