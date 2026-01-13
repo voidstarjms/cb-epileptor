@@ -17,19 +17,49 @@ def save_data(filename, **kwargs):
     
     np.savez(os.path.join(DATA_DIR, filename), **kwargs)
 
-# TODO: fix binning and smearing
-def plot_raster(fig_name, data_filename):
-    if not os.path.exists(FIGURES_DIR):
-        os.makedirs(FIGURES_DIR)
-    moni = np.load(os.path.join(DATA_DIR, data_filename))
+
+def pop1(fig_name, t, x, spike_matrix, num_cells, sim_duration):
     
-    plt.figure(figsize=(12, 8))
-    plt.plot(moni['t']/ms, moni['i'], '.k', markersize=2)
-    plt.title(f'{fig_name} - Raster')
-    plt.xlabel('Time (ms)')
-    plt.ylabel('Neuron Index')
-    plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format="png", dpi=300, bbox_inches='tight')
+    x_mean = np.mean(x, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    fig.suptitle("All Hindmarsh Rose Variables - All Neurons Averaged")
+
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x_mean)
+    ax1.set_ylabel("Mean x") # Updated label
+    
+
+    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+                   origin='lower', extent=[0, sim_duration, 0, num_cells])
+
+    ax2.set_xlabel('Time (s)', fontsize=12)
+    ax2.set_ylabel('Neuron index', fontsize=12)
+    ax2.set_title('Population 1 Spike Raster (Spike Count)', fontsize=14)
+
+    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
+    plt.show()
+
+def pop2(fig_name, t, x, spike_matrix, num_cells, sim_duration):
+    
+    x_mean = np.mean(x, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    fig.suptitle("Morris Lecar Spiking")
+
+    # Plot the averaged data instead of just neuron 0
+    ax1.plot(t, x_mean)
+    ax1.set_ylabel("Mean x2") # Updated label
+    
+
+    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+                   origin='lower', extent=[0, sim_duration, 0, num_cells])
+
+    ax2.set_xlabel('Time (s)', fontsize=12)
+    ax2.set_ylabel('Neuron index', fontsize=12)
+    ax2.set_title('Population 2 Spike Raster (Spike Count)', fontsize=14)
+
+    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
     plt.show()
 
 
@@ -97,6 +127,29 @@ def plot_both(t, x1, x2):
     ax1.set_xlabel("Time (s)")
     ax1.set_ylabel("x1")
     ax2.plot(t, x2[0])
+    ax2.set_xlabel("Time (s)")
+    ax2.set_ylabel("x2")
+
+
+    #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
+    plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
+    plt.show()
+
+
+def plot_both_avg(t, x1, y1, z1, x2, n):
+    # neurons averaged from both pops 
+    x1_mean = np.mean(x1, axis=0)
+    y1_mean = np.mean(y1, axis=0)
+    z1_mean = np.mean(z1, axis=0)
+    x2_mean = np.mean(x2, axis=0)
+    n_mean = np.mean(n, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig.suptitle("Mean Neuron From Each Population")
+    ax1.plot(t, x1_mean)
+    ax1.set_xlabel("Time (s)")
+    ax1.set_ylabel("x1")
+    ax2.plot(t, x2_mean)
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
 

@@ -2,45 +2,34 @@ from brian2 import *
 from brian2tools import *
 from matplotlib import pyplot as plt
 import numpy as np
-import scipy
-from scipy import signal
 import argparse
 import os
-import plotting as ph # (Plotting help idk what to call it)
+import shutil # Added for file operations
+import datetime  # Added for timestamping
+import plotting as ph 
 import config
+import params  # New params file
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
+def backup_params():
+    # Saves a copy of params.py to the data directory with a timestamp
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"params_{timestamp}.py"
+    shutil.copy("params.py", os.path.join(DATA_DIR, backup_name))
+    print(f"Parameter file backed up to: {os.path.join(DATA_DIR, backup_name)}")
+
 def run_sim():
-    sim_duration = 60 * second
-    tau = 1 * msecond
-    defaultclock.dt = tau / 20
+    # Archive parameters before running
+    backup_params()
+
+    defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
-    num_cells = 40
-
-    ISOLATE = 1
-
-    # Discrepancy in paper regarding Wmax
-    # Table shows [1, 20] with no units, while text states [2.5, 20] * mV
-    Wmax = 0.004
-
-    coupling = 1
-
-    ### Population 1 (Hindmarsh-Rose)
-
-    # Population 1 parameters
-    # NOTE: these parameters are from Brian docs, not Naze paper
-    a = 1
-    b = 3
-    c = 1
-    d = 5
-    s = 8
-    I_app_1 = 3.1
-    x_naught = -3
-    r = 0.000008 / msecond
-    sigma_1 = 1/50
     
     # Population 1 equations
     pop1_eqs = '''
@@ -58,9 +47,21 @@ def run_sim():
     I_syn_inter : amp
     '''
 
-    N1 = NeuronGroup(num_cells, pop1_eqs, method='euler', threshold='x > 1.5', reset='')
-    # Randomize initial values
-    N1.x = np.ones(num_cells) * x_naught + randn(num_cells) * Wmax
+    pop1_namespace = {
+        'a': params.HR_A, 'b': params.HR_B, 'c': params.HR_C, 
+        'd': params.HR_D, 's': params.HR_S, 'I_app_1': params.HR_I_APP,
+        'x_naught': params.HR_X_NAUGHT, 'r': params.HR_R, 
+        'sigma_1': params.HR_SIGMA, 'tau': params.TAU_CLOCK,
+        'ISOLATE': params.ISOLATE, 'coupling': params.COUPLING_STRENGTH,
+        'Wmax': params.W_MAX
+    }
+
+    N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler', 
+                     threshold=params.HR_THRESHOLD, reset='',
+                     namespace=pop1_namespace)
+    
+    # UPDATED: Use params.* variables
+    N1.x = np.ones(params.NUM_CELLS) * params.HR_X_NAUGHT + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
@@ -70,33 +71,16 @@ def run_sim():
     z_bar_post = z_pre / num_cells : 1 (summed)
     '''
 
-    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs)
+    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_1.connect()
 
-    ### Population 2 (Morris-Lecar)
-    # NOTE: these parameters are from Brian docs, not Naze paper
-    # Population 2 parameters
-    Cm = 20 * ufarad
-    I_app_2 = 40 * uamp
-    v1 = 1.2 * mvolt
-    v2 = 18 * mvolt
-    v3 = 12 * mvolt
-    v4 = 17.4 * mvolt
-    phi = 1.0 / (15*ms)
-    E_Ca = 120 * mvolt
-    E_K = -84 * mvolt
-    E_L = -60 * mvolt
-    gL = 2 * msiemens
-    gCa = 4 * msiemens
-    gK = 8 * msiemens
-    sigma_2 = 50 * uA
     
     # Population 2 equations    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + 20 * coupling * (x_bar - x) - 0.3 * (z_bar - 3))
-        + 20 * (I_syn_intra + I_syn_inter))) / Cm : volt
+        + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
+        + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -111,8 +95,23 @@ def run_sim():
     I_syn_intra : amp
     '''
     
-    N2 = NeuronGroup(num_cells, pop2_eqs, method='euler', threshold='x > 0.95', reset='')
-    N2.v = E_L * np.ones(num_cells) + randn(num_cells) * Wmax * volt
+    pop2_namespace = {
+        'Cm': params.ML_CM, 'I_app_2': params.ML_I_APP, 'gL': params.ML_GL,
+        'E_L': params.ML_E_L, 'gK': params.ML_GK, 'E_K': params.ML_E_K,
+        'gCa': params.ML_GCA, 'E_Ca': params.ML_E_CA, 
+        'v1': params.ML_V1, 'v2': params.ML_V2, 'v3': params.ML_V3, 'v4': params.ML_V4,
+        'phi': params.ML_PHI, 'sigma_2': params.ML_SIGMA,
+        'Wmax': params.W_MAX, 'coupling': params.COUPLING_STRENGTH,
+        'ISOLATE': params.ISOLATE
+    }
+
+    N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler', 
+                     threshold=params.ML_THRESHOLD, reset='',
+                     namespace=pop2_namespace)
+    
+    # UPDATED: Use params.* variables for initialization
+    N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
+           randn(params.NUM_CELLS) * params.W_MAX * volt
     N2.n = 'n_inf'
     
     # Population 2 state variable averaging
@@ -120,12 +119,22 @@ def run_sim():
     x_bar_post = x_pre / num_cells : 1 (summed)
     '''
 
-    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs)
+    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_2.connect()
 
-    hindmarsh_rose_syn_eqs ='''
+
+    # Synapses
+    syn_namespace = {
+        'Tmax': params.SYN_TMAX,
+        'Vt': params.SYN_VT,
+        'Kp': params.SYN_KP
+    }
+
+    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
+
+    syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(x_bar_pre * volt - Vt) / Kp)) : mM
+    T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
 
     G : siemens
     E : volt
@@ -133,91 +142,53 @@ def run_sim():
     beta : second ** -1
     '''
 
-    morris_lecar_syn_eqs='''
-    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-    T = Tmax / (1 + exp(-(20 * x_bar_pre * volt - Vt) / Kp)) : mM
+    intra_syn_eqs = '''
+    I_syn_intra_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    ''' + syn_eqs
 
-    G : siemens
-    E : volt
-    alpha : mmolar ** -1 * second ** -1
-    beta : second ** -1
-    '''
+    inter_syn_eqs = '''
+    I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    ''' + syn_eqs
 
-    hr_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' + hindmarsh_rose_syn_eqs
-
-    hr_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * volt - E)) : amp (summed)
-    ''' + hindmarsh_rose_syn_eqs
-
-    ml_intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
-    ''' +  morris_lecar_syn_eqs
-
-    ml_inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (20 * x_post * volt - E)) : amp (summed)
-    ''' + morris_lecar_syn_eqs
-
-    # Synapse parameters
-    Vt = 2 * mV
-    Kp = 5 * mV
-    Tmax = 1 * mmolar
-    alpha_exc = 1.1 / (mmolar * msecond)
-    alpha_inh = 5 / (mmolar * msecond)
-    beta_exc = 0.19 / msecond
-    beta_inh = 0.18 / msecond
-    Esyn_exc = 0 * mV
-    Esyn_inh = -80 * mV
-    G_intra = 0.2 * uS
-    G_inter = 0.1 * uS
-
-    # Population 1 synapses to self
-    S1_to_1 = Synapses(N1, N1, hr_intra_syn_eqs, method='euler')
+    # UPDATED: Pass namespace to all Synapses
+    S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect()
-    S1_to_1.E = Esyn_exc
-    S1_to_1.alpha = alpha_exc
-    S1_to_1.beta = beta_exc
-    S1_to_1.G = G_intra
+    S1_to_1.E = params.SYN_E_EXC
+    S1_to_1.alpha = params.SYN_ALPHA_EXC
+    S1_to_1.beta = params.SYN_BETA_EXC
+    S1_to_1.G = params.G_INTRA
 
-    # Population 1 synapses to pop 2
-    S1_to_2 = Synapses(N1, N2, hr_inter_syn_eqs, method='euler')
+    S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
-    S1_to_2.E = Esyn_exc
-    S1_to_2.alpha = alpha_exc
-    S1_to_2.beta = beta_exc
-    S1_to_2.G = G_inter
+    S1_to_2.E = params.SYN_E_EXC
+    S1_to_2.alpha = params.SYN_ALPHA_EXC
+    S1_to_2.beta = params.SYN_BETA_EXC
+    S1_to_2.G = params.G_INTER
 
-    # Population 2 synapses to self
-    S2_to_2 = Synapses(N2, N2, ml_intra_syn_eqs, method='euler')
+    S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect()
-    S2_to_2.E = Esyn_inh
-    S2_to_2.alpha = alpha_inh
-    S2_to_2.beta = beta_inh
-    S2_to_2.G = G_intra
+    S2_to_2.E = params.SYN_E_INH
+    S2_to_2.alpha = params.SYN_ALPHA_INH
+    S2_to_2.beta = params.SYN_BETA_INH
+    S2_to_2.G = params.G_INTRA
 
-    # Population 2 synapses to pop 1
-    S2_to_1 = Synapses(N2, N1, ml_inter_syn_eqs, method='euler')
+    S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
-    S2_to_1.E = Esyn_inh
-    S2_to_1.alpha = alpha_inh
-    S2_to_1.beta = beta_inh
-    S2_to_1.G = G_inter
+    S2_to_1.E = params.SYN_E_INH
+    S2_to_1.alpha = params.SYN_ALPHA_INH
+    S2_to_1.beta = params.SYN_BETA_INH
+    S2_to_1.G = params.G_INTER
 
-    # run(1 * second)
-
-    # Neuron group state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
     
-    run(sim_duration)
-    
-    
+    run(params.SIM_DURATION)
+
     
     t = np.asarray(M_N1.t)
     x1 = np.asarray(M_N1.x)
@@ -228,13 +199,11 @@ def run_sim():
     n2 = np.asarray(M_N2.n)
     I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
 
-    #n1_spikes = np.asarray(SM_N1.spike_trains())
-
-
     # Save output data
     ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
     ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
     ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -252,10 +221,71 @@ def plot_output():
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
     ph.plot_both(t, x1, x2)
+    ph.plot_both_avg(t, x1, y1, z1, x2, n2)
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_hr_mean(t, x1, y1, z1)
     ph.plot_ml_single(t, x2, n2)
 
+    spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
+    spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
+
+    # Pass params directly
+    ph.pop1("pop1", t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.pop2("pop2", t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+
+
+def eda():
+    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
+
+    t = arrs['t']
+    x1 = arrs['x1']
+    y1 = arrs['y1']
+    z1 = arrs['z1']
+    I_syn_inter_1 = arrs['I_syn_inter_1']
+    x2 = arrs['x2']
+    n2 = arrs['n2']
+    I_syn_inter_2 = arrs['I_syn_inter_2']
+
+    print(f"Length of t is: {t.shape}")
+    print(f"Length of x1 is: {x1.shape}")
+    print(f"Length of ISYNINTER is: {I_syn_inter_1.shape}")
+    print(f"Length of x2 is: {x2.shape}")
+
+    bin_freq = 100
+    num_ticks = bin_freq * 20
+    meow = len(t)//num_ticks
+    new_x1 = np.array([x1[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_x2 = np.array([x2[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
+    new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
+    # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
+    print(new_t.shape)
+
+def create_spike_matrix_histo(data_name):
+    """Create spike matrix for imshow to plot raster plots"""
+    arrs = np.load(os.path.join(DATA_DIR, data_name))
+    spike_times = arrs['t'] 
+    neuron_indices = arrs['i'] 
+
+    # Use params variables
+    duration = params.SIM_DURATION/second
+    
+    dt = 0.1  # 100ms per bin
+    warmup_time = 1.5 
+
+    valid = spike_times > warmup_time
+    spike_times = spike_times[valid]
+    neuron_indices = neuron_indices[valid]
+
+    time_bins = np.arange(0, duration + dt, dt)
+    neuron_bins = np.arange(0, params.NUM_CELLS + 1)
+
+    spike_matrix, neuron_edges, time_edges = np.histogram2d(
+        neuron_indices, 
+        spike_times,   
+        bins=[neuron_bins, time_bins]
+    )
+
+    return spike_matrix
 
 def main():
     ### Run mode string
@@ -274,10 +304,10 @@ def main():
     if ('p' in run_mode):
         print("Generating plots...")
         plot_output()
-        ph.plot_raster("N1", "Spike_Monitor_N1.npz")
-        ph.plot_raster("N2", "Spike_Monitor_N2.npz")
         print(f"Plots saved to 'figures' directory.")
-        
+    if ('t' in run_mode):
+        # testing features
+        create_spike_matrix_histo("Spike_Monitor_N1.npz")
 
 if __name__ == "__main__":
     main()
