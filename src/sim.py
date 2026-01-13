@@ -131,7 +131,7 @@ def run_sim():
         'Kp': params.SYN_KP
     }
 
-    syn_input_scale = 1/pop1_namespace['sigma_1']
+    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
     print(f'======={syn_input_scale}========')
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
@@ -221,18 +221,16 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # ph.plot_both(t, x1, x2)
-    # ph.plot_both_avg(t, x1, y1, z1, x2, n2)
     # ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
-    # ph.plot_hr_mean(t, x1, y1, z1)
     # ph.plot_ml_single(t, x2, n2)
 
     spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
     # Pass params directly
-    ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
-    ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+    # ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    # ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2,params.NUM_CELLS, params.SIM_DURATION/second)
 
 
 def eda():

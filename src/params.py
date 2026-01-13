@@ -10,7 +10,7 @@ DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
 # ISOLATE = 0: decoupled, 1: coupled
 ISOLATE = 1
 COUPLING_STRENGTH = 1
-W_MAX = 0.006          
+W_MAX = 0.01          
 
 # --- Population 1: Hindmarsh-Rose (HR) ---
 HR_A = 1.0
@@ -20,7 +20,7 @@ HR_D = 5.0
 HR_S = 8.0
 HR_I_APP = 3.1
 HR_X_NAUGHT = -2.5      
-HR_R = 0.0002 / msecond
+HR_R = 0.0001 / msecond
 HR_SIGMA = 1/50
 HR_THRESHOLD = 'x > 1.5'
 
