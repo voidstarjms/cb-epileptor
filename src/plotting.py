@@ -17,50 +17,36 @@ def save_data(filename, **kwargs):
     
     np.savez(os.path.join(DATA_DIR, filename), **kwargs)
 
+def standard_plot():
+    pass
 
-def pop1(fig_name, t, x, spike_matrix, num_cells, sim_duration):
+def raster(fig_name: str, population_name: str, t, x, spike_matrix, num_cells, sim_duration):
     
     x_mean = np.mean(x, axis=0)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
-    fig.suptitle("All Hindmarsh Rose Variables - All Neurons Averaged")
+    fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
     # Plot the averaged data instead of just neuron 0
     ax1.plot(t, x_mean)
-    ax1.set_ylabel("Mean x") # Updated label
+    ax1.set_ylabel("Mean x") 
     
-
-    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
+    # configure main raster plot
+    raster = ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells])
 
     ax2.set_xlabel('Time (s)', fontsize=12)
     ax2.set_ylabel('Neuron index', fontsize=12)
-    ax2.set_title('Population 1 Spike Raster (Spike Count)', fontsize=14)
+    ax2.set_title(f'{population_name} Spike Raster (Spike Count)', fontsize=14)
 
+    # config colorbar
+    cbar = fig.colorbar(raster, ax=ax2, location='bottom', aspect=50)
+    cbar.minorticks_on()
+
+    # save plot
     plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
     plt.show()
 
-def pop2(fig_name, t, x, spike_matrix, num_cells, sim_duration):
-    
-    x_mean = np.mean(x, axis=0)
-
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
-    fig.suptitle("Morris Lecar Spiking")
-
-    # Plot the averaged data instead of just neuron 0
-    ax1.plot(t, x_mean)
-    ax1.set_ylabel("Mean x2") # Updated label
-    
-
-    ax2.imshow(spike_matrix, interpolation='nearest', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells])
-
-    ax2.set_xlabel('Time (s)', fontsize=12)
-    ax2.set_ylabel('Neuron index', fontsize=12)
-    ax2.set_title('Population 2 Spike Raster (Spike Count)', fontsize=14)
-
-    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
-    plt.show()
 
 
 def plot_hr_single(t, x1, y1, z1, I_syn_inter_1):
