@@ -14,6 +14,7 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
+
 def backup_params():
     # Saves a copy of params.py to the data directory with a timestamp
     if not os.path.exists(DATA_DIR):
@@ -131,7 +132,7 @@ def run_sim():
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
-
+    print(f'======={syn_input_scale}========')
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
@@ -230,8 +231,8 @@ def plot_output():
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
     # Pass params directly
-    ph.raster("pop1", "Hindmarsh Rose", t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
-    ph.raster("pop2", "Morris Lecar", t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
 
 
 def eda():
@@ -265,15 +266,13 @@ def create_spike_matrix_histo(data_name):
     arrs = np.load(os.path.join(DATA_DIR, data_name))
     spike_times = arrs['t'] 
     neuron_indices = arrs['i'] 
+
+    # Use params variables
     duration = params.SIM_DURATION/second
     
-    # 100ms per bin -> 1000ms split into 10 bins
-    dt = 0.1  
-
-    # transient period masking variable
+    dt = 0.1  # 100ms per bin
     warmup_time = 0
 
-    # choose range of data to plot
     valid = spike_times > warmup_time
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
