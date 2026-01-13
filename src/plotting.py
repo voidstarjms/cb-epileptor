@@ -20,8 +20,16 @@ def save_data(filename, **kwargs):
 def standard_plot():
     pass
 
-def raster(fig_name: str, population_name: str, t, x, spike_matrix, num_cells, sim_duration):
-    
+
+def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
+    clim_max = 0
+    population_name = ""
+    if population == 1: 
+        population_name = "Hindmarsh Rose"
+        clim_max = 100
+    else:
+        population_name = "Morris Lecar"
+        clim_max = 200
     x_mean = np.mean(x, axis=0)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
@@ -33,7 +41,7 @@ def raster(fig_name: str, population_name: str, t, x, spike_matrix, num_cells, s
     
     # configure main raster plot
     raster = ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 100))
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, clim_max))
 
     ax2.set_xlabel('Time (s)', fontsize=12)
     ax2.set_ylabel('Neuron index', fontsize=12)
@@ -44,7 +52,7 @@ def raster(fig_name: str, population_name: str, t, x, spike_matrix, num_cells, s
     cbar.minorticks_on()
 
     # save plot
-    plt.savefig(os.path.join(FIGURES_DIR, f"{fig_name}_raster.png"), format='png')
+    plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
     plt.show()
 
 
