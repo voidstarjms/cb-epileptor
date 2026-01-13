@@ -33,7 +33,7 @@ def raster(fig_name: str, population_name: str, t, x, spike_matrix, num_cells, s
     
     # configure main raster plot
     raster = ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells])
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 100))
 
     ax2.set_xlabel('Time (s)', fontsize=12)
     ax2.set_ylabel('Neuron index', fontsize=12)
