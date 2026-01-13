@@ -22,8 +22,8 @@ HR_C = 1.0
 HR_D = 5.0
 HR_S = 8.0
 HR_I_APP = 3.1
-HR_X_NAUGHT = -3
-HR_R = 0.00002 / msecond
+HR_X_NAUGHT = -1.7
+HR_R = 0.0002 / msecond
 HR_SIGMA = 1/50
 HR_THRESHOLD = 'x > 1.5'
 

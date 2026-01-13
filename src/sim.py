@@ -130,7 +130,7 @@ def run_sim():
         'Kp': params.SYN_KP
     }
 
-    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
+    syn_input_scale = 1/pop1_namespace['sigma_1']
 
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
@@ -220,18 +220,18 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    ph.plot_both(t, x1, x2)
-    ph.plot_both_avg(t, x1, y1, z1, x2, n2)
-    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
-    ph.plot_hr_mean(t, x1, y1, z1)
-    ph.plot_ml_single(t, x2, n2)
+    # ph.plot_both(t, x1, x2)
+    # ph.plot_both_avg(t, x1, y1, z1, x2, n2)
+    # ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    # ph.plot_hr_mean(t, x1, y1, z1)
+    # ph.plot_ml_single(t, x2, n2)
 
     spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
     # Pass params directly
-    ph.pop1("pop1", t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
-    ph.pop2("pop2", t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster("pop1", "Hindmarsh Rose", t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster("pop2", "Morris Lecar", t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
 
 
 def eda():
@@ -265,13 +265,15 @@ def create_spike_matrix_histo(data_name):
     arrs = np.load(os.path.join(DATA_DIR, data_name))
     spike_times = arrs['t'] 
     neuron_indices = arrs['i'] 
-
-    # Use params variables
     duration = params.SIM_DURATION/second
     
-    dt = 0.1  # 100ms per bin
-    warmup_time = 1.5 
+    # 100ms per bin -> 1000ms split into 10 bins
+    dt = 0.1  
 
+    # transient period masking variable
+    warmup_time = 0
+
+    # choose range of data to plot
     valid = spike_times > warmup_time
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
