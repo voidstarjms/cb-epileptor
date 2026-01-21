@@ -19,8 +19,10 @@ def save_data(filename, **kwargs):
 
 def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration):
     # lfp
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 9), sharex=True, layout='constrained')
     fig.suptitle(f'Weighted LFP + Both Rasters')
+    fig.set_constrained_layout_pads(w_pad=0.1, h_pad=0.1, 
+                                     wspace=0.02, hspace=0.02)
 
     x1_mean = np.mean(x1, axis=0)
     x2_mean = np.mean(x2, axis=0)
@@ -32,49 +34,50 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     # raster 1
     # configure main raster plot
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 75))
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 10))
 
     ax2.set_ylabel('Neuron index', fontsize=12)
     ax2.set_title('Hindmarsh Rose Spike Raster (Spike Count)', fontsize=14)
 
     # config colorbar
-    cbar = fig.colorbar(raster1, ax=ax2, location='bottom', aspect=100)
+    cbar = fig.colorbar(raster1, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
    
     # raster 2
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 200))
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 3))
 
     ax3.set_xlabel('Time (s)', fontsize=12)
     ax3.set_ylabel('Neuron index', fontsize=12)
     ax3.set_title('Morris Lecar Spike Raster (Spike Count)', fontsize=14)
 
     # config colorbar
-    cbar = fig.colorbar(raster2, ax=ax3, location='bottom', aspect=100)
+    cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
     # save plot
+    fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
     plt.show()
-    pass
-
 
 def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     clim_max = 0
     population_name = ""
+    
     if population == 1: 
         population_name = "Hindmarsh Rose"
-        clim_max = 70
+        clim_max = 10
     else:
         population_name = "Morris Lecar"
-        clim_max = 200
-    x_mean = np.mean(x, axis=0)
+        clim_max = 3
+    
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
     fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
     # Plot the averaged data instead of just neuron 0
+    x_mean = np.mean(x, axis=0)
     ax1.plot(t, x_mean)
     ax1.set_ylabel("Mean x") 
     
@@ -87,10 +90,11 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     ax2.set_title(f'{population_name} Spike Raster (Spike Count)', fontsize=14)
 
     # config colorbar
-    cbar = fig.colorbar(raster, ax=ax2, location='bottom', aspect=50)
+    cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
     # save plot
+    fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
     plt.show()
 
