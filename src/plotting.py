@@ -70,13 +70,14 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
         clim_max = 10
     else:
         population_name = "Morris Lecar"
-        clim_max = 5
-    x_mean = np.mean(x, axis=0)
+        clim_max = 3
+    
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
     fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
     # Plot the averaged data instead of just neuron 0
+    x_mean = np.mean(x, axis=0)
     ax1.plot(t, x_mean)
     ax1.set_ylabel("Mean x") 
     
@@ -89,10 +90,11 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     ax2.set_title(f'{population_name} Spike Raster (Spike Count)', fontsize=14)
 
     # config colorbar
-    cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=50)
+    cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
     # save plot
+    fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
     plt.show()
 
