@@ -4,35 +4,38 @@ from matplotlib import pyplot as plt
 import numpy as np
 import argparse
 import os
-import shutil # Added for file operations
-import datetime  # Added for timestamping
+import datetime 
+import pickle
 import plotting as ph 
 import config
-import params  # New params file
+import params 
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
+def get_params_dict():
+    """
+    Extracts explicit parameters from the params module.
+    Filters out modules and private variables, keeping only uppercase config variables
+    that are safe to pickle (scalars, arrays, and Brian2 Quantities).
+    """
+    params_dict = {}
+    for key, val in vars(params).items():
+        if key.isupper():
+            # Only save specific types. 
+            # Brian2 internal structures like DEFAULT_FUNCTIONS cause pickle errors
+            if isinstance(val, (int, float, str, bool, np.ndarray, Quantity)):
+                params_dict[key] = val
+    return params_dict
 
-def backup_params():
-    # Saves a copy of params.py to the data directory with a timestamp
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_name = f"params_{timestamp}.py"
-    shutil.copy("params.py", os.path.join(DATA_DIR, backup_name))
-    print(f"Parameter file backed up to: {os.path.join(DATA_DIR, backup_name)}")
 
 def run_sim():
-    # Archive parameters before running
-    backup_params()
-
+    # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
     
-    # Population 1 equations
+    # --- Population 1: Hindmarsh-Rose ---
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
         + ISOLATE * (coupling * (x_bar - x)
@@ -61,22 +64,20 @@ def run_sim():
                      threshold=params.HR_THRESHOLD, reset='',
                      namespace=pop1_namespace)
     
-    # UPDATED: Use params.* variables
     N1.x = np.ones(params.NUM_CELLS) * params.HR_X_NAUGHT + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
-    # Population 1 state variable averaging
+    # Population 1 Averaging
     exc_averaging_eqs ='''
     x_bar_post = x_pre / num_cells : 1 (summed)
     z_bar_post = z_pre / num_cells : 1 (summed)
     '''
-
     gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_1.connect()
 
     
-    # Population 2 equations    
+    # --- Population 2: Morris-Lecar ---    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
@@ -110,21 +111,19 @@ def run_sim():
                      threshold=params.ML_THRESHOLD, reset='',
                      namespace=pop2_namespace)
     
-    # UPDATED: Use params.* variables for initialization
     N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
            randn(params.NUM_CELLS) * params.W_MAX * volt
     N2.n = 'n_inf'
     
-    # Population 2 state variable averaging
+    # Population 2 Averaging
     inh_averaging_eqs ='''
     x_bar_post = x_pre / num_cells : 1 (summed)
     '''
-
     gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
     gap_junctions_2.connect()
 
 
-    # Synapses
+    # --- Synapses ---
     syn_namespace = {
         'Tmax': params.SYN_TMAX,
         'Vt': params.SYN_VT,
@@ -151,7 +150,6 @@ def run_sim():
     I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
     ''' + syn_eqs
 
-    # UPDATED: Pass namespace to all Synapses
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect()
     S1_to_1.E = params.SYN_E_EXC
@@ -188,86 +186,74 @@ def run_sim():
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
     
+    # Run
     run(params.SIM_DURATION)
 
-    
-    t = np.asarray(M_N1.t)
-    x1 = np.asarray(M_N1.x)
-    y1 = np.asarray(M_N1.y)
-    z1 = np.asarray(M_N1.z)
-    I_syn_inter_1 = np.asarray(M_N1.I_syn_inter)
-    x2 = np.asarray(M_N2.x)
-    n2 = np.asarray(M_N2.n)
-    I_syn_inter_2 = np.asarray(M_N2.I_syn_inter)
+    # Save Data, Metadata, and Parameters
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
 
-    # Save output data
-    ph.save_data(OUTPUT_DATA_FILE, t=t, x1=x1, y1=y1, z1=z1, I_syn_inter_1=I_syn_inter_1, x2=x2, n2=n2, I_syn_inter_2=I_syn_inter_2)
-    ph.save_data("Spike_Monitor_N1.npz", t=SM_N1.t, i=SM_N1.i)
-    ph.save_data("Spike_Monitor_N2.npz", t=SM_N2.t, i=SM_N2.i)
+    
+    sim_data = {
+        'metadata': {
+            'timestamp': datetime.datetime.now().isoformat(),
+            'brian2_version': '2.x',
+            'sim_duration': params.SIM_DURATION
+        },
+        'params': get_params_dict(),
+        'results': {
+            't': np.asarray(M_N1.t),
+            'x1': np.asarray(M_N1.x),
+            'y1': np.asarray(M_N1.y),
+            'z1': np.asarray(M_N1.z),
+            'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
+            'x2': np.asarray(M_N2.x),
+            'n2': np.asarray(M_N2.n),
+            'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
+            'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
+            'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)}
+        }
+    }
+
+    # Dump to pickle
+    filepath = os.path.join(DATA_DIR, OUTPUT_DATA_FILE)
+    with open(filepath, 'wb') as f:
+        pickle.dump(sim_data, f)
+    
+    print(f"Simulation data and parameters saved to: {filepath}")
 
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
     
-    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
+    # Load pickle
+    filepath = os.path.join(DATA_DIR, OUTPUT_DATA_FILE)
+    with open(filepath, 'rb') as f:
+        data = pickle.load(f)
 
-    t = arrs['t']
-    x1 = arrs['x1']
-    y1 = arrs['y1']
-    z1 = arrs['z1']
-    I_syn_inter_1 = arrs['I_syn_inter_1']
-    x2 = arrs['x2']
-    n2 = arrs['n2']
-    I_syn_inter_2 = arrs['I_syn_inter_2']
-
-    # ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
-    # ph.plot_ml_single(t, x2, n2)
-
-    spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
-    spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
-
-    # Pass params directly
-    # ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
-    # ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2,params.NUM_CELLS, params.SIM_DURATION/second)
-
-
-def eda():
-    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
-
-    t = arrs['t']
-    x1 = arrs['x1']
-    y1 = arrs['y1']
-    z1 = arrs['z1']
-    I_syn_inter_1 = arrs['I_syn_inter_1']
-    x2 = arrs['x2']
-    n2 = arrs['n2']
-    I_syn_inter_2 = arrs['I_syn_inter_2']
-
-    print(f"Length of t is: {t.shape}")
-    print(f"Length of x1 is: {x1.shape}")
-    print(f"Length of ISYNINTER is: {I_syn_inter_1.shape}")
-    print(f"Length of x2 is: {x2.shape}")
-
-    bin_freq = 100
-    num_ticks = bin_freq * 20
-    meow = len(t)//num_ticks
-    new_x1 = np.array([x1[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
-    new_x2 = np.array([x2[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
-    new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
-    # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
-    print(new_t.shape)
-
-def create_spike_matrix_histo(data_name):
-    """Create spike matrix for imshow to plot raster plots"""
-    arrs = np.load(os.path.join(DATA_DIR, data_name))
-    spike_times = arrs['t'] 
-    neuron_indices = arrs['i'] 
-
-    # Use params variables
-    duration = params.SIM_DURATION/second
+    # Unpack results
+    res = data['results']
+    t = res['t']
+    x1 = res['x1']
+    x2 = res['x2']
     
+    # Retrieve parameters from saved metadata
+    saved_params = data['params']
+    num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
+    
+    # Generate spike matrices using loaded spike data
+    spike_matrix_1 = create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = create_spike_matrix_histo(res['spikes_n2'], num_cells)
+
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
+
+
+def create_spike_matrix_histo(spike_data, num_cells):
+    spike_times = spike_data['t'] 
+    neuron_indices = spike_data['i'] 
+
+    duration = params.SIM_DURATION/second
     dt = 0.1  # 100ms per bin
     warmup_time = 0
 
@@ -276,7 +262,7 @@ def create_spike_matrix_histo(data_name):
     neuron_indices = neuron_indices[valid]
 
     time_bins = np.arange(0, duration + dt, dt)
-    neuron_bins = np.arange(0, params.NUM_CELLS + 1)
+    neuron_bins = np.arange(0, num_cells + 1)
 
     spike_matrix, neuron_edges, time_edges = np.histogram2d(
         neuron_indices, 
@@ -287,12 +273,9 @@ def create_spike_matrix_histo(data_name):
     return spike_matrix
 
 def main():
-    ### Run mode string
-    # r - run simulation
-    # p - plot results
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp', 
-                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot. Default is 'rp'.")
+                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot.")
     args = parser.parse_args()
     run_mode = args.mode
 
@@ -304,9 +287,6 @@ def main():
         print("Generating plots...")
         plot_output()
         print(f"Plots saved to 'figures' directory.")
-    if ('t' in run_mode):
-        # testing features
-        create_spike_matrix_histo("Spike_Monitor_N1.npz")
 
 if __name__ == "__main__":
     main()
