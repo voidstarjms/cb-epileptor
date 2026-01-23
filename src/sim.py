@@ -14,7 +14,6 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-
 def backup_params():
     # Saves a copy of params.py to the data directory with a timestamp
     if not os.path.exists(DATA_DIR):
@@ -59,7 +58,7 @@ def run_sim():
 
     N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler', 
                      threshold=params.HR_THRESHOLD, reset='',
-                     namespace=pop1_namespace)
+                     namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
     
     # UPDATED: Use params.* variables
     N1.x = np.ones(params.NUM_CELLS) * params.HR_X_NAUGHT + randn(params.NUM_CELLS) * params.W_MAX
@@ -108,7 +107,7 @@ def run_sim():
 
     N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler', 
                      threshold=params.ML_THRESHOLD, reset='',
-                     namespace=pop2_namespace)
+                     namespace=pop2_namespace, refractory=params.ML_REFRACTORY_CONDITION)
     
     # UPDATED: Use params.* variables for initialization
     N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
@@ -131,8 +130,7 @@ def run_sim():
         'Kp': params.SYN_KP
     }
 
-    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
-    print(f'======={syn_input_scale}========')
+    syn_input_scale = 1/pop1_namespace['sigma_1']
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
@@ -221,43 +219,17 @@ def plot_output():
     n2 = arrs['n2']
     I_syn_inter_2 = arrs['I_syn_inter_2']
 
-    # ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
-    # ph.plot_ml_single(t, x2, n2)
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    ph.plot_ml_single(t, x2, n2)
 
     spike_matrix_1 = create_spike_matrix_histo("Spike_Monitor_N1.npz")
     spike_matrix_2 = create_spike_matrix_histo("Spike_Monitor_N2.npz")
 
     # Pass params directly
-    # ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
-    # ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster_plot(1, t, x1, spike_matrix_1, params.NUM_CELLS, params.SIM_DURATION/second)
+    ph.raster_plot(2, t, x2, spike_matrix_2, params.NUM_CELLS, params.SIM_DURATION/second)
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2,params.NUM_CELLS, params.SIM_DURATION/second)
 
-
-def eda():
-    arrs = np.load(os.path.join(DATA_DIR, OUTPUT_DATA_FILE))
-
-    t = arrs['t']
-    x1 = arrs['x1']
-    y1 = arrs['y1']
-    z1 = arrs['z1']
-    I_syn_inter_1 = arrs['I_syn_inter_1']
-    x2 = arrs['x2']
-    n2 = arrs['n2']
-    I_syn_inter_2 = arrs['I_syn_inter_2']
-
-    print(f"Length of t is: {t.shape}")
-    print(f"Length of x1 is: {x1.shape}")
-    print(f"Length of ISYNINTER is: {I_syn_inter_1.shape}")
-    print(f"Length of x2 is: {x2.shape}")
-
-    bin_freq = 100
-    num_ticks = bin_freq * 20
-    meow = len(t)//num_ticks
-    new_x1 = np.array([x1[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
-    new_x2 = np.array([x2[:, i*num_ticks:i*num_ticks+num_ticks].mean(axis=1) for i in range(meow)]).T
-    new_t = np.array([t[i*num_ticks] for i in range(meow)]).T
-    # new_x1 = x1.reshape(x1.shape[0], -1, num_ticks).mean(axis=2)
-    print(new_t.shape)
 
 def create_spike_matrix_histo(data_name):
     """Create spike matrix for imshow to plot raster plots"""
