@@ -9,6 +9,9 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
+HR_CLIM = 15
+ML_CLIM = 2
+
 
 # kwargs collects args into a dict, allows flexible arguments to be passed in
 def save_data(filename, **kwargs):
@@ -34,7 +37,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     # raster 1
     # configure main raster plot
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 10))
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, HR_CLIM))
 
     ax2.set_ylabel('Neuron index', fontsize=12)
     ax2.set_title('Hindmarsh Rose Spike Raster (Spike Count)', fontsize=14)
@@ -46,7 +49,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
    
     # raster 2
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
-                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, 3))
+                   origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, ML_CLIM))
 
     ax3.set_xlabel('Time (s)', fontsize=12)
     ax3.set_ylabel('Neuron index', fontsize=12)
@@ -67,10 +70,10 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     
     if population == 1: 
         population_name = "Hindmarsh Rose"
-        clim_max = 10
+        clim_max = HR_CLIM
     else:
         population_name = "Morris Lecar"
-        clim_max = 3
+        clim_max = ML_CLIM
     
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
