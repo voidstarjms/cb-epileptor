@@ -13,13 +13,6 @@ HR_CLIM = 15
 ML_CLIM = 2
 
 
-# kwargs collects args into a dict, allows flexible arguments to be passed in
-def save_data(filename, **kwargs):
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-    
-    np.savez(os.path.join(DATA_DIR, filename), **kwargs)
-
 def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration):
     # lfp
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 9), sharex=True, layout='constrained')
@@ -35,7 +28,6 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     ax1.set_title("LFP signal (80/20 weight)")
 
     # raster 1
-    # configure main raster plot
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, HR_CLIM))
 
@@ -45,7 +37,6 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     # config colorbar
     cbar = fig.colorbar(raster1, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
-
    
     # raster 2
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
