@@ -62,7 +62,7 @@ def run_sim():
 
     N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler', 
                      threshold=params.HR_THRESHOLD, reset='',
-                     namespace=pop1_namespace)
+                     namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
     
     N1.x = np.ones(params.NUM_CELLS) * params.HR_X_NAUGHT + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
@@ -109,7 +109,7 @@ def run_sim():
 
     N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler', 
                      threshold=params.ML_THRESHOLD, reset='',
-                     namespace=pop2_namespace)
+                     namespace=pop2_namespace, refractory=params.ML_REFRACTORY_CONDITION)
     
     N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
            randn(params.NUM_CELLS) * params.W_MAX * volt
@@ -130,8 +130,7 @@ def run_sim():
         'Kp': params.SYN_KP
     }
 
-    syn_input_scale = 1/pop1_namespace['sigma_1'] * 20
-    print(f'======={syn_input_scale}========')
+    syn_input_scale = 1/pop1_namespace['sigma_1']
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
