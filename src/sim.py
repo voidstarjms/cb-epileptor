@@ -7,28 +7,14 @@ import os
 import datetime 
 import pickle
 import plotting as ph 
+import synch as syn
 import config
 import params 
+import data_processing
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
-
-def get_params_dict():
-    """
-    Extracts explicit parameters from the params module.
-    Filters out modules and private variables, keeping only uppercase config variables
-    that are safe to pickle (scalars, arrays, and Brian2 Quantities).
-    """
-    params_dict = {}
-    for key, val in vars(params).items():
-        if key.isupper():
-            # Only save specific types. 
-            # Brian2 internal structures like DEFAULT_FUNCTIONS cause pickle errors
-            if isinstance(val, (int, float, str, bool, np.ndarray, Quantity)):
-                params_dict[key] = val
-    return params_dict
-
 
 def run_sim():
     # Setup Simulation
@@ -187,51 +173,14 @@ def run_sim():
     
     # Run
     run(params.SIM_DURATION)
-
-    # Save Data, Metadata, and Parameters
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
-
-    
-    sim_data = {
-        'metadata': {
-            'timestamp': datetime.datetime.now().isoformat(),
-            'brian2_version': '2.x',
-            'sim_duration': params.SIM_DURATION
-        },
-        'params': get_params_dict(),
-        'results': {
-            't': np.asarray(M_N1.t),
-            'x1': np.asarray(M_N1.x),
-            'y1': np.asarray(M_N1.y),
-            'z1': np.asarray(M_N1.z),
-            'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
-            'x2': np.asarray(M_N2.x),
-            'n2': np.asarray(M_N2.n),
-            'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
-            'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
-            'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)}
-        }
-    }
-
-    # Dump to pickle
-    filepath = os.path.join(DATA_DIR, OUTPUT_DATA_FILE)
-    with open(filepath, 'wb') as f:
-        pickle.dump(sim_data, f)
-    
-    print(f"Simulation data and parameters saved to: {filepath}")
+    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2)
 
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
     
-    # Load pickle
-    filepath = os.path.join(DATA_DIR, OUTPUT_DATA_FILE)
-    with open(filepath, 'rb') as f:
-        data = pickle.load(f)
-
-    # Unpack results
+    data = data_processing.load_sim_data()
     res = data['results']
     t = res['t']
     x1 = res['x1']
@@ -242,34 +191,50 @@ def plot_output():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = create_spike_matrix_histo(res['spikes_n1'], num_cells)
-    spike_matrix_2 = create_spike_matrix_histo(res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
 
-def create_spike_matrix_histo(spike_data, num_cells):
-    spike_times = spike_data['t'] 
-    neuron_indices = spike_data['i'] 
+def plot_output_full():
+    if not os.path.exists(FIGURES_DIR):
+        os.makedirs(FIGURES_DIR)
+    
+    data = data_processing.load_sim_data()
+    res = data['results']
+    t = res['t']
+    x1 = res['x1']
+    y1 = res['y1']
+    z1 = res['z1']
+    I_syn_inter_1 = res['I_syn_inter_1']
+    x2 = res['x2']
+    n = res['n2']
+    
+    # Retrieve parameters from saved metadata
+    saved_params = data['params']
+    num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
+    
+    # Generate spike matrices using loaded spike data
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
-    duration = params.SIM_DURATION/second
-    dt = 0.1  # 100ms per bin
-    warmup_time = 0
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
+    ph.plot_ml_single(t, x2, n)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
-    valid = spike_times > warmup_time
-    spike_times = spike_times[valid]
-    neuron_indices = neuron_indices[valid]
 
-    time_bins = np.arange(0, duration + dt, dt)
-    neuron_bins = np.arange(0, num_cells + 1)
+def analyze_populations():
+    data = data_processing.load_sim_data()
+    res = data['results']
+    t = res['t']
+    x1 = res['x1']
+    print(x1.shape)
+    print(t.shape)
+    print(t)
+    chi, autocorr = syn.autocorelate(x1)
+    print(f'synchrony measure is: {chi}\nautocorrelation is {autocorr}')
 
-    spike_matrix, neuron_edges, time_edges = np.histogram2d(
-        neuron_indices, 
-        spike_times,   
-        bins=[neuron_bins, time_bins]
-    )
-
-    return spike_matrix
 
 def main():
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
@@ -284,8 +249,13 @@ def main():
         print("Simulation complete.")
     if ('p' in run_mode):
         print("Generating plots...")
-        plot_output()
+        if 'f' in run_mode:
+            plot_output_full()
+        else:
+            plot_output()
         print(f"Plots saved to 'figures' directory.")
+    if ('s' in run_mode):
+        analyze_populations()
 
 if __name__ == "__main__":
     main()
