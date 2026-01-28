@@ -1,6 +1,5 @@
 import numpy as np
 import scipy
-
 def autocorelate(data):
     # apply gaussian smoothing
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
@@ -34,6 +33,36 @@ def synchrony_stats(data, maxlags=3000):
     return chi, autocorr
 
 
-def KOP():
+def KOP(neuron_idx, spike_times, duration):
+    phase = compute_phase(neuron_idx, spike_times, duration)
+    Z = np.mean(np.exp(1j * phase), axis=0)
 
-    pass
+    r = np.abs(Z)
+    psi = np.angle(Z)
+    return Z, r, psi
+
+    
+def compute_phase(neuron_idx, spike_times, duration):
+    time_bin_size = 0.001 # 0.001 of a second = millisecond
+    time_grid = np.arange(0, duration+time_bin_size, time_bin_size)
+    unique_idx = np.unique(neuron_idx)
+
+    phase_matrix = []
+
+    for idx in unique_idx:
+        mask = np.where(neuron_idx == idx)
+        x_coord = spike_times[mask]
+        y_coord =  2 * np.pi *  np.arange(0, x_coord.shape[0]) # y
+        theta = np.interp(time_grid, x_coord, y_coord)
+        phase_matrix.append(theta)
+
+    return np.array(phase_matrix)
+
+def find_spikes(data, threshold):
+    indices = scipy.signal.argrelmax(data, axis = 1) # x
+    # these are pairwise coordinates of the spikes 
+    mask = np.where(data[indices] > threshold)
+    spike_indices = (indices[0][mask], indices[1][mask])
+    # unifinished...decided to use brian's spike monitor to find spikes instead
+    return None
+
