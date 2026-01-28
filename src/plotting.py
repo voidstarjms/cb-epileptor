@@ -66,7 +66,6 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
         population_name = "Morris Lecar"
         clim_max = ML_CLIM
     
-
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
     fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
@@ -92,8 +91,6 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
     plt.show()
 
-
-
 def plot_hr_single(t, x1, y1, z1, I_syn_inter_1):
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("All Hindmarsh Rose Variables - One Neuron")
@@ -108,7 +105,6 @@ def plot_hr_single(t, x1, y1, z1, I_syn_inter_1):
     ax4.set_xlabel("Time (s)")
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_single_neuron.png"), format="png")
     plt.show()
-
 
 def plot_hr_mean(t, x1, y1, z1):
     # Calculate the mean across all neurons (axis=0)
@@ -127,7 +123,6 @@ def plot_hr_mean(t, x1, y1, z1):
     ax2.set_ylabel("Mean y1") # Updated label
     ax3.plot(t, z1_mean)
     ax3.set_ylabel("Mean z1") # Updated label
-
     ax3.set_xlabel("Time (s)")
 
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_mean_neurons.png"), format="png")
@@ -148,8 +143,6 @@ def plot_ml_single(t, x2, n2):
 def plot_ml_mean():
     pass
 
-
-
 def plot_both(t, x1, x2):
     # One neuron from both pops 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
@@ -160,7 +153,6 @@ def plot_both(t, x1, x2):
     ax2.plot(t, x2[0])
     ax2.set_xlabel("Time (s)")
     ax2.set_ylabel("x2")
-
 
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
