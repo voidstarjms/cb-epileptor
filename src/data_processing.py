@@ -4,20 +4,21 @@ import config
 import params 
 import datetime 
 import pickle
+from brian2 import *
+from brian2tools import *
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-def create_spike_matrix_histo(spike_data, num_cells):
+def create_spike_matrix_histo(spike_data, num_cells, transient):
     spike_times = spike_data['t'] 
     neuron_indices = spike_data['i'] 
 
     duration = params.SIM_DURATION/second
     dt = 0.1  # 100ms per bin
-    warmup_time = 0
 
-    valid = spike_times > warmup_time
+    valid = spike_times > transient
     spike_times = spike_times[valid]
     neuron_indices = neuron_indices[valid]
 
@@ -89,6 +90,20 @@ def load_sim_data():
     return data
 
 
+def cutoff_transient(data, transient, dt):
+    if transient > 0:
+        start_idx = int(np.ceil(transient/dt)-1)
+        if len(data.shape) == 2:
+            data = data[:,start_idx:]
+        elif len(data.shape) == 1:
+            data = data[start_idx:]
+    return data
+    
 
-def cutoff_transient(data, cutoff_time=10):
-    pass
+def dump_spikes_to_file(neuron_idx, spike_times):
+    mask = np.where(neuron_idx == 0)
+    n0_spikes = spike_times[mask]
+    
+    np.savetxt('spike_times.txt', n0_spikes, fmt='%f', delimiter=' ')
+
+    
