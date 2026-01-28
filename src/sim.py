@@ -1,15 +1,12 @@
 from brian2 import *
 from brian2tools import *
-from matplotlib import pyplot as plt
 import numpy as np
 import argparse
 import os
-import datetime 
-import pickle
-import plotting as ph 
-import synch as syn
 import config
 import params 
+import plotting as ph 
+import synch as syn
 import data_processing
 
 DATA_DIR = config.DATA_DIR
@@ -171,10 +168,10 @@ def run_sim():
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
     
+    
     # Run
     run(params.SIM_DURATION)
     data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2)
-
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -182,17 +179,17 @@ def plot_output():
     
     data = data_processing.load_sim_data()
     res = data['results']
-    t = res['t']
-    x1 = res['x1']
-    x2 = res['x2']
-    
+    t = data_processing.cutoff_transient(res['t'], params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
+    x1 = data_processing.cutoff_transient(res['x1'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
+    x2 = data_processing.cutoff_transient(res['x2'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
+
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
-    
+
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  params.TRANSIENT)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  params.TRANSIENT)
 
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
@@ -216,8 +213,8 @@ def plot_output_full():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, params.TRANSIENT)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, params.TRANSIENT)
 
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_ml_single(t, x2, n)
@@ -227,13 +224,32 @@ def plot_output_full():
 def analyze_populations():
     data = data_processing.load_sim_data()
     res = data['results']
-    t = res['t']
     x1 = res['x1']
-    print(x1.shape)
-    print(t.shape)
-    print(t)
+    x2 = res['x2']
+    pop1_spike_data = res['spikes_n1']
+    pop1_spike_times, pop1_neuron_idx = pop1_spike_data['t'], pop1_spike_data['i']
+    pop2_spike_data = res['spikes_n2']
+    pop2_spike_times, pop2_neuron_idx = pop2_spike_data['t'], pop2_spike_data['i']
+
+    data_processing.dump_spikes_to_file(np.asarray(pop1_neuron_idx), np.asarray(pop1_spike_times))
+
+
+    print("============HINDMARSH ROSE STATS============")
     chi, autocorr = syn.autocorelate(x1)
-    print(f'synchrony measure is: {chi}\nautocorrelation is {autocorr}')
+    print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
+    z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
+    print(f'z: {z}')
+    print(f'r: {r}')
+    print(f'psi: {psi}')
+
+    print("\n============MORRIS LECAR STATS============")
+    chi, autocorr = syn.autocorelate(x2)
+    print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
+    z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params.SIM_DURATION/second)
+    print(f'z: {z}')
+    print(f'r: {r}')
+    print(f'psi: {psi}')
+
 
 
 def main():
