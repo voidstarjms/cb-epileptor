@@ -35,15 +35,11 @@ def create_spike_matrix_histo(spike_data, num_cells, transient):
 
 def get_params_dict():
     """
-    Extracts explicit parameters from the params module.
-    Filters out modules and private variables, keeping only uppercase config variables
-    that are safe to pickle (scalars, arrays, and Brian2 Quantities).
+    Extracts explicit parameters from the params module
     """
     params_dict = {}
     for key, val in vars(params).items():
-        if key.isupper():
-            # Only save specific types. 
-            # Brian2 internal structures like DEFAULT_FUNCTIONS cause pickle errors
+        if key.isupper() and key != 'SIM_DURATION':
             if isinstance(val, (int, float, str, bool, np.ndarray, Quantity)):
                 params_dict[key] = val
     return params_dict
