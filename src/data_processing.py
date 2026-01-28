@@ -96,11 +96,15 @@ def cutoff_transient(data, transient, dt):
         if len(data.shape) == 2:
             data = data[:,start_idx:]
         elif len(data.shape) == 1:
+            # unique case for time, which is a 1d array
             data = data[start_idx:]
     return data
     
 
 def dump_spikes_to_file(neuron_idx, spike_times):
+    """
+        dump spike times to a text file for manual correctness checks
+    """
     mask = np.where(neuron_idx == 0)
     n0_spikes = spike_times[mask]
     

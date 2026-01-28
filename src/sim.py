@@ -270,7 +270,7 @@ def main():
         else:
             plot_output()
         print(f"Plots saved to 'figures' directory.")
-    if ('s' in run_mode):
+    if ('a' in run_mode):
         analyze_populations()
 
 if __name__ == "__main__":
