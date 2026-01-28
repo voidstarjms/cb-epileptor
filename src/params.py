@@ -5,6 +5,7 @@ SIM_DURATION = 60 * second
 NUM_CELLS = 40
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
+TRANSIENT = 10
 
 # --- Coupling & Global Logic ---
 # ISOLATE = 0: decoupled, 1: coupled
