@@ -1,7 +1,7 @@
 from brian2 import *
 
 # --- Simulation Control ---
-SIM_DURATION = 60 * second
+SIM_DURATION = 90 * second
 NUM_CELLS = 40
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
@@ -9,25 +9,25 @@ DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
 # --- Coupling & Global Logic ---
 # ISOLATE = 0: decoupled, 1: coupled
 ISOLATE = 1
-COUPLING_STRENGTH = 1
-W_MAX = 0.0004          
+COUPLING_STRENGTH = 0
+W_MAX = 0.00002          
 
 # --- Population 1: Hindmarsh-Rose (HR) ---
 HR_A = 1.0
 HR_B = 3.0
 HR_C = 1.0
 HR_D = 5.0
-HR_S = 8.0
-HR_I_APP = 3.1
-HR_X_NAUGHT = -2.5      
-HR_R = 0.00004 / msecond
+HR_S = 4.0
+HR_I_APP = 6.8
+HR_X_NAUGHT = -4.5      
+HR_R = 0.00002 / msecond
 HR_SIGMA = 1/50
 HR_THRESHOLD = 'x > 1'
 HR_REFRACTORY_CONDITION = 'x >= 0' 
 
 # --- Population 2: Morris-Lecar (ML) ---
 ML_CM = 20 * ufarad
-ML_I_APP = 40 * uamp
+ML_I_APP = 45 * uamp
 ML_V1 = -1.2 * mvolt
 ML_V2 = 18 * mvolt
 ML_V3 = 12 * mvolt
