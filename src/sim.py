@@ -64,7 +64,7 @@ def run_sim():
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + coupling * (x_bar - x) - 0.3 * (z_bar - 3))
+        + coupling * (x_bar - x) - 0.15 * (z_bar - 6))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
