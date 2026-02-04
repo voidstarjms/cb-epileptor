@@ -23,7 +23,7 @@ HR_I_APP = 3.1
 HR_X_NAUGHT = -2.5      
 HR_R = 0.00004 / msecond
 HR_SIGMA = 1/50
-HR_THRESHOLD = 'x > 1'
+HR_THRESHOLD = 'x > 1.5'
 HR_REFRACTORY_CONDITION = 'x >= 0' 
 
 # --- Population 2: Morris-Lecar (ML) ---
