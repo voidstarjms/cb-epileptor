@@ -9,10 +9,8 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-HR_CLIM = 15
-ML_CLIM = 2
 
-def apply_zoom(axes):
+def _apply_zoom(axes):
     XMIN, XMAX = 40, 50
     for ax in axes:
         ax.set_xlim(XMIN, XMAX)
@@ -35,6 +33,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     ax1.set_title("LFP signal (80/20 weight)")
 
     # raster 1
+    HR_CLIM = find_clim(spike_matrix_1)
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, HR_CLIM))
 
@@ -46,6 +45,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     cbar.minorticks_on()
    
     # raster 2
+    ML_CLIM = find_clim(spike_matrix_2)
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, ML_CLIM))
 
@@ -59,7 +59,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
 
     # optionally zoom
     if zoom:
-        apply_zoom([ax1, ax2, ax3])
+        _apply_zoom([ax1, ax2, ax3])
 
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
@@ -67,16 +67,12 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     plt.show()
 
 def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
-    clim_max = 0
     population_name = ""
-    
     if population == 1: 
         population_name = "Hindmarsh Rose"
-        clim_max = HR_CLIM
     else:
         population_name = "Morris Lecar"
-        clim_max = ML_CLIM
-    
+    clim_max = find_clim(spike_matrix)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
     fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
@@ -99,7 +95,7 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zo
 
     # optionally zoom
     if zoom:
-        apply_zoom([ax1, ax2])
+        _apply_zoom([ax1, ax2])
 
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
@@ -119,7 +115,7 @@ def plot_hr_multiple(t, x1, zoom=False):
 
     # optionally zoom
     if zoom:
-        apply_zoom([ax1, ax2, ax3])
+        _apply_zoom([ax1, ax2, ax3])
 
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_multiple_neurons.png"), format="png")
     plt.show()
