@@ -12,8 +12,15 @@ OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 HR_CLIM = 15
 ML_CLIM = 2
 
+def apply_zoom(axes):
+    XMIN, XMAX = 40, 50
+    for ax in axes:
+        ax.set_xlim(XMIN, XMAX)
+    
+def find_clim(spike_matrix):
+    return np.max(spike_matrix)
 
-def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration):
+def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False):
     # lfp
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 9), sharex=True, layout='constrained')
     fig.suptitle(f'Weighted LFP + Both Rasters')
@@ -50,12 +57,16 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
+    # optionally zoom
+    if zoom:
+        apply_zoom([ax1, ax2, ax3])
+
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
     plt.show()
 
-def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
+def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
     clim_max = 0
     population_name = ""
     
@@ -86,9 +97,31 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
     cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
+    # optionally zoom
+    if zoom:
+        apply_zoom([ax1, ax2])
+
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
+    plt.show()
+
+def plot_hr_multiple(t, x1, zoom=False):
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
+    fig.suptitle("All Hindmarsh Rose Variables - Multiple Neurons")
+    ax1.plot(t, x1[0])
+    ax1.set_ylabel("Neuron 0 x")
+    ax2.plot(t, x1[1])
+    ax2.set_ylabel("Neuron 1 x")
+    ax3.plot(t, x1[2])
+    ax3.set_ylabel("Neuron 2 x")
+    ax1.legend()
+
+    # optionally zoom
+    if zoom:
+        apply_zoom([ax1, ax2, ax3])
+
+    plt.savefig(os.path.join(FIGURES_DIR, "pop1_multiple_neurons.png"), format="png")
     plt.show()
 
 def plot_hr_single(t, x1, y1, z1, I_syn_inter_1):
@@ -181,6 +214,7 @@ def plot_both_avg(t, x1, y1, z1, x2, n):
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
     plt.show()
     
+
 def plot_mean_potential():
     pass
     # pop1_mean = np.mean(x1, axis=0)
