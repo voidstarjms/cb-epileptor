@@ -9,16 +9,11 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
+HR_CLIM = 15
+ML_CLIM = 2
 
-def _apply_zoom(axes):
-    XMIN, XMAX = 40, 50
-    for ax in axes:
-        ax.set_xlim(XMIN, XMAX)
-    
-def find_clim(spike_matrix):
-    return np.max(spike_matrix)
 
-def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False):
+def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration):
     # lfp
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 9), sharex=True, layout='constrained')
     fig.suptitle(f'Weighted LFP + Both Rasters')
@@ -33,7 +28,6 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     ax1.set_title("LFP signal (80/20 weight)")
 
     # raster 1
-    HR_CLIM = find_clim(spike_matrix_1)
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, HR_CLIM))
 
@@ -45,7 +39,6 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     cbar.minorticks_on()
    
     # raster 2
-    ML_CLIM = find_clim(spike_matrix_2)
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, ML_CLIM))
 
@@ -57,22 +50,22 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
-    # optionally zoom
-    if zoom:
-        _apply_zoom([ax1, ax2, ax3])
-
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
     plt.show()
 
-def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
+def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration):
+    clim_max = 0
     population_name = ""
+    
     if population == 1: 
         population_name = "Hindmarsh Rose"
+        clim_max = HR_CLIM
     else:
         population_name = "Morris Lecar"
-    clim_max = find_clim(spike_matrix)
+        clim_max = ML_CLIM
+    
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 9), sharex=True, constrained_layout=True)
     fig.suptitle(f'All {population_name} Variables - All Neurons Averaged')
 
@@ -93,31 +86,9 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zo
     cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
-    # optionally zoom
-    if zoom:
-        _apply_zoom([ax1, ax2])
-
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, f"{population_name}_raster.png"), format='png')
-    plt.show()
-
-def plot_hr_multiple(t, x1, zoom=False):
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    fig.suptitle("All Hindmarsh Rose Variables - Multiple Neurons")
-    ax1.plot(t, x1[0])
-    ax1.set_ylabel("Neuron 0 x")
-    ax2.plot(t, x1[1])
-    ax2.set_ylabel("Neuron 1 x")
-    ax3.plot(t, x1[2])
-    ax3.set_ylabel("Neuron 2 x")
-    ax1.legend()
-
-    # optionally zoom
-    if zoom:
-        _apply_zoom([ax1, ax2, ax3])
-
-    plt.savefig(os.path.join(FIGURES_DIR, "pop1_multiple_neurons.png"), format="png")
     plt.show()
 
 def plot_hr_single(t, x1, y1, z1, I_syn_inter_1):
@@ -210,7 +181,6 @@ def plot_both_avg(t, x1, y1, z1, x2, n):
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
     plt.show()
     
-
 def plot_mean_potential():
     pass
     # pop1_mean = np.mean(x1, axis=0)

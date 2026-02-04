@@ -162,9 +162,6 @@ def run_sim():
     S2_to_1.beta = params.SYN_BETA_INH
     S2_to_1.G = params.G_INTER
 
-    # Don't record transient period
-    run(params.TRANSIENT*second)
-
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
@@ -182,25 +179,19 @@ def plot_output():
     
     data = data_processing.load_sim_data()
     res = data['results']
-    # t = data_processing.cutoff_transient(res['t'], params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x1 = data_processing.cutoff_transient(res['x1'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x2 = data_processing.cutoff_transient(res['x2'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-
-    t = res['t']
-    x1 = res['x1']
-    x2 = res['x2']
+    t = data_processing.cutoff_transient(res['t'], params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
+    x1 = data_processing.cutoff_transient(res['x1'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
+    x2 = data_processing.cutoff_transient(res['x2'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
 
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
 
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  params.TRANSIENT)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  params.TRANSIENT)
 
-    ph.plot_hr_multiple(t, x1, zoom=True)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, zoom=True)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
 
 def plot_output_full():
@@ -222,14 +213,12 @@ def plot_output_full():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, 0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, 0)
-
-
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, params.TRANSIENT)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, params.TRANSIENT)
 
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_ml_single(t, x2, n)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
 
 def analyze_populations():
@@ -239,16 +228,11 @@ def analyze_populations():
     x2 = res['x2']
     pop1_spike_data = res['spikes_n1']
     pop1_spike_times, pop1_neuron_idx = pop1_spike_data['t'], pop1_spike_data['i']
-
-    # # remove transient spikes from synch calculations
-    # mask = (pop1_spike_times >= params.TRANSIENT)
-    # pop1_spike_times = pop1_spike_times[mask]
-    # pop1_neuron_idx = pop1_neuron_idx[mask]
-
-    # pop2_spike_data = res['spikes_n2']
-    # pop2_spike_times, pop2_neuron_idx = pop2_spike_data['t'], pop2_spike_data['i']
+    pop2_spike_data = res['spikes_n2']
+    pop2_spike_times, pop2_neuron_idx = pop2_spike_data['t'], pop2_spike_data['i']
 
     data_processing.dump_spikes_to_file(np.asarray(pop1_neuron_idx), np.asarray(pop1_spike_times))
+
 
     print("============HINDMARSH ROSE STATS============")
     chi, autocorr = syn.autocorelate(x1)
@@ -258,14 +242,10 @@ def analyze_populations():
     print(f'r: {r}')
     print(f'psi: {psi}')
 
-    data_processing.dump_array_to_file(r)
-    t = np.linspace(10, params.SIM_DURATION/second+10, len(z))
-    ph.KOP_synch_time(t, r, psi)
-
     print("\n============MORRIS LECAR STATS============")
     chi, autocorr = syn.autocorelate(x2)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
-    z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
+    z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params.SIM_DURATION/second)
     print(f'z: {z}')
     print(f'r: {r}')
     print(f'psi: {psi}')

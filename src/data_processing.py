@@ -91,7 +91,6 @@ def load_sim_data():
 
 
 def cutoff_transient(data, transient, dt):
-    # useless function
     if transient > 0:
         start_idx = int(np.ceil(transient/dt)-1)
         if len(data.shape) == 2:
@@ -111,5 +110,4 @@ def dump_spikes_to_file(neuron_idx, spike_times):
     
     np.savetxt('spike_times.txt', n0_spikes, fmt='%f', delimiter=' ')
 
-def dump_array_to_file(arr):
-    np.savetxt('r.txt', arr, fmt='%f', delimiter=' ')
+    
