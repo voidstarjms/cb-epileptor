@@ -1,5 +1,8 @@
+
 import numpy as np
 import scipy
+
+
 def autocorelate(data):
     # apply gaussian smoothing
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
@@ -29,7 +32,10 @@ def synchrony_stats(data, maxlags=3000):
     chi=np.sqrt(chisq)
 
     mean_subtract=data_pop - np.mean(data_pop)
-    autocorr=scipy.signal.correlate(mean_subtract, mean_subtract, mode='valid')
+    autocorr=scipy.signal.correlate(mean_subtract, mean_subtract, mode='same')
+    print(mean_subtract.shape)
+    print(data_pop.shape)
+    print(autocorr.shape)
     return chi, autocorr
 
 
@@ -46,7 +52,8 @@ def KOP(neuron_idx, spike_times, duration):
     
 def compute_phase(neuron_idx, spike_times, duration):
     time_bin_size = 0.001 # 0.001 of a second = millisecond
-    # Uniform discritized representation of time. All oscillators will be mapped to this scale
+    # Uniform discritized representation of time. 
+    # All oscillators will be mapped to this scale
     # these are also the time steps of theta in the KOP
     time_grid = np.arange(0, duration+time_bin_size, time_bin_size)
 
@@ -61,10 +68,11 @@ def compute_phase(neuron_idx, spike_times, duration):
         # find time of spike for each neuron oscillator
         mask = np.where(neuron_idx == idx)
         x_coord = spike_times[mask]
-        y_coord =  2 * np.pi *  np.arange(0, x_coord.shape[0])
+        y_coord =  2 * np.pi *  np.arange(0, len(x_coord))
 
-        # 'map' spikes to multiples of unit circle by setting spike points as 2pi*k and 2pi*(k+1) 
-        #  and interpolating time steps between them. 
+        # 'map' spikes to multiples of unit circle by setting 
+        # spike points as 2pi*k and 2pi*(k+1) 
+        # and interpolating time steps between them. 
         theta = np.interp(time_grid, x_coord, y_coord)
         phase_matrix.append(theta)
 
@@ -78,4 +86,3 @@ def find_spikes(data, threshold):
     mask = np.where(data[indices] > threshold)
     spike_indices = (indices[0][mask], indices[1][mask])
     return None
-
