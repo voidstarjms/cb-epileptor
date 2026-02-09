@@ -1,7 +1,7 @@
 from brian2 import *
 
 # --- Simulation Control ---
-SIM_DURATION = 90 * second
+SIM_DURATION = 100 * second
 NUM_CELLS = 40
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING

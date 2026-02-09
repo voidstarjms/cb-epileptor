@@ -18,17 +18,18 @@ def run_sim():
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
 
-    # Setup timed arrays
-    
+    # Setup timed arrays 
+    # x_naught_vals = [-4.5, -4.0, -3.5, -3.5, -3.5, -4.0, -4.5, -4.5]
+    # coupling_vals = [0, 0, 0, 1, 2, 2, 2, 1]
 
-    phases = 4
-    timed_param_dt = params.SIM_DURATION//phases # time between param changes
-    # np.arange(-4.5, -3.5)
-    # np.arange(0, 2)
+    x_naught_vals = [-4.5, -3.5, -3.5, -3.5]
+    coupling_vals = [0, 0, 1.5, 0.5]
 
+    x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
+    coupling_dt = params.SIM_DURATION//len(coupling_vals)
 
-    timed_x_naught = TimedArray([-4.5, -3.5, -3.5, -4.5], dt=timed_param_dt)
-    timed_coupling_strength = TimedArray([0, 0, 2, 2], dt=timed_param_dt)
+    timed_x_naught = TimedArray(x_naught_vals, dt=x_naught_dt)
+    timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
     
     # --- Population 1: Hindmarsh-Rose ---
     pop1_eqs = '''
