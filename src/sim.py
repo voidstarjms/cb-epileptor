@@ -60,7 +60,7 @@ def run_sim():
                      threshold=params.HR_THRESHOLD, reset='',
                      namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
     
-    N1.x = np.ones(params.NUM_CELLS) * (params.HR_X_NAUGHT+1.5) + randn(params.NUM_CELLS) * params.W_MAX
+    N1.x = (params.HR_X_NAUGHT + 1.5) * np.ones(params.NUM_CELLS) + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
