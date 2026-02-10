@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import config
+import scipy
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
@@ -104,7 +105,7 @@ def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zo
 
 def plot_hr_multiple(t, x1, zoom=False):
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
-    fig.suptitle("All Hindmarsh Rose Variables - Multiple Neurons")
+    fig.suptitle("HR Multiple Neurons")
     ax1.plot(t, x1[0])
     ax1.set_ylabel("Neuron 0 x")
     ax2.plot(t, x1[1])
@@ -235,3 +236,31 @@ def plot_power_spec():
     # fig = plt.figure()
     # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
     # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
+
+def plot_auto_lfp(data):
+    smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
+
+    # plot data and smoothed data on same plot in different color
+    fig, (ax1) = plt.subplots(1, 1, figsize=(10, 8), sharex=True)
+    data_window = data[0][1000000:]
+    smoothed_data_window = smoothed_data[0][1000000:]
+    ax1.plot(data_window, color='blue')
+    ax1.plot(smoothed_data_window, color='orange')
+    ax1.set_xlabel("Time (s)")
+    plt.suptitle("x1 LFP vs Smoothed x1")
+    
+
+    plt.savefig(os.path.join(FIGURES_DIR, "auto_lfp.png"), format="png")
+    plt.show()
+
+def plot_kop(phase_matrix):
+    print(phase_matrix.shape)
+    print(phase_matrix[0])
+    # plot the first array in the phase matrix
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    plt.suptitle("Kop Phase For a Single Neuron")
+    ax.set_xlabel("Spike Number")
+    ax.set_ylabel("Phase (angle in radians)")
+    ax.plot(phase_matrix[0])
+    plt.savefig(os.path.join(FIGURES_DIR, "kop.png"), format="png")
+    plt.show()

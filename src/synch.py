@@ -1,3 +1,4 @@
+
 import numpy as np
 import scipy
 
@@ -31,7 +32,10 @@ def synchrony_stats(data, maxlags=3000):
     chi=np.sqrt(chisq)
 
     mean_subtract=data_pop - np.mean(data_pop)
-    autocorr=scipy.signal.correlate(mean_subtract, mean_subtract, mode='valid')
+    autocorr=scipy.signal.correlate(mean_subtract, mean_subtract, mode='same')
+    print(mean_subtract.shape)
+    print(data_pop.shape)
+    print(autocorr.shape)
     return chi, autocorr
 
 
@@ -82,4 +86,3 @@ def find_spikes(data, threshold):
     mask = np.where(data[indices] > threshold)
     spike_indices = (indices[0][mask], indices[1][mask])
     return None
-

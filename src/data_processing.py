@@ -16,7 +16,7 @@ def create_spike_matrix_histo(spike_data, num_cells, transient):
     neuron_indices = spike_data['i'] 
 
     duration = params.SIM_DURATION/second
-    dt = 0.1  # 100ms per bin
+    dt = 0.02  # 20ms per bin
 
     valid = spike_times > transient
     spike_times = spike_times[valid]

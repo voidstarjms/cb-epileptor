@@ -17,15 +17,28 @@ def run_sim():
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
+
+    # Setup timed arrays 
+    # x_naught_vals = [-4.5, -4.0, -3.5, -3.5, -3.5, -4.0, -4.5, -4.5]
+    # coupling_vals = [0, 0, 0, 1, 2, 2, 2, 1]
+
+    x_naught_vals = [-4.5, -3.5, -3.5, -3.5]
+    coupling_vals = [0, 0, 1.5, 0.5]
+
+    x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
+    coupling_dt = params.SIM_DURATION//len(coupling_vals)
+
+    timed_x_naught = TimedArray(x_naught_vals, dt=x_naught_dt)
+    timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
     
     # --- Population 1: Hindmarsh-Rose ---
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + ISOLATE * (coupling * (x_bar - x)
+        + ISOLATE * (timed_coupling_strength(t) * (x_bar - x)
         + Wmax * xi * sqrt(second)
         + sigma_1 * (I_syn_intra + I_syn_inter) / amp)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + ISOLATE * x2_bar - x_naught) - z_bar) : 1
+    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x_naught(t)) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
@@ -64,7 +77,7 @@ def run_sim():
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + coupling * (x_bar - x) - 0.15 * (z_bar - 6))
+        + timed_coupling_strength(t) * (x_bar - x) - 0.15 * (z_bar - 6))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -198,7 +211,6 @@ def plot_output():
     spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
 
-    ph.plot_hr_multiple(t, x1, zoom=True)
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT)
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, zoom=True)
 
@@ -240,6 +252,9 @@ def analyze_populations():
     pop1_spike_data = res['spikes_n1']
     pop1_spike_times, pop1_neuron_idx = pop1_spike_data['t'], pop1_spike_data['i']
 
+    pop2_spike_data = res['spikes_n2']
+    pop2_spike_times, pop2_neuron_idx = pop2_spike_data['t'], pop2_spike_data['i']
+
     # # remove transient spikes from synch calculations
     # mask = (pop1_spike_times >= params.TRANSIENT)
     # pop1_spike_times = pop1_spike_times[mask]
@@ -254,23 +269,33 @@ def analyze_populations():
     chi, autocorr = syn.autocorelate(x1)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
     z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
-    print(f'z: {z}')
-    print(f'r: {r}')
-    print(f'psi: {psi}')
+    print(f'r: {np.mean(r)}')
 
-    data_processing.dump_array_to_file(r)
-    t = np.linspace(10, params.SIM_DURATION/second+10, len(z))
-    ph.KOP_synch_time(t, r, psi)
+
+    # data_processing.dump_array_to_file(r)
+    # t = np.linspace(10, params.SIM_DURATION/second+10, len(z))
+
 
     print("\n============MORRIS LECAR STATS============")
     chi, autocorr = syn.autocorelate(x2)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
-    z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
-    print(f'z: {z}')
-    print(f'r: {r}')
-    print(f'psi: {psi}')
+    z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params.SIM_DURATION/second)
+    print(f'r: {np.mean(r)}')
 
+def test():
+    print("Testing function.")
+    data = data_processing.load_sim_data()
+    res = data['results']
+    x1 = res['x1']
+    t = res['t']
+    pop1_spike_data = res['spikes_n1']
+    pop1_spike_times, pop1_neuron_idx = pop1_spike_data['t'], pop1_spike_data['i']
 
+    ph.plot_hr_multiple(t, x1, zoom=True)
+    ph.plot_auto_lfp(x1) 
+
+    phase_matrix = syn.compute_phase(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
+    ph.plot_kop(phase_matrix)
 
 def main():
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
@@ -292,6 +317,10 @@ def main():
         print(f"Plots saved to 'figures' directory.")
     if ('a' in run_mode):
         analyze_populations()
+    if ('t' in run_mode):
+        test()
 
 if __name__ == "__main__":
     main()
+
+
