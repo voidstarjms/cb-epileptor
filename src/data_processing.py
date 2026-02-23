@@ -57,17 +57,13 @@ def save_data(M_N1, M_N2, SM_N1, SM_N2):
         'metadata': {
             'timestamp': datetime.datetime.now().isoformat(),
             'brian2_version': '2.x',
-            'sim_duration': params.SIM_DURATION
         },
         'params': get_params_dict(),
         'results': {
             't': np.asarray(M_N1.t),
             'x1': np.asarray(M_N1.x),
-            'y1': np.asarray(M_N1.y),
-            'z1': np.asarray(M_N1.z),
             'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
             'x2': np.asarray(M_N2.x),
-            'n2': np.asarray(M_N2.n),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
             'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)}
