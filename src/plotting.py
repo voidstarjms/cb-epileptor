@@ -244,6 +244,21 @@ def plot_both_avg(t, x1, y1, z1, x2, n):
     #plt.savefig("figures/interictal_pop2_r4e-5_10s.png", format="png")
     plt.savefig(os.path.join(FIGURES_DIR, "pop1_and_pop2_single.png"), format="png")
     plt.show()
+
+def plot_wpre(t, x, wpre):
+    x_mean = np.mean(x, axis=0)
+    wpre_mean = np.mean(wpre, axis=0)
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig.suptitle("Wpre Within Population 1")
+    ax1.plot(t, x_mean)
+    ax1.set_ylabel("Pop 1 x mean")
+    ax2.plot(t, wpre_mean)
+    ax2.set_ylabel("Wpre")
+    ax2.set_xlabel("time (s)")
+
+    plt.savefig(os.path.join(FIGURES_DIR, "N1_to_1_wpre.png"), format="png")
+    plt.show()
     
 
 

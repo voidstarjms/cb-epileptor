@@ -1,8 +1,8 @@
 from brian2 import *
 
 # --- Simulation Control ---
-SIM_DURATION = 100 * second
-NUM_CELLS = 40
+SIM_DURATION = 60 * second
+NUM_CELLS = 10
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
 TRANSIENT = 10
@@ -10,8 +10,8 @@ TRANSIENT = 10
 # --- Coupling & Global Logic ---
 # ISOLATE = 0: decoupled, 1: coupled
 ISOLATE = 1
-COUPLING_STRENGTH = 0.2
-W_MAX = 0.006          
+COUPLING_STRENGTH = 0.1
+W_MAX = 0.006 
 
 # --- Population 1: Hindmarsh-Rose (HR) ---
 HR_A = 1.0
@@ -62,3 +62,13 @@ SYN_E_INH = -80 * mV
 # Conductances
 G_INTRA = 0.1 * uS  
 G_INTER = 0.2 * uS
+
+# Plasticity
+THETA_LTD_START = 0.05 # 0.027
+THETA_LTD_END = 0.1 # 0.047
+THETA_LTP_START = 0.15 # 0.087
+A_LTD = 1
+A_LTP = 2
+
+TAU_WPRE = 5 * second
+TAU_CA = 200 * msecond

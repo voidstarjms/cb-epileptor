@@ -48,7 +48,7 @@ def get_params_dict():
                 params_dict[key] = val
     return params_dict
 
-def save_data(M_N1, M_N2, SM_N1, SM_N2):
+def save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1):
 
     # Save Data, Metadata, and Parameters
     if not os.path.exists(DATA_DIR):
@@ -63,6 +63,7 @@ def save_data(M_N1, M_N2, SM_N1, SM_N2):
             't': np.asarray(M_N1.t),
             'x1': np.asarray(M_N1.x),
             'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
+            'syn_wpre' : np.asarray(M_S1_1.Wpre),
             'x2': np.asarray(M_N2.x),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},

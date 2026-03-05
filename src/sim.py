@@ -138,14 +138,23 @@ def run_sim():
         'Tmax': params.SYN_TMAX,
         'Vt': params.SYN_VT,
         'Kp': params.SYN_KP,
-        'timed_G_intra': timed_G_intra,
-        'timed_G_inter': timed_G_inter
+        'tau_wpre': params.TAU_WPRE,
+        'tau_ca': params.TAU_CA,
+        'theta_ltd_start': params.THETA_LTD_START,
+        'theta_ltd_end': params.THETA_LTD_END,
+        'theta_ltp_start': params.THETA_LTP_START,
+        'A_ltp': params.A_LTP,
+        'A_ltd': params.A_LTD,
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
+    plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
+    dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
+    dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
+    sigma_Ca = 1 / (1 + exp(-(x_post + 0.8) / 0.2)) : 1
 
 
     E : volt
@@ -154,17 +163,15 @@ def run_sim():
     '''
 
     intra_syn_eqs = '''
-    I_syn_intra_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
-    G = timed_G_intra(t) : siemens
+    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
     ''' + syn_eqs
 
     inter_syn_eqs = '''
-    I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
-    G = timed_G_inter(t) : siemens
+    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
     ''' + syn_eqs
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_1.connect()
+    S1_to_1.connect(i=0, j=1)
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC
@@ -197,11 +204,12 @@ def run_sim():
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
-    
-    
+
+    M_S1_1 = StateMonitor(S1_to_1, ['Wpre'], record=True)
+
     # Run
     run(params.SIM_DURATION)
-    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2)
+    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1)
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -226,9 +234,8 @@ def plot_output():
     # spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
 
 
-    # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
-    #                 timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
-    # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, zoom=True)
+    ph.plot_wpre(t, x1, wpre)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
 
 
 def plot_output_full():
