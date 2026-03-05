@@ -14,17 +14,23 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-def run_sim():
+def run_sim(coupling_override=None, x_naught_override=None):
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
 
-    # Setup timed arrays 
+    # Setup timed arrays
     # x_naught_vals = [-4.5, -4.0, -3.5, -3.5, -3.5, -4.0, -4.5, -4.5]
     # coupling_vals = [0, 0, 0, 1, 2, 2, 2, 1]
 
-    x_naught_vals = [-4.5, -3.5, -3.5, -3.5]
-    coupling_vals = [0, 0, 1.5, 0.5]
+    if x_naught_override is not None:
+        x_naught_vals = [x_naught_override] * 4
+    else:
+        x_naught_vals = [-4.5, -3.5, -3.5, -3.5]
+    if coupling_override is not None:
+        coupling_vals = [coupling_override] * 4
+    else:
+        coupling_vals = [0, 0, 1.5, 0.5]
 
     x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
     coupling_dt = params.SIM_DURATION//len(coupling_vals)
@@ -307,8 +313,8 @@ def synchrony_sweep(quick=False, plot_mode='both'):
     import pickle
 
     param1_values = np.linspace(0.05, 0.5, 8)
-    param2_values = np.linspace(0.05, 0.5, 8)
-    
+    param2_values = np.linspace(-4.5, -2.5, 8)
+
     n_realizations = 1
 
     chi_grid = np.full((len(param2_values), len(param1_values), n_realizations), np.nan)
@@ -320,13 +326,10 @@ def synchrony_sweep(quick=False, plot_mode='both'):
         for i, p1 in enumerate(param1_values):
             for k in range(n_realizations):
                 count += 1
-                print(f"[{count}/{total}] COUPLING_STRENGTH={p1:.3f}, G_INTER={p2:.3f}, realization {k+1}")
-
-                params.COUPLING_STRENGTH = p1
-                params.G_INTER = p2 * uS
+                print(f"[{count}/{total}] COUPLING_STRENGTH={p1:.3f}, X_NAUGHT={p2:.3f}, realization {k+1}")
 
                 start_scope()
-                run_sim()
+                run_sim(coupling_override=p1, x_naught_override=p2)
 
                 data = data_processing.load_sim_data()
                 x1 = data['results']['x1']
@@ -340,7 +343,7 @@ def synchrony_sweep(quick=False, plot_mode='both'):
         'param1_values': param1_values,
         'param2_values': param2_values,
         'param1_name': 'COUPLING_STRENGTH',
-        'param2_name': 'G_INTER',
+        'param2_name': 'X_NAUGHT',
         'n_realizations': n_realizations,
     }
     sweep_path = os.path.join(DATA_DIR, 'sweep_results.pkl')
@@ -350,8 +353,8 @@ def synchrony_sweep(quick=False, plot_mode='both'):
 
     chi_mean = np.nanmean(chi_grid, axis=2)
     chi_sd = np.nanstd(chi_grid, axis=2)
-    p1_label = r'coupling strength'
-    p2_label = r'$g_{inter}$ ($\mu$S)'
+    p1_label = r'coupling strength $C_E$'
+    p2_label = r'$x_0$'
 
     if plot_mode == 'chi':
         ps.plot_synchrony_single(chi_mean, param1_values, param2_values,
@@ -398,6 +401,8 @@ def main():
         analyze_populations()
     if ('t' in run_mode):
         test()
+    if ('s' in run_mode):
+        synchrony_sweep(plot_mode=args.sweep_plot)
 
 if __name__ == "__main__":
     main()
