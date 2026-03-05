@@ -4,3 +4,6 @@
 # data
 .npz
 
+src/__pycache__
+src/data
+src/figures

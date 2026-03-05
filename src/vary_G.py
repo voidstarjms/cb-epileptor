@@ -8,7 +8,6 @@ import params
 import plotting as ph 
 import synch as syn
 import data_processing
-import plot_synchrony as ps
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
@@ -138,23 +137,14 @@ def run_sim():
         'Tmax': params.SYN_TMAX,
         'Vt': params.SYN_VT,
         'Kp': params.SYN_KP,
-        'tau_wpre': params.TAU_WPRE,
-        'tau_ca': params.TAU_CA,
-        'theta_ltd_start': params.THETA_LTD_START,
-        'theta_ltd_end': params.THETA_LTD_END,
-        'theta_ltp_start': params.THETA_LTP_START,
-        'A_ltp': params.A_LTP,
-        'A_ltd': params.A_LTD,
+        'timed_G_intra': timed_G_intra,
+        'timed_G_inter': timed_G_inter
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
-    plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
-    dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-    dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
-    sigma_Ca = 1 / (1 + exp(-(x_post + 0.8) / 0.2)) : 1
 
 
     E : volt
@@ -163,15 +153,17 @@ def run_sim():
     '''
 
     intra_syn_eqs = '''
-    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
+    I_syn_intra_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    G = timed_G_intra(t) : siemens
     ''' + syn_eqs
 
     inter_syn_eqs = '''
-    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
+    I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    G = timed_G_inter(t) : siemens
     ''' + syn_eqs
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_1.connect(i=0, j=1)
+    S1_to_1.connect()
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC
@@ -204,12 +196,11 @@ def run_sim():
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
-
-    M_S1_1 = StateMonitor(S1_to_1, ['Wpre'], record=True)
-
+    
+    
     # Run
     run(params.SIM_DURATION)
-    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1)
+    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2)
 
 def plot_output():
     if not os.path.exists(FIGURES_DIR):
@@ -234,8 +225,9 @@ def plot_output():
     # spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
 
 
-    ph.plot_wpre(t, x1, wpre)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
+    # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
+    #                 timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
+    # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, zoom=True)
 
 
 def plot_output_full():
@@ -324,88 +316,10 @@ def test():
     phase_matrix = syn.compute_phase(pop1_neuron_idx, pop1_spike_times, params.SIM_DURATION/second)
     ph.plot_kop(phase_matrix)
 
-def synchrony_sweep(quick=False, plot_mode='both'):
-    """
-    Run simulation across a 2D parameter grid and plot synchrony chi heatmaps
-    
-    plot_mode: 'chi' for mean only, 'sd' for SD only, 'both' for both
-    """
-    import pickle
-
-    param1_values = np.linspace(0.05, 0.5, 8)
-    param2_values = np.linspace(0.05, 0.5, 8)
-    
-    n_realizations = 1
-
-    chi_grid = np.full((len(param2_values), len(param1_values), n_realizations), np.nan)
-
-    total = len(param1_values) * len(param2_values) * n_realizations
-    count = 0
-
-    for j, p2 in enumerate(param2_values):
-        for i, p1 in enumerate(param1_values):
-            for k in range(n_realizations):
-                count += 1
-                print(f"[{count}/{total}] COUPLING_STRENGTH={p1:.3f}, G_INTER={p2:.3f}, realization {k+1}")
-
-                params.COUPLING_STRENGTH = p1
-                params.G_INTER = p2 * uS
-
-                start_scope()
-                run_sim()
-
-                data = data_processing.load_sim_data()
-                x1 = data['results']['x1']
-                chi, _ = syn.autocorelate(x1)
-                chi_grid[j, i, k] = chi
-                print(f"  chi = {chi:.4f}")
-
-    # Save raw results
-    sweep_results = {
-        'chi_grid': chi_grid,
-        'param1_values': param1_values,
-        'param2_values': param2_values,
-        'param1_name': 'COUPLING_STRENGTH',
-        'param2_name': 'G_INTER',
-        'n_realizations': n_realizations,
-    }
-    sweep_path = os.path.join(DATA_DIR, 'sweep_results.pkl')
-    with open(sweep_path, 'wb') as f:
-        pickle.dump(sweep_results, f)
-    print(f"Sweep data saved to {sweep_path}")
-
-    chi_mean = np.nanmean(chi_grid, axis=2)
-    chi_sd = np.nanstd(chi_grid, axis=2)
-    p1_label = r'coupling strength'
-    p2_label = r'$g_{inter}$ ($\mu$S)'
-
-    if plot_mode == 'chi':
-        ps.plot_synchrony_single(chi_mean, param1_values, param2_values,
-                                 p1_label, p2_label,
-                                 title=r'Synchrony $\chi$',
-                                 vmin=0, vmax=1,
-                                 save_name='synchrony_chi_mean.png')
-    elif plot_mode == 'sd':
-        sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
-        ps.plot_synchrony_single(chi_sd, param1_values, param2_values,
-                                 p1_label, p2_label,
-                                 title=r'SD of $\chi$',
-                                 vmin=0, vmax=sd_max,
-                                 save_name='synchrony_chi_sd.png')
-    else:
-        ps.plot_synchrony(chi_mean, chi_sd,
-                          param1_values, param2_values,
-                          p1_label, p2_label)
-
-
 def main():
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp', 
-                        help="Run mode: 'r' run, 'p' plot, 'a' analyze, 't' test, "
-                             "'s' synchrony sweep, 's_test' test synchrony plot.")
-    parser.add_argument('--sweep-plot', type=str, default='both',
-                        choices=['chi', 'sd', 'both'],
-                        help="Which synchrony plot to generate: 'chi', 'sd', or 'both'.")
+                        help="Run mode: 'r' to run, 'p' to plot, 'rp' to run and plot.")
     args = parser.parse_args()
     run_mode = args.mode
 
@@ -427,3 +341,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

@@ -16,7 +16,7 @@ def create_spike_matrix_histo(spike_data, num_cells, transient):
     neuron_indices = spike_data['i'] 
 
     duration = params.SIM_DURATION/second
-    dt = 0.1  # 100ms per bin
+    dt = 0.02  # 20ms per bin
 
     valid = spike_times > transient
     spike_times = spike_times[valid]
@@ -57,18 +57,14 @@ def save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1):
         'metadata': {
             'timestamp': datetime.datetime.now().isoformat(),
             'brian2_version': '2.x',
-            'sim_duration': params.SIM_DURATION
         },
         'params': get_params_dict(),
         'results': {
             't': np.asarray(M_N1.t),
             'x1': np.asarray(M_N1.x),
-            'y1': np.asarray(M_N1.y),
-            'z1': np.asarray(M_N1.z),
             'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
             'syn_wpre' : np.asarray(M_S1_1.Wpre),
             'x2': np.asarray(M_N2.x),
-            'n2': np.asarray(M_N2.n),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
             'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)}
@@ -92,6 +88,7 @@ def load_sim_data():
 
 
 def cutoff_transient(data, transient, dt):
+    # useless function
     if transient > 0:
         start_idx = int(np.ceil(transient/dt)-1)
         if len(data.shape) == 2:
@@ -111,4 +108,5 @@ def dump_spikes_to_file(neuron_idx, spike_times):
     
     np.savetxt('spike_times.txt', n0_spikes, fmt='%f', delimiter=' ')
 
-    
+def dump_array_to_file(arr):
+    np.savetxt('r.txt', arr, fmt='%f', delimiter=' ')
