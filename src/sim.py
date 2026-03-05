@@ -15,22 +15,29 @@ FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 # # Setup timed arrays 
-# x_naught_vals = [-3.5]
-# coupling_vals = [0.2]
+x_naught_vals = [-3.5]
+coupling_vals = [0.2]
 
-x_naught_vals = [-4.5, -3.5, -3.5, -4.5, -4.5]
-coupling_vals = [0, 0, 0.2, 0.09, 0]
+# x_naught_vals = [-4.5, -3.5, -3.5, -4.5, -4.5]
+# coupling_vals = [0, 0, 0.2, 0.09, 0]
 
-# # post ictal
-# x_naught_vals = [-4.5]
-# coupling_vals = [0.09]
+
+G_inter_vals = [0.2] * uS
+G_intra_vals = [0.1] * uS
+# G_inter_vals = [0.1, 0.1, 0.2, 0.2, 0.1] * uS
+# G_intra_vals = [0.1, 0.2, 0.2, 0.1, 0.1] * uS
 
 x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
 coupling_dt = params.SIM_DURATION//len(coupling_vals)
 
+G_inter_dt = params.SIM_DURATION//len(G_inter_vals)
+G_intra_dt = params.SIM_DURATION//len(G_intra_vals)
+
 timed_x_naught = TimedArray(x_naught_vals, dt=x_naught_dt)
 timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
 
+timed_G_inter = TimedArray(G_inter_vals, dt=G_inter_dt)
+timed_G_intra = TimedArray(G_intra_vals, dt=G_intra_dt)
 def run_sim():
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
@@ -67,7 +74,7 @@ def run_sim():
                      threshold=params.HR_THRESHOLD, reset='',
                      namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
     
-    N1.x = (params.HR_X_NAUGHT + 1.5) * np.ones(params.NUM_CELLS) + randn(params.NUM_CELLS) * params.W_MAX
+    N1.x = np.ones(params.NUM_CELLS) * (params.HR_X_NAUGHT+1.5) + randn(params.NUM_CELLS) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
@@ -130,7 +137,9 @@ def run_sim():
     syn_namespace = {
         'Tmax': params.SYN_TMAX,
         'Vt': params.SYN_VT,
-        'Kp': params.SYN_KP
+        'Kp': params.SYN_KP,
+        'timed_G_intra': timed_G_intra,
+        'timed_G_inter': timed_G_inter
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
@@ -138,7 +147,7 @@ def run_sim():
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
 
-    G : siemens
+
     E : volt
     alpha : mmolar ** -1 * second ** -1
     beta : second ** -1
@@ -146,11 +155,12 @@ def run_sim():
 
     intra_syn_eqs = '''
     I_syn_intra_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
-    
+    G = timed_G_intra(t) : siemens
     ''' + syn_eqs
 
     inter_syn_eqs = '''
     I_syn_inter_post = (-G * u * (x_post * (syn_input_scale) * mvolt - E)) : amp (summed)
+    G = timed_G_inter(t) : siemens
     ''' + syn_eqs
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
@@ -158,7 +168,6 @@ def run_sim():
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC
-    S1_to_1.G = params.G_INTRA
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
@@ -166,14 +175,12 @@ def run_sim():
     S1_to_2.E = params.SYN_E_EXC
     S1_to_2.alpha = params.SYN_ALPHA_EXC
     S1_to_2.beta = params.SYN_BETA_EXC
-    S1_to_2.G = params.G_INTER
 
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect()
     S2_to_2.E = params.SYN_E_INH
     S2_to_2.alpha = params.SYN_ALPHA_INH
     S2_to_2.beta = params.SYN_BETA_INH
-    S2_to_2.G = params.G_INTRA
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
@@ -181,7 +188,6 @@ def run_sim():
     S2_to_1.E = params.SYN_E_INH
     S2_to_1.alpha = params.SYN_ALPHA_INH
     S2_to_1.beta = params.SYN_BETA_INH
-    S2_to_1.G = params.G_INTER
 
     # Don't record transient period
     run(params.TRANSIENT*second)
@@ -214,14 +220,14 @@ def plot_output():
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
-
+    ph.plot_power_spec(x1, x2)
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
+    # spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
+    # spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
 
 
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
-                    timed_x_naught=timed_x_naught, timed_coupling_strength=timed_coupling_strength)
+    # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
+    #                 timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
     # ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, zoom=True)
 
 
