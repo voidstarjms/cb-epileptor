@@ -5,23 +5,39 @@ import os
 import numpy as np
 import config
 import scipy
-
+import params
+from scipy import signal
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 
 def _apply_zoom(axes):
-    XMIN, XMAX = 40, 50
+    XMIN, XMAX =  params.SIM_DURATION/second - 15, params.SIM_DURATION/second -10
     for ax in axes:
         ax.set_xlim(XMIN, XMAX)
     
 def find_clim(spike_matrix):
     return np.max(spike_matrix)
 
-def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False):
+def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False, **timed_args):
+    # extract timed array vars from timed_args
+    timed_x_naught = timed_args.get('timed_x_naught', None)
+    timed_coupling_strength = timed_args.get('timed_coupling_strength', None)
+    timed_I_app = timed_args.get('timed_I_app', None)
+    timed_g_intra = timed_args.get('timed_g_intra', None)
+    timed_g_inter = timed_args.get('timed_g_inter', None)
+
     # lfp
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 9), sharex=True, layout='constrained')
+    if timed_x_naught and timed_coupling_strength and timed_g_intra and timed_g_inter:
+        fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(30, 15), sharex=True, layout='constrained', gridspec_kw={'height_ratios': [3, 3, 3, 1, 1]})
+    elif timed_x_naught and timed_coupling_strength:
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 15), sharex=True, layout='constrained', gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+    elif timed_g_inter and timed_g_intra:
+        fig, (ax1, ax2, ax3, ax5) = plt.subplots(4, 1, figsize=(30, 15), sharex=True, layout='constrained', gridspec_kw={'height_ratios': [3, 3, 3, 1]})
+    else:
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 15), sharex=True, layout='constrained', gridspec_kw={'height_ratios': [2, 2, 2,]})
+
     fig.suptitle(f'Weighted LFP + Both Rasters')
     fig.set_constrained_layout_pads(w_pad=0.1, h_pad=0.1, 
                                      wspace=0.02, hspace=0.02)
@@ -50,7 +66,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, ML_CLIM))
 
-    ax3.set_xlabel('Time (s)', fontsize=12)
+    # ax3.set_xlabel('Time (s)', fontsize=12)
     ax3.set_ylabel('Neuron index', fontsize=12)
     ax3.set_title('Morris Lecar Spike Raster (Spike Count)', fontsize=14)
 
@@ -58,15 +74,33 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
     cbar.minorticks_on()
 
+    # plot timed arrays if they exist
+    if timed_x_naught and timed_coupling_strength:
+        # create a 4th axis for the timed arrays        
+        ax4.plot(t, timed_x_naught(t*second), label='x0', color='blue')
+        ax4.set_title("x0 over time")
+        ax4.plot(t, timed_coupling_strength(t*second), label='Ce', color='orange')
+        # ax4.set_xlabel("Time (s)")
+        ax4.set_title("Ce and x0 over time")
+        ax4.legend()
+        
+    if timed_g_inter and timed_g_intra:
+        ax5.plot(t, timed_g_intra(t*second), label='g_intra', color='blue')
+        ax5.set_title("g variables over time")
+        ax5.plot(t, timed_g_inter(t*second), label='g_inter', color='orange')
+        ax5.set_xlabel("Time (s)")
+        ax5.set_ylabel("Conductance (uS)")
+        ax5.legend()
+
     # optionally zoom
     if zoom:
-        _apply_zoom([ax1, ax2, ax3])
-
+        _apply_zoom([ax1, ax2, ax3, ax4, ax5])
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
     plt.show()
 
+# POP PLOTS
 def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
     population_name = ""
     if population == 1: 
@@ -212,31 +246,9 @@ def plot_both_avg(t, x1, y1, z1, x2, n):
     plt.show()
     
 
-def plot_mean_potential():
-    pass
-    # pop1_mean = np.mean(x1, axis=0)
-    # pop2_mean = np.mean(x2, axis=0)
-    # mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
-    # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
-    # ax1.plot(t, pop2_mean)
-    # ax1.set_xlabel("Time (s)")
-    # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
-def plot_power_spec():
-    pass
-    
-    # fs = 1 / defaultclock.dt / Hz
-    # f, Pxx = signal.welch(mean_potential, fs=fs)
-    # ax2.semilogy(f, Pxx)
-    # ax2.set_xlabel("Frequency (Hz)")
-    # ax2.set_ylabel("Amplitude (a.u.)")
-    # plt.savefig("figures/interictal_power_spectrum_hi_r.png", format="png")
-    # plt.show()
-
-    # fig = plt.figure()
-    # f, ts, Sxx = scipy.signal.spectrogram(mean_potential, fs)
-    # fig = plt.pcolormesh(ts, f, Sxx, shading='gouraud')
-
+# SYNCHRONY PLOTS
+# =============================================================
 def plot_auto_lfp(data):
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
 
@@ -259,8 +271,47 @@ def plot_kop(phase_matrix):
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Kop Phase For a Single Neuron")
-    ax.set_xlabel("Spike Number")
+    ax.set_xlabel("Time (ms)")
     ax.set_ylabel("Phase (angle in radians)")
     ax.plot(phase_matrix[0])
     plt.savefig(os.path.join(FIGURES_DIR, "kop.png"), format="png")
+    plt.show()
+
+def plot_autocorr(autocor, lag):
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    plt.suptitle("Autocorrelation")
+    ax.set_xlabel("Lag (s)")
+    ax.set_ylabel("Signal")
+    ax.plot(lag, autocor)
+    plt.savefig(os.path.join(FIGURES_DIR, "autocorr.png"), format="png")
+    plt.show()
+
+
+def plot_mean_potential():
+    pass
+    # pop1_mean = np.mean(x1, axis=0)
+    # pop2_mean = np.mean(x2, axis=0)
+    # mean_potential = 0.8 * pop1_mean + 0.2 * pop2_mean
+    # fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8))
+    # ax1.plot(t, pop2_mean)
+    # ax1.set_xlabel("Time (s)")
+    # ax1.set_ylabel("Weighted mean potential (a.u.)")
+
+def plot_power_spec(x1, x2):
+    # compute mean potential
+    x1_mean = np.mean(x1, axis=0)
+    x2_mean = np.mean(x2, axis=0)
+    x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
+
+    fig, (ax1) = plt.subplots(1, 1, figsize=(12, 10))
+    fig.suptitle("Power Spectrum (Ictal)")
+    fs = 1 / (params.TAU_CLOCK/params.DT_SCALING) / Hz
+    f, Pxx = signal.welch(x_mean, fs=fs)
+
+    ax1.semilogy(f, Pxx)
+    ax1.set_ylabel("Amplitude (a.u.)")
+    ax1.set_xlabel("Frequency (Hz)")
+
+    
+    plt.savefig(os.path.join(FIGURES_DIR, "power.png"), format="png")
     plt.show()

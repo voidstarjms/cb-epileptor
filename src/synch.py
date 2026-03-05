@@ -6,8 +6,8 @@ import scipy
 def autocorelate(data):
     # apply gaussian smoothing
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
-    chi, autocorr = synchrony_stats(smoothed_data)
-    return chi, autocorr
+    chi, autocorr, lag = synchrony_stats(smoothed_data)
+    return chi, autocorr, lag
 
 def synchrony_stats(data, maxlags=3000):
     '''
@@ -36,7 +36,8 @@ def synchrony_stats(data, maxlags=3000):
     print(mean_subtract.shape)
     print(data_pop.shape)
     print(autocorr.shape)
-    return chi, autocorr
+    lag = scipy.signal.correlation_lags(len(mean_subtract), len(mean_subtract), mode='same')
+    return chi, autocorr, lag
 
 
 def KOP(neuron_idx, spike_times, duration):

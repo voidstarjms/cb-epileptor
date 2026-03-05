@@ -5,7 +5,7 @@ SIM_DURATION = 100 * second
 NUM_CELLS = 40
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
-TRANSIENT = 0
+TRANSIENT = 10
 
 # --- Coupling & Global Logic ---
 # ISOLATE = 0: decoupled, 1: coupled
@@ -19,7 +19,7 @@ HR_B = 3.0
 HR_C = 1.0
 HR_D = 5.0
 HR_S = 4.0
-HR_I_APP = 6.8
+HR_I_APP = 6.85
 HR_X_NAUGHT = -3.5      
 HR_R = 0.00002 / msecond
 HR_SIGMA = 1/50
