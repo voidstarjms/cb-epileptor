@@ -7,3 +7,7 @@
 src/__pycache__
 src/data
 src/figures
+src/current_run.txt
+condor/condor.sub
+condor/logs/*
+!condor/logs/.gitkeep
