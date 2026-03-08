@@ -330,8 +330,11 @@ def synchrony_sweep(quick=False, plot_mode='both'):
 
     chi_grid = np.full((len(param2_values), len(param1_values), n_realizations), np.nan)
 
-    sweep_plot_dir = os.path.join(FIGURES_DIR, 'sweep_debug')
-    os.makedirs(sweep_plot_dir, exist_ok=True)
+    run_num = 1
+    while os.path.exists(os.path.join(FIGURES_DIR, f'{run_num}_sweep_debug')):
+        run_num += 1
+    sweep_plot_dir = os.path.join(FIGURES_DIR, f'{run_num}_sweep_debug')
+    os.makedirs(sweep_plot_dir)
 
     total = len(param1_values) * len(param2_values) * n_realizations
     count = 0
@@ -390,18 +393,19 @@ def synchrony_sweep(quick=False, plot_mode='both'):
                                  p1_label, p2_label,
                                  title=r'Synchrony $\chi$',
                                  vmin=0, vmax=1,
-                                 save_name='synchrony_chi_mean.png')
+                                 save_name=f'{run_num}_synchrony_chi_mean.png')
     elif plot_mode == 'sd':
         sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
         ps.plot_synchrony_single(chi_sd, param1_values, param2_values,
                                  p1_label, p2_label,
                                  title=r'SD of $\chi$',
                                  vmin=0, vmax=sd_max,
-                                 save_name='synchrony_chi_sd.png')
+                                 save_name=f'{run_num}_synchrony_chi_sd.png')
     else:
         ps.plot_synchrony(chi_mean, chi_sd,
                           param1_values, param2_values,
-                          p1_label, p2_label)
+                          p1_label, p2_label,
+                          run_num=run_num)
 
 
 def main():
