@@ -16,6 +16,8 @@ This folder contains everything needed to run the CE vs X0 parameter sweep on th
 
 ## How to Run a Sweep
 
+All commands should be run from the `cb-epileptor/` project root unless otherwise noted.
+
 **1. Pull the latest code**
 ```
 git pull origin synchronicity_plotting
@@ -25,12 +27,12 @@ git pull origin synchronicity_plotting
 ```
 cd src
 python generate_params.py
+cd ..
 ```
 Creates `src/params_list.txt` with 64 CE/X0 pairs (8x8 grid).
 
-**3. Set up condor.sub and the log folder**
+**3. Generate condor.sub and the log folder**
 ```
-cd ..
 bash condor/setup_condor.sh
 ```
 This determines the run number, creates `condor/logs/{run_num}_synchrony/`,
@@ -40,16 +42,20 @@ writes `src/current_run.txt`, and generates `condor/condor.sub`.
 ```
 cd src
 python run_single_sim.py --ce 0.25 --x0 -3.5
+cd ..
 ```
 Confirm it completes without errors and that a `.pkl` appears in `src/data/results/`.
 
 **5. Submit all 64 jobs**
 ```
-cd ..
 condor_submit condor/condor.sub
+```
+Jobs will initially appear as idle (`I`) — this is normal. Condor is queuing them
+and will assign machines as they become available. Monitor with:
+```
 condor_q
 ```
-Monitor with `condor_q` until all jobs finish.
+Jobs transition from idle (`I`) to running (`R`) and disappear when complete.
 
 **6. Generate heatmaps**
 ```
