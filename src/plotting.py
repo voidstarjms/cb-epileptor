@@ -20,7 +20,7 @@ def _apply_zoom(axes):
 def find_clim(spike_matrix):
     return np.max(spike_matrix)
 
-def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False, **timed_args):
+def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_duration, zoom=False, save_path=None, show=True, **timed_args):
     # extract timed array vars from timed_args
     timed_x_naught = timed_args.get('timed_x_naught', None)
     timed_coupling_strength = timed_args.get('timed_coupling_strength', None)
@@ -97,8 +97,11 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
         _apply_zoom([ax1, ax2, ax3, ax4, ax5])
     # save plot
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
-    plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
-    plt.show()
+    out_path = save_path if save_path is not None else os.path.join(FIGURES_DIR, "standard_plot.png")
+    plt.savefig(out_path, format='png')
+    if show:
+        plt.show()
+    plt.close()
 
 # POP PLOTS
 def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
