@@ -8,9 +8,10 @@ import os
 import pickle
 import numpy as np
 
-# Use numpy codegen to avoid C++ compilation conflicts between parallel jobs
+# Give each job a unique Brian2 cache directory to avoid C++ compilation
+# conflicts between parallel Condor jobs, while keeping the fast C++ backend.
+import tempfile
 from brian2 import prefs
-prefs.codegen.target = 'numpy'
 from brian2 import *
 
 import config
@@ -31,6 +32,11 @@ def main():
     params.HR_X_NAUGHT = args.x0
 
     job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}'
+
+    # Unique cache dir per job prevents parallel Condor jobs from colliding on C++ compilation
+    cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
+    prefs.codegen.runtime.cython.cache_dir = cache_dir
+
     print(f"Starting job: {job_id}")
 
     # Give this job its own data subdirectory to avoid file conflicts with parallel jobs
