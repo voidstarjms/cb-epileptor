@@ -7,6 +7,7 @@ import os
 import sys
 import pickle
 import numpy as np
+from collections import defaultdict
 
 import plot_synchrony as ps
 
@@ -35,12 +36,20 @@ x0_values = sorted(set(round(r['x0'], 6) for r in all_results))
 print(f"CE values  ({len(ce_values)}): {[round(v,3) for v in ce_values]}")
 print(f"X0 values ({len(x0_values)}): {[round(v,3) for v in x0_values]}")
 
-# Build chi grid — shape: (len(x0), len(ce))
-chi_grid = np.full((len(x0_values), len(ce_values)), np.nan)
+# Group chi values by (ce, x0) across realizations
+chi_by_point = defaultdict(list)
 for r in all_results:
-    i = ce_values.index(round(r['ce'], 6))
-    j = x0_values.index(round(r['x0'], 6))
-    chi_grid[j, i] = r['chi']
+    key = (round(r['ce'], 6), round(r['x0'], 6))
+    chi_by_point[key].append(r['chi'])
+
+# Build mean and SD grids — shape: (len(x0), len(ce))
+chi_grid = np.full((len(x0_values), len(ce_values)), np.nan)
+chi_sd   = np.full((len(x0_values), len(ce_values)), np.nan)
+for (ce, x0), chis in chi_by_point.items():
+    i = ce_values.index(ce)
+    j = x0_values.index(x0)
+    chi_grid[j, i] = np.mean(chis)
+    chi_sd[j, i]   = np.std(chis)
 
 missing = int(np.sum(np.isnan(chi_grid)))
 if missing > 0:
@@ -63,9 +72,6 @@ else:
 
 p1_label = r'$C_E$ (coupling strength)'
 p2_label = r'$x_0$ (epileptogenicity)'
-
-# chi_sd is zeros with n_realizations=1
-chi_sd = np.zeros_like(chi_grid)
 
 ps.plot_synchrony(chi_grid, chi_sd,
                   np.array(ce_values), np.array(x0_values),

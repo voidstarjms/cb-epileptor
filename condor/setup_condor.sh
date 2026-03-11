@@ -20,7 +20,7 @@ echo "Wrote src/current_run.txt"
 cat > "$CONDOR_DIR/condor.sub" << EOF
 Universe   = vanilla
 Executable = $CONDOR_DIR/wrapper.sh
-Arguments  = run_single_sim.py --ce \$(ce) --x0 \$(x0)
+Arguments  = run_single_sim.py --ce \$(ce) --x0 \$(x0) --realization \$(realization)
 
 Initialdir = $PROJ_DIR/src
 
@@ -33,5 +33,5 @@ Request_Memory = 8GB
 
 +CSCI_GrpDesktop = True
 
-Queue ce, x0 from $PROJ_DIR/src/params_list.txt
+Queue ce, x0, realization from $PROJ_DIR/src/params_list.txt
 EOF

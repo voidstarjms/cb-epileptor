@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Single simulation worker for HTCondor.
-Run as: python run_single_sim.py --ce 0.25 --x0 -3.5
-"""
+
 import argparse
 import os
 import pickle
@@ -26,16 +23,20 @@ def main():
     parser = argparse.ArgumentParser(description='Run one simulation for a given CE and X0.')
     parser.add_argument('--ce', type=float, required=True, help='Coupling strength CE')
     parser.add_argument('--x0', type=float, required=True, help='Epileptogenicity X0')
+    parser.add_argument('--realization', type=int, default=1, help='Realization number (sets random seed)')
     args = parser.parse_args()
 
     params.COUPLING_STRENGTH = args.ce
     params.HR_X_NAUGHT = args.x0
 
-    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}'
+    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_r{args.realization}'
 
     # Unique cache dir per job prevents parallel Condor jobs from colliding on C++ compilation
     cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
     prefs.codegen.runtime.cython.cache_dir = cache_dir
+
+    # Set random seed for reproducibility across realizations
+    seed(args.realization)
 
     print(f"Starting job: {job_id}")
 
@@ -62,9 +63,10 @@ def main():
     results_dir = os.path.join('data', 'results')
     os.makedirs(results_dir, exist_ok=True)
     job_result = {
-        'ce':  args.ce,
-        'x0':  args.x0,
-        'chi': float(chi),
+        'ce':          args.ce,
+        'x0':          args.x0,
+        'realization': args.realization,
+        'chi':         float(chi),
     }
     with open(os.path.join(results_dir, f'{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)
