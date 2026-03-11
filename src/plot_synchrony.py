@@ -39,7 +39,7 @@ def plot_synchrony_single(chi_matrix, param1_values, param2_values,
     p2_edges = _make_edges(param2_values)
 
     im = ax.pcolormesh(p1_edges, p2_edges, chi_matrix,
-                       cmap='YlOrRd_r', vmin=vmin, vmax=vmax, shading='flat')
+                       cmap='YlOrRd', vmin=vmin, vmax=vmax, shading='flat')
     ax.set_xlabel(param1_label, fontsize=13)
     ax.set_ylabel(param2_label, fontsize=13)
     ax.set_title(title, fontsize=14, fontweight='bold')
