@@ -11,16 +11,12 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-def create_spike_matrix_histo(spike_data, num_cells, transient):
+def create_spike_matrix_histo(spike_data, num_cells):
     spike_times = spike_data['t'] 
     neuron_indices = spike_data['i'] 
 
     duration = params.SIM_DURATION/second
     dt = 0.02  # 20ms per bin
-
-    valid = spike_times > transient
-    spike_times = spike_times[valid]
-    neuron_indices = neuron_indices[valid]
 
     time_bins = np.arange(0, duration + dt, dt)
     neuron_bins = np.arange(0, num_cells + 1)
