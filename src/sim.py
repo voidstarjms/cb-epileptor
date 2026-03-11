@@ -208,9 +208,6 @@ def plot_output():
     
     data = data_processing.load_sim_data()
     res = data['results']
-    # t = data_processing.cutoff_transient(res['t'], params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x1 = data_processing.cutoff_transient(res['x1'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x2 = data_processing.cutoff_transient(res['x2'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
 
     t = res['t']
     x1 = res['x1']
@@ -221,8 +218,8 @@ def plot_output():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     # ph.plot_power_spec(x1, x2)
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
 
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
@@ -249,8 +246,8 @@ def plot_output_full():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, 0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, 0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
 
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
