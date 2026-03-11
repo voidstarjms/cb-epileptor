@@ -15,17 +15,17 @@ FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
 # # Setup timed arrays 
-x_naught_vals = [-3.5]
-coupling_vals = [0.2]
+# x_naught_vals = [-3.5]
+# coupling_vals = [0.2]
 
-# x_naught_vals = [-4.5, -3.5, -3.5, -4.5, -4.5]
-# coupling_vals = [0, 0, 0.2, 0.09, 0]
+x_naught_vals = [-4.5, -3.5, -3.5, -4.5, -4.5]
+coupling_vals = [0, 0, 0.2, 0.09, 0]
 
 
-G_inter_vals = [0.2] * uS
-G_intra_vals = [0.1] * uS
-# G_inter_vals = [0.1, 0.1, 0.2, 0.2, 0.1] * uS
-# G_intra_vals = [0.1, 0.2, 0.2, 0.1, 0.1] * uS
+# G_inter_vals = [0.2] * uS
+# G_intra_vals = [0.1] * uS
+G_inter_vals = [0.1, 0.1, 0.2, 0.2, 0.1] * uS
+G_intra_vals = [0.1, 0.2, 0.2, 0.1, 0.1] * uS
 
 x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
 coupling_dt = params.SIM_DURATION//len(coupling_vals)
@@ -38,6 +38,7 @@ timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
 
 timed_G_inter = TimedArray(G_inter_vals, dt=G_inter_dt)
 timed_G_intra = TimedArray(G_intra_vals, dt=G_intra_dt)
+
 def run_sim():
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
@@ -217,25 +218,24 @@ def plot_output():
     
     data = data_processing.load_sim_data()
     res = data['results']
-    # t = data_processing.cutoff_transient(res['t'], params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x1 = data_processing.cutoff_transient(res['x1'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
-    # x2 = data_processing.cutoff_transient(res['x2'],  params.TRANSIENT, params.TAU_CLOCK/params.DT_SCALING/msecond*1e-3)
 
     t = res['t']
     x1 = res['x1']
     x2 = res['x2']
+    wpre = res['syn_wpre']
 
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     ph.plot_power_spec(x1, x2)
     # Generate spike matrices using loaded spike data
-    # spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
-    # spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
 
 
     ph.plot_wpre(t, x1, wpre)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second)
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
+                    timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
 
 
 def plot_output_full():
