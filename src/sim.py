@@ -222,18 +222,18 @@ def plot_output():
     t = res['t']
     x1 = res['x1']
     x2 = res['x2']
-    wpre = res['syn_wpre']
+    # wpre = res['syn_wpre']
 
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
-    ph.plot_power_spec(x1, x2)
+    # ph.plot_power_spec(x1, x2)
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells,  0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells,  0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
 
-    ph.plot_wpre(t, x1, wpre)
+    # ph.plot_wpre(t, x1, wpre)
     ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
                     timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
 

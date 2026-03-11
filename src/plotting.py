@@ -91,7 +91,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
         ax5.set_xlabel("Time (s)")
         ax5.set_ylabel("Conductance (uS)")
         ax5.legend()
-
+    plt.xlim(params.TRANSIENT, params.SIM_DURATION/second+params.TRANSIENT)
     # optionally zoom
     if zoom:
         _apply_zoom([ax1, ax2, ax3, ax4, ax5])
@@ -99,6 +99,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
     plt.savefig(os.path.join(FIGURES_DIR, "standard_plot.png"), format='png')
     plt.show()
+
 
 # POP PLOTS
 def raster_plot(population: int, t, x, spike_matrix, num_cells, sim_duration, zoom=False):
