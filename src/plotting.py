@@ -80,7 +80,7 @@ def standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, sim_dura
         ax4.plot(t, timed_x_naught(t*second), label='x0', color='blue')
         ax4.set_title("x0 over time")
         ax4.plot(t, timed_coupling_strength(t*second), label='Ce', color='orange')
-        # ax4.set_xlabel("Time (s)")
+        ax4.set_ylabel("x0")
         ax4.set_title("Ce and x0 over time")
         ax4.legend()
         

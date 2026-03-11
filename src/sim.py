@@ -152,6 +152,7 @@ def run_sim():
     syn_eqs ='''
     du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
     T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
+
     plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
     dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
     dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
@@ -257,8 +258,8 @@ def plot_output_full():
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, 0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, 0)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
 
     ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
