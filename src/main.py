@@ -10,7 +10,6 @@ import plotting.population_plots as pph
 import plotting.plasticity_plots as plph
 import plotting.analysis_plots as aph
 from simulation.core import run_sim
-from simulation.timed_arrays import timed_x_naught, timed_coupling_strength, timed_G_inter, timed_G_intra
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
@@ -42,7 +41,7 @@ def plot_output(cb_on=True):
     spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
 
     pph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT,
-                    timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
+                    g_inter_vals=params.G_INTER_VALS, g_intra_vals=params.G_INTRA_VALS, coupling_vals=params.COUPLING_VALS, x_naught_vals=params.X_NAUGHT_VALS)
 
 
 def plot_output_full(cb_on=True):
@@ -76,7 +75,7 @@ def plot_output_full(cb_on=True):
     pph.plot_hr_single(t, x1, y1, z1, I_syn_inter)
     pph.plot_ml_single(t, x2, n)
     pph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT,
-                    timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
+                    g_inter_vals=params.G_INTER_VALS, g_intra_vals=params.G_INTRA_VALS, coupling_vals=params.COUPLING_VALS, x_naught_vals=params.X_NAUGHT_VALS)
 
     print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0]/amp)))
     print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0]/amp)))

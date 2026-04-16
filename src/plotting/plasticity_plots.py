@@ -16,17 +16,16 @@ def plot_wpre(t, x, wpre, u, Ca):
     plasticity = (1
         - params.A_LTD * (Ca > params.THETA_LTD_START).astype(float) * (Ca < params.THETA_LTD_END).astype(float)
         + params.A_LTP * (Ca > params.THETA_LTP_START).astype(float))
-    sigma_Ca = 1 / (1 + exp(-(x_post - 0.5) / 0.2))
+    sigma_Ca = 1 / (1 + exp(-(x_post + params.CA_SIGMOID_SHIFT) / params.CA_SIGMOID_SLOPE))
 
 
-    fig.suptitle("Wpre Within Population 1")
+    fig.suptitle("Wpre Within Excitatory Population")
     ax1.plot(t, x[0])
     ax1.set_ylabel("Neuron 1 x ")
     ax2.plot(t, x[1])
     ax2.set_ylabel("Neuron 2 x ")
     ax3.plot(t, wpre)
     ax3.set_ylabel("Wpre")
-    # ax4.plot(t, T)
     ax4.plot(t, u)
     ax4.set_ylabel("u")
     ax5.plot(t, Ca)

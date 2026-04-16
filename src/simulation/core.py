@@ -3,14 +3,16 @@ from brian2tools import *
 import numpy as np
 import params
 import data_processing
-from simulation.timed_arrays import (
-    timed_x_naught, timed_coupling_strength, timed_G_inter, timed_G_intra
-)
-
-def run_sim(cb_on=True, data_dir=None):
+def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=None):
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
+
+    # Build timed arrays from current params at call time
+    timed_x_naught = TimedArray(params.X_NAUGHT_VALS, dt=params.SIM_DURATION // len(params.X_NAUGHT_VALS))
+    timed_coupling_strength = TimedArray(params.COUPLING_VALS, dt=params.SIM_DURATION // len(params.COUPLING_VALS))
+    timed_G_inter = TimedArray(params.G_INTER_VALS, dt=params.SIM_DURATION // len(params.G_INTER_VALS))
+    timed_G_intra = TimedArray(params.G_INTRA_VALS, dt=params.SIM_DURATION // len(params.G_INTRA_VALS))
 
     # --- Population 1: Hindmarsh-Rose ---
     pop1_eqs = '''
@@ -35,7 +37,7 @@ def run_sim(cb_on=True, data_dir=None):
         'sigma_1': params.HR_SIGMA, 'tau': params.TAU_CLOCK,
         'ISOLATE': params.ISOLATE,
         'Wmax': params.W_MAX,
-        'I_scale': 0.05*uamp,
+        'I_scale': params.I_SCALE,
         'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
     }
 
@@ -61,7 +63,7 @@ def run_sim(cb_on=True, data_dir=None):
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + timed_CE(t) * (x_bar - x) - 0.15 * (z_bar - 6))
+        + timed_CE(t) * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -86,6 +88,8 @@ def run_sim(cb_on=True, data_dir=None):
         'Wmax': params.W_MAX,
         'ISOLATE': params.ISOLATE,
         'timed_CE': timed_coupling_strength,
+        'ml_z_bar_scale': params.ML_Z_BAR_SCALE,
+        'ml_z_bar_offset': params.ML_Z_BAR_OFFSET,
     }
 
     N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler',
@@ -116,19 +120,22 @@ def run_sim(cb_on=True, data_dir=None):
         'theta_ltp_start': params.THETA_LTP_START,
         'A_ltp': params.A_LTP,
         'A_ltd': params.A_LTD,
-        'timed_G_intra': timed_G_intra, 'timed_G_inter': timed_G_inter
+        'timed_G_intra': g_intra_override if g_intra_override is not None else timed_G_intra,
+        'timed_G_inter': g_inter_override if g_inter_override is not None else timed_G_inter,
+        'ca_sigmoid_shift': params.CA_SIGMOID_SHIFT,
+        'ca_sigmoid_slope': params.CA_SIGMOID_SLOPE,
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
 
     syn_eqs_pre = '''
         du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-        T = Tmax / (1 + exp(-(x_bar_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
+        T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
         plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
         dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
-        sigma_Ca = 1 / (1 + exp(-(x_post + 0.8) / 0.2)) : 1
+        sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1
 
         E : volt
         alpha : mmolar ** -1 * second ** -1
@@ -151,7 +158,7 @@ def run_sim(cb_on=True, data_dir=None):
 
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_1.connect(i=0, j=1)
+    S1_to_1.connect()
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC

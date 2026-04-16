@@ -22,7 +22,7 @@ def plot_auto_lfp(data):
     ax1.plot(data_window, color='blue')
     ax1.plot(smoothed_data_window, color='orange')
     ax1.set_xlabel("Time (s)")
-    plt.suptitle("x1 LFP vs Smoothed x1")
+    plt.suptitle("x1 LFP vs Smoothed x1 (Inhibitory Population)")
 
     plt.savefig(os.path.join(FIGURES_DIR, "auto_lfp.png"), format="png")
     plt.show()
