@@ -11,7 +11,7 @@ TRANSIENT = 10
 # ISOLATE = 0: decoupled, 1: coupled
 ISOLATE = 1
 COUPLING_STRENGTH = 0.1 # - Timed array
-W_MAX = 0.006 
+W_MAX = 0.006
 
 # --- Population 1: Hindmarsh-Rose (HR) ---
 HR_A = 1.0
@@ -19,16 +19,17 @@ HR_B = 3.0
 HR_C = 1.0
 HR_D = 5.0
 HR_S = 4.0
-HR_I_APP = 6.85
+HR_I_APP = 6
 HR_X_NAUGHT = -3.5 # - timed array
 HR_R = 0.00002 / msecond
 HR_SIGMA = 1/50
 HR_THRESHOLD = 'x > 1.5'
 HR_REFRACTORY_CONDITION = 'x >= 0' 
+I_SCALE = 0.05 * uamp
 
 # --- Population 2: Morris-Lecar (ML) ---
 ML_CM = 20 * ufarad
-ML_I_APP = 45 * uamp
+ML_I_APP = 37 * uamp
 ML_V1 = -1.2 * mvolt
 ML_V2 = 18 * mvolt
 ML_V3 = 12 * mvolt
@@ -64,17 +65,27 @@ SYN_E_INH = -80 * mV
 # G_INTER = 0.2 * uS
 
 # Plasticity
-THETA_LTD_START = 0.05 # 0.05
+THETA_LTD_START = 0.25 # 0.05
 THETA_LTD_END = 0.5 # 0.1
-THETA_LTP_START = 0.55 # 0.15
-A_LTD = 1
+THETA_LTP_START = 0.75 # 0.15
+A_LTD = 0.5
 A_LTP = 2
 
 TAU_WPRE = 5 * second
 TAU_CA = 200 * msecond
 
 # Timed array schedules
-X_NAUGHT_VALS = [-3.5]
-COUPLING_VALS = [0.2]
+X_NAUGHT_VALS = [-2.5]
+COUPLING_VALS = [0]
 G_INTER_VALS = [1, 1, 4, 4, 1] * uS
-G_INTRA_VALS = [1, 4, 4, 1, 1] * uS
+G_INTRA_VALS = [0.5, 2, 2, 0.5, 0.5] * uS
+# G_INTER_VALS = [1] * uS
+# G_INTRA_VALS = [1] * uS
+
+ML_Z_BAR_SCALE = 0.3
+ML_Z_BAR_OFFSET = 6
+
+# sigmoid calcium function parameters
+CA_SIGMOID_SHIFT = 0.8
+CA_SIGMOID_SLOPE = 0.2
+
