@@ -61,8 +61,8 @@ SYN_BETA_INH = 0.18 / msecond
 SYN_E_INH = -80 * mV
 
 # Conductances - Replaced with Timed arrays
-# G_INTRA = 0.1 * uS  
-# G_INTER = 0.2 * uS
+G_INTRA = 0.1 * uS  
+G_INTER = 0.2 * uS
 
 # Plasticity
 THETA_LTD_START = 0.25 # 0.05
