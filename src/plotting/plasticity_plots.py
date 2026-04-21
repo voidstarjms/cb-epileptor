@@ -2,21 +2,17 @@ from brian2 import *
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-import config
-import params
+from typing import Dict, Any
 
-FIGURES_DIR = config.FIGURES_DIR
-
-
-def plot_wpre(t, x, wpre, u, Ca):
+def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 8), sharex=True)
     Ca = np.asarray(Ca)
     x_post = np.asarray(x[1])
 
     plasticity = (1
-        - params.A_LTD * (Ca > params.THETA_LTD_START).astype(float) * (Ca < params.THETA_LTD_END).astype(float)
-        + params.A_LTP * (Ca > params.THETA_LTP_START).astype(float))
-    sigma_Ca = 1 / (1 + exp(-(x_post + params.CA_SIGMOID_SHIFT) / params.CA_SIGMOID_SLOPE))
+        - params_dict['A_LTD'] * (Ca > params_dict['THETA_LTD_START']).astype(float) * (Ca < params_dict['THETA_LTD_END']).astype(float)
+        + params_dict['A_LTP'] * (Ca > params_dict['THETA_LTP_START']).astype(float))
+    sigma_Ca = 1 / (1 + exp(-(x_post + params_dict['CA_SIGMOID_SHIFT']) / params_dict['CA_SIGMOID_SLOPE']))
 
 
     fig.suptitle("Wpre Within Excitatory Population")
@@ -36,5 +32,5 @@ def plot_wpre(t, x, wpre, u, Ca):
     ax7.set_ylabel("ca_signal")
     ax7.set_xlabel("time (s)")
 
-    plt.savefig(os.path.join(FIGURES_DIR, "N1_to_1_wpre.png"), format="png")
+    plt.savefig(os.path.join(filepaths.figures_dir, "N1_to_1_wpre.png"), format="png")
     plt.show()

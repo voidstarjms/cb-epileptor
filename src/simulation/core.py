@@ -1,20 +1,43 @@
 from brian2 import *
 from brian2tools import *
 import numpy as np
-import params
 import data_processing
-def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=None):
+from typing import Dict, Any
+
+def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> None:
+    """
+    Runs the full simulation with given parameters, saves results to data_dir.
+    """
     # Setup Simulation
-    defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
+    defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']
     print("defaultclock.dt is: ", defaultclock.dt)
 
+    # Simulation-control namespace hyper-params (used throughout)
+    sim_namespace = {
+        'num_cells':    params_dict['NUM_CELLS'],
+        'sim_duration': params_dict['SIM_DURATION'],
+        'transient':    params_dict['TRANSIENT'],
+        'ml_e_l':       params_dict['ML_E_L'],
+    }
+
     # Build timed arrays from current params at call time
-    timed_x_naught = TimedArray(params.X_NAUGHT_VALS, dt=params.SIM_DURATION // len(params.X_NAUGHT_VALS))
-    timed_coupling_strength = TimedArray(params.COUPLING_VALS, dt=params.SIM_DURATION // len(params.COUPLING_VALS))
-    timed_G_inter = TimedArray(params.G_INTER_VALS, dt=params.SIM_DURATION // len(params.G_INTER_VALS))
-    timed_G_intra = TimedArray(params.G_INTRA_VALS, dt=params.SIM_DURATION // len(params.G_INTRA_VALS))
+    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['X_NAUGHT_VALS']))
+    timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['COUPLING_VALS']))
+    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTER_VALS']))
+    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTRA_VALS']))
 
     # --- Population 1: Hindmarsh-Rose ---
+    pop1_namespace = {
+        'a': params_dict['HR_A'], 'b': params_dict['HR_B'], 'c': params_dict['HR_C'],
+        'd': params_dict['HR_D'], 's': params_dict['HR_S'], 'I_app_1': params_dict['HR_I_APP'],
+        'x_naught': params_dict['HR_X_NAUGHT'], 'r': params_dict['HR_R'],
+        'sigma_1': params_dict['HR_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
+        'ISOLATE': params_dict['ISOLATE'],
+        'Wmax': params_dict['W_MAX'],
+        'I_scale': params_dict['I_SCALE'],
+        'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
+    }
+
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
         + ISOLATE * (timed_CE(t) * (x_bar - x)
@@ -30,23 +53,11 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
     I_syn_inter : amp
     '''
 
-    pop1_namespace = {
-        'a': params.HR_A, 'b': params.HR_B, 'c': params.HR_C,
-        'd': params.HR_D, 's': params.HR_S, 'I_app_1': params.HR_I_APP,
-        'x_naught': params.HR_X_NAUGHT, 'r': params.HR_R,
-        'sigma_1': params.HR_SIGMA, 'tau': params.TAU_CLOCK,
-        'ISOLATE': params.ISOLATE,
-        'Wmax': params.W_MAX,
-        'I_scale': params.I_SCALE,
-        'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
-    }
+    N1 = NeuronGroup(sim_namespace['num_cells'], pop1_eqs, method='euler',
+                     threshold=params_dict['HR_THRESHOLD'], reset='',
+                     namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
 
-    # CHANGE HOW X0 IS LOADED - SHOULD USE TIMED ARRAY[0]
-    N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler',
-                     threshold=params.HR_THRESHOLD, reset='',
-                     namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
-
-    N1.x = np.ones(params.NUM_CELLS) * (params.HR_X_NAUGHT+1.5) + randn(params.NUM_CELLS) * params.W_MAX
+    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+1.5) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
@@ -55,11 +66,24 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
     x_bar_post = x_pre / num_cells : 1 (summed)
     z_bar_post = z_pre / num_cells : 1 (summed)
     '''
-    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
+    gap_junctions_1 = Synapses(N1, N1, exc_averaging_eqs, namespace={'num_cells': sim_namespace['num_cells']})
     gap_junctions_1.connect()
 
 
     # --- Population 2: Morris-Lecar ---
+    pop2_namespace = {
+        'Cm': params_dict['ML_CM'], 'I_app_2': params_dict['ML_I_APP'], 'gL': params_dict['ML_GL'],
+        'E_L': params_dict['ML_E_L'], 'gK': params_dict['ML_GK'], 'E_K': params_dict['ML_E_K'],
+        'gCa': params_dict['ML_GCA'], 'E_Ca': params_dict['ML_E_CA'],
+        'v1': params_dict['ML_V1'], 'v2': params_dict['ML_V2'], 'v3': params_dict['ML_V3'], 'v4': params_dict['ML_V4'],
+        'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
+        'Wmax': params_dict['W_MAX'],
+        'ISOLATE': params_dict['ISOLATE'],
+        'timed_CE': timed_coupling_strength,
+        'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
+        'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
+    }
+
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
@@ -79,51 +103,44 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
     I_syn_intra : amp
     '''
 
-    pop2_namespace = {
-        'Cm': params.ML_CM, 'I_app_2': params.ML_I_APP, 'gL': params.ML_GL,
-        'E_L': params.ML_E_L, 'gK': params.ML_GK, 'E_K': params.ML_E_K,
-        'gCa': params.ML_GCA, 'E_Ca': params.ML_E_CA,
-        'v1': params.ML_V1, 'v2': params.ML_V2, 'v3': params.ML_V3, 'v4': params.ML_V4,
-        'phi': params.ML_PHI, 'sigma_2': params.ML_SIGMA,
-        'Wmax': params.W_MAX,
-        'ISOLATE': params.ISOLATE,
-        'timed_CE': timed_coupling_strength,
-        'ml_z_bar_scale': params.ML_Z_BAR_SCALE,
-        'ml_z_bar_offset': params.ML_Z_BAR_OFFSET,
-    }
+    N2 = NeuronGroup(sim_namespace['num_cells'], pop2_eqs, method='euler',
+                     threshold=params_dict['ML_THRESHOLD'], reset='',
+                     namespace=pop2_namespace, refractory=params_dict['ML_REFRACTORY_CONDITION'])
 
-    N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler',
-                     threshold=params.ML_THRESHOLD, reset='',
-                     namespace=pop2_namespace, refractory=params.ML_REFRACTORY_CONDITION)
-
-    N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
-           randn(params.NUM_CELLS) * params.W_MAX * volt
+    N2.v = pop2_namespace['E_L'] * np.ones(sim_namespace['num_cells']) + \
+           randn(sim_namespace['num_cells']) * pop2_namespace['Wmax'] * volt
     N2.n = 'n_inf'
 
     # Population 2 Averaging
     inh_averaging_eqs ='''
     x_bar_post = x_pre / num_cells : 1 (summed)
     '''
-    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs, namespace={'num_cells': params.NUM_CELLS})
+    gap_junctions_2 = Synapses(N2, N2, inh_averaging_eqs, namespace={'num_cells': sim_namespace['num_cells']})
     gap_junctions_2.connect()
 
 
     # --- Synapses ---
     syn_namespace = {
-        'Tmax': params.SYN_TMAX,
-        'Vt': params.SYN_VT,
-        'Kp': params.SYN_KP,
-        'tau_wpre': params.TAU_WPRE,
-        'tau_ca': params.TAU_CA,
-        'theta_ltd_start': params.THETA_LTD_START,
-        'theta_ltd_end': params.THETA_LTD_END,
-        'theta_ltp_start': params.THETA_LTP_START,
-        'A_ltp': params.A_LTP,
-        'A_ltd': params.A_LTD,
-        'timed_G_intra': g_intra_override if g_intra_override is not None else timed_G_intra,
-        'timed_G_inter': g_inter_override if g_inter_override is not None else timed_G_inter,
-        'ca_sigmoid_shift': params.CA_SIGMOID_SHIFT,
-        'ca_sigmoid_slope': params.CA_SIGMOID_SLOPE,
+        'Tmax': params_dict['SYN_TMAX'],
+        'Vt': params_dict['SYN_VT'],
+        'Kp': params_dict['SYN_KP'],
+        'tau_wpre': params_dict['TAU_WPRE'],
+        'tau_ca': params_dict['TAU_CA'],
+        'theta_ltd_start': params_dict['THETA_LTD_START'],
+        'theta_ltd_end': params_dict['THETA_LTD_END'],
+        'theta_ltp_start': params_dict['THETA_LTP_START'],
+        'A_ltp': params_dict['A_LTP'],
+        'A_ltd': params_dict['A_LTD'],
+        'timed_G_intra': timed_G_intra,
+        'timed_G_inter': timed_G_inter,
+        'ca_sigmoid_shift': params_dict['CA_SIGMOID_SHIFT'],
+        'ca_sigmoid_slope': params_dict['CA_SIGMOID_SLOPE'],
+        'E_exc': params_dict['SYN_E_EXC'],
+        'alpha_exc': params_dict['SYN_ALPHA_EXC'],
+        'beta_exc': params_dict['SYN_BETA_EXC'],
+        'E_inh': params_dict['SYN_E_INH'],
+        'alpha_inh': params_dict['SYN_ALPHA_INH'],
+        'beta_inh': params_dict['SYN_BETA_INH'],
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
@@ -142,10 +159,9 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
         beta : second ** -1
     '''
 
-
     wpre_term = 'Wpre' if cb_on else '1'
 
-    # S2_to_2: pre=Pop2, post=Pop2
+    # S1_to_1: pre=Pop1, post=Pop1
     intra_syn_eqs = f'''
     I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
@@ -155,36 +171,34 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
     I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
-
-
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect()
-    S1_to_1.E = params.SYN_E_EXC
-    S1_to_1.alpha = params.SYN_ALPHA_EXC
-    S1_to_1.beta = params.SYN_BETA_EXC
+    S1_to_1.E = syn_namespace['E_exc']
+    S1_to_1.alpha = syn_namespace['alpha_exc']
+    S1_to_1.beta = syn_namespace['beta_exc']
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
-    S1_to_2.E = params.SYN_E_EXC
-    S1_to_2.alpha = params.SYN_ALPHA_EXC
-    S1_to_2.beta = params.SYN_BETA_EXC
+    S1_to_2.E = syn_namespace['E_exc']
+    S1_to_2.alpha = syn_namespace['alpha_exc']
+    S1_to_2.beta = syn_namespace['beta_exc']
 
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect()
-    S2_to_2.E = params.SYN_E_INH
-    S2_to_2.alpha = params.SYN_ALPHA_INH
-    S2_to_2.beta = params.SYN_BETA_INH
+    S2_to_2.E = syn_namespace['E_inh']
+    S2_to_2.alpha = syn_namespace['alpha_inh']
+    S2_to_2.beta = syn_namespace['beta_inh']
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
-    S2_to_1.E = params.SYN_E_INH
-    S2_to_1.alpha = params.SYN_ALPHA_INH
-    S2_to_1.beta = params.SYN_BETA_INH
+    S2_to_1.E = syn_namespace['E_inh']
+    S2_to_1.alpha = syn_namespace['alpha_inh']
+    S2_to_1.beta = syn_namespace['beta_inh']
 
     # Don't record transient period
-    run(params.TRANSIENT*second)
+    run(sim_namespace['transient']*second)
 
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
@@ -195,5 +209,5 @@ def run_sim(cb_on=True, data_dir=None, g_intra_override=None, g_inter_override=N
     M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca', 'u'], record=True)
 
     # Run
-    run(params.SIM_DURATION)
-    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on, data_dir=data_dir)
+    run(sim_namespace['sim_duration'])
+    data_processing.save_data(filepaths, params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on)

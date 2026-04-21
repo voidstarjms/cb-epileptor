@@ -29,6 +29,11 @@ def main():
     params.COUPLING_STRENGTH = args.ce
     params.HR_X_NAUGHT = args.x0
 
+    params_dict = {
+        k: v for k, v in vars(params).items()
+        if k.isupper() and isinstance(v, (int, float, str, bool, list, np.ndarray, Quantity))
+    }
+
     job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_r{args.realization}'
 
     # Unique cache dir per job prevents parallel Condor jobs from colliding on C++ compilation
@@ -45,10 +50,10 @@ def main():
     os.makedirs(job_data_dir, exist_ok=True)
 
     # Run simulation — save_data writes to job_data_dir/output_data.pkl
-    run_sim(data_dir=job_data_dir)
+    run_sim(params_dict, job_data_dir)
 
     # Load results
-    data = data_processing.load_sim_data(data_dir=job_data_dir)
+    data = data_processing.load_sim_data(job_data_dir)
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
@@ -73,10 +78,10 @@ def main():
     # Save debug plot
     debug_dir = os.path.join('figures', 'sweep_debug')
     os.makedirs(debug_dir, exist_ok=True)
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], params.NUM_CELLS, 0)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], params.NUM_CELLS, 0)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2,
-                     params.NUM_CELLS, params.SIM_DURATION / second,
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], params_dict['NUM_CELLS'])
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], params_dict['NUM_CELLS'])
+    ph.standard_plot(params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
+                     params_dict['NUM_CELLS'], params_dict['SIM_DURATION'] / second,
                      save_path=os.path.join(debug_dir, f'{job_id}.png'),
                      show=False)
 

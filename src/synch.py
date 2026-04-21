@@ -1,15 +1,16 @@
 
 import numpy as np
 import scipy
+from typing import Tuple
 
 
-def autocorrelate(data):
+def autocorrelate(data: np.ndarray) -> Tuple[float, np.ndarray, np.ndarray]:
     # apply gaussian smoothing
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
     chi, autocorr, lag = synchrony_stats(smoothed_data)
     return chi, autocorr, lag
 
-def synchrony_stats(data, maxlags=3000):
+def synchrony_stats(data: np.ndarray, maxlags: int = 3000) -> Tuple[float, np.ndarray, np.ndarray]:
     '''
     Synchrony measures
 
@@ -33,14 +34,11 @@ def synchrony_stats(data, maxlags=3000):
 
     mean_subtract=data_pop - np.mean(data_pop)
     autocorr=scipy.signal.correlate(mean_subtract, mean_subtract, mode='same')
-    print(mean_subtract.shape)
-    print(data_pop.shape)
-    print(autocorr.shape)
     lag = scipy.signal.correlation_lags(len(mean_subtract), len(mean_subtract), mode='same')
     return chi, autocorr, lag
 
 
-def KOP(neuron_idx, spike_times, duration):
+def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     phase = compute_phase(neuron_idx, spike_times, duration)
     Z = np.mean(np.exp(1j * phase), axis=0)
 
@@ -51,7 +49,7 @@ def KOP(neuron_idx, spike_times, duration):
     return Z, r, psi
 
     
-def compute_phase(neuron_idx, spike_times, duration):
+def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> np.ndarray:
     time_bin_size = 0.001 # 0.001 of a second = millisecond
     # Uniform discritized representation of time. 
     # All oscillators will be mapped to this scale
