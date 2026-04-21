@@ -9,7 +9,7 @@ import pickle
 import numpy as np
 from collections import defaultdict
 
-import plot_synchrony as ps
+import plotting.sync_heatmap as ps
 
 results_dir = os.path.join('data', 'results')
 

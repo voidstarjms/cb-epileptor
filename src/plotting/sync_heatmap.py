@@ -1,37 +1,34 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import config
 
-FIGURES_DIR = config.FIGURES_DIR
-
-def plot_synchrony(chi_mean, chi_sd,
+def plot_synchrony(filepaths, chi_mean, chi_sd,
                    param1_values, param2_values,
                    param1_label, param2_label,
                    run_num=1):
 
-    plot_synchrony_single(chi_mean, param1_values, param2_values,
+    plot_synchrony_single(filepaths, chi_mean, param1_values, param2_values,
                           param1_label, param2_label,
                           title=r'Synchrony $\chi$',
                           vmin=0, vmax=1,
                           save_name=f'{run_num}_synchrony_chi_mean.png')
 
     sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
-    plot_synchrony_single(chi_sd, param1_values, param2_values,
+    plot_synchrony_single(filepaths, chi_sd, param1_values, param2_values,
                           param1_label, param2_label,
                           title=r'SD of $\chi$',
                           vmin=0, vmax=sd_max,
                           save_name=f'{run_num}_synchrony_chi_sd.png')
 
 
-def plot_synchrony_single(chi_matrix, param1_values, param2_values,
+def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
                           param1_label, param2_label,
                           title=r'Synchrony $\chi$',
                           vmin=0, vmax=1,
                           save_name='synchrony_single.png'):
-    
-    if not os.path.exists(FIGURES_DIR):
-        os.makedirs(FIGURES_DIR)
+
+    if not os.path.exists(filepaths.figures_dir):
+        os.makedirs(filepaths.figures_dir)
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
 
@@ -46,7 +43,7 @@ def plot_synchrony_single(chi_matrix, param1_values, param2_values,
     fig.colorbar(im, ax=ax, pad=0.02)
 
     fig.tight_layout()
-    filepath = os.path.join(FIGURES_DIR, save_name)
+    filepath = os.path.join(filepaths.figures_dir, save_name)
     fig.savefig(filepath, dpi=200, bbox_inches='tight')
     plt.show()
     print(f"Saved to {filepath}")

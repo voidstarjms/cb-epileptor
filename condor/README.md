@@ -50,6 +50,7 @@ Confirm it completes without errors and that a `.pkl` appears in `src/data/resul
 ```
 condor_submit condor/condor.sub
 ```
+This command runs 64 instances of run_single_sim.py in parallel.
 Jobs will initially appear as idle (`I`) — this is normal. Condor is queuing them
 and will assign machines as they become available. Monitor with:
 ```
