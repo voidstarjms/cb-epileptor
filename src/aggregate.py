@@ -33,13 +33,17 @@ print(f"Loaded {len(all_results)} job results")
 # Reconstruct param axes from results
 ce_values = sorted(set(round(r['ce'], 6) for r in all_results))
 x0_values = sorted(set(round(r['x0'], 6) for r in all_results))
+Gintra_values = sorted(set(round(r['Gintra'], 6) for r in all_results))
+Ginter_values = sorted(set(round(r['Ginter'], 6) for r in all_results))
 print(f"CE values  ({len(ce_values)}): {[round(v,3) for v in ce_values]}")
 print(f"X0 values ({len(x0_values)}): {[round(v,3) for v in x0_values]}")
+print(f"Gintra values ({len(Gintra_values)}): {[round(v,3) for v in Gintra_values]}")
+print(f"Ginter values ({len(Ginter_values)}): {[round(v,3) for v in Ginter_values]}")
 
-# Group chi values by (ce, x0) across realizations
+# Group chi values by (ce, x0, Gintra, Ginter) across realizations
 chi_by_point = defaultdict(list)
 for r in all_results:
-    key = (round(r['ce'], 6), round(r['x0'], 6))
+    key = (round(r['ce'], 6), round(r['x0'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
     chi_by_point[key].append(r['chi'])
 
 # Build mean and SD grids — shape: (len(x0), len(ce))

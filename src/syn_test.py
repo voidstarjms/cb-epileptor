@@ -4,8 +4,9 @@ import numpy as np
 import argparse
 import os
 import config
-import params 
-import plotting as ph 
+import params as params 
+import plotting as ph
+import synapse_plotting as syn_plt
 import synch as syn
 import data_processing
 import plot_synchrony as ps
@@ -14,63 +15,64 @@ DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR
 OUTPUT_DATA_FILE = config.OUTPUT_DATA_FILE
 
-def run_sim(cb_on=True):
+# Setup timed arrays 
+x_naught_vals = [-2.5]
+coupling_vals = [0.1]
+
+G_inter_vals = [0.2] * uS
+G_intra_vals = [0.1] * uS
+
+x_naught_dt = params.SIM_DURATION//len(x_naught_vals)
+coupling_dt = params.SIM_DURATION//len(coupling_vals)
+
+G_inter_dt = params.SIM_DURATION//len(G_inter_vals)
+G_intra_dt = params.SIM_DURATION//len(G_intra_vals)
+
+timed_x_naught = TimedArray(x_naught_vals, dt=x_naught_dt)
+timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
+
+timed_G_inter = TimedArray(G_inter_vals, dt=G_inter_dt)
+timed_G_intra = TimedArray(G_intra_vals, dt=G_intra_dt)
+
+def run_sim():
     # Setup Simulation
     defaultclock.dt = params.TAU_CLOCK / params.DT_SCALING
     print("defaultclock.dt is: ", defaultclock.dt)
 
-    # Build timed arrays from current params so sweep changes are picked up each call
-    x_naught_vals = [params.HR_X_NAUGHT] #[-4.5, -2.5, -2.5, -4.5, -4.5]
-    coupling_vals = [params.COUPLING_STRENGTH] #[0, 0, 0.1, 0.1, 0]
-    G_inter_vals = [1, 4, 4, 1, 1] * uS #params.G_INTER
-    G_intra_vals = [0.5, 0.5, 2, 2, 0.5] * uS #params.G_INTRA
 
-    x_naught_dt = params.SIM_DURATION // len(x_naught_vals)
-    coupling_dt = params.SIM_DURATION // len(coupling_vals)
-    G_inter_dt = params.SIM_DURATION // len(G_inter_vals)
-    G_intra_dt = params.SIM_DURATION // len(G_intra_vals)
-
-    timed_x_naught = TimedArray(x_naught_vals, dt=x_naught_dt)
-    timed_coupling_strength = TimedArray(coupling_vals, dt=coupling_dt)
-    timed_G_inter = TimedArray(G_inter_vals, dt=G_inter_dt)
-    timed_G_intra = TimedArray(G_intra_vals, dt=G_intra_dt)
-
-
+    
     # --- Population 1: Hindmarsh-Rose ---
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + ISOLATE * (timed_CE(t) * (x_bar - x)
-        + Wmax * xi * sqrt(second)
-        + sigma_1 * (I_syn_intra + I_syn_inter) / I_scale)) / tau : 1
+        + ISOLATE * (sigma_1 * (I_syn_intra + I_syn_inter) / amp)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x0(t)) - z_bar) : 1
+    dz/dt = r * (s * (x - timed_x_naught(t)) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
     x2_bar : 1
     I_syn_intra : amp
     I_syn_inter : amp
+    I_app_1 : 1
     '''
 
     pop1_namespace = {
         'a': params.HR_A, 'b': params.HR_B, 'c': params.HR_C, 
-        'd': params.HR_D, 's': params.HR_S, 'I_app_1': params.HR_I_APP,
+        'd': params.HR_D, 's': params.HR_S,
         'x_naught': params.HR_X_NAUGHT, 'r': params.HR_R, 
         'sigma_1': params.HR_SIGMA, 'tau': params.TAU_CLOCK,
-        'ISOLATE': params.ISOLATE, 
-        'Wmax': params.W_MAX,
-        'I_scale': 0.05*uamp,
-        'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
+        'ISOLATE': params.ISOLATE, 'coupling': params.COUPLING_STRENGTH,
+        'Wmax': params.W_MAX
     }
 
-    # CHANGE HOW X0 IS LOADED - SHOULD USE TIMED ARRAY[0]
-    N1 = NeuronGroup(params.NUM_CELLS, pop1_eqs, method='euler', 
+    N1 = NeuronGroup(2, pop1_eqs, method='euler', 
                      threshold=params.HR_THRESHOLD, reset='',
                      namespace=pop1_namespace, refractory=params.HR_REFRACTORY_CONDITION)
     
-    N1.x = np.ones(params.NUM_CELLS) * (params.HR_X_NAUGHT+1.5) + randn(params.NUM_CELLS) * params.W_MAX
+    N1.x = np.ones(2) * (params.HR_X_NAUGHT+1.5)# + randn(2) * params.W_MAX
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
+    N1.I_app_1 = np.array([0, params.HR_I_APP])
 
     # Population 1 Averaging
     exc_averaging_eqs ='''
@@ -84,9 +86,7 @@ def run_sim(cb_on=True):
     # --- Population 2: Morris-Lecar ---    
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
-        + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + timed_CE(t) * (x_bar - x) - 0.3 * (z_bar - 6))
-        + (I_syn_intra + I_syn_inter))) / Cm : volt
+        + ISOLATE * ((I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
     m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
@@ -99,26 +99,27 @@ def run_sim(cb_on=True):
     z_bar : 1
     I_syn_inter : amp
     I_syn_intra : amp
+    I_app_2 : amp
     '''
     
     pop2_namespace = {
-        'Cm': params.ML_CM, 'I_app_2': params.ML_I_APP, 'gL': params.ML_GL,
+        'Cm': params.ML_CM, 'gL': params.ML_GL,
         'E_L': params.ML_E_L, 'gK': params.ML_GK, 'E_K': params.ML_E_K,
         'gCa': params.ML_GCA, 'E_Ca': params.ML_E_CA, 
         'v1': params.ML_V1, 'v2': params.ML_V2, 'v3': params.ML_V3, 'v4': params.ML_V4,
         'phi': params.ML_PHI, 'sigma_2': params.ML_SIGMA,
-        'Wmax': params.W_MAX, 
-        'ISOLATE': params.ISOLATE,
-        'timed_CE': timed_coupling_strength,
+        'Wmax': params.W_MAX, 'coupling': params.COUPLING_STRENGTH,
+        'ISOLATE': params.ISOLATE
     }
 
-    N2 = NeuronGroup(params.NUM_CELLS, pop2_eqs, method='euler', 
+    N2 = NeuronGroup(2, pop2_eqs, method='euler', 
                      threshold=params.ML_THRESHOLD, reset='',
                      namespace=pop2_namespace, refractory=params.ML_REFRACTORY_CONDITION)
     
-    N2.v = params.ML_E_L * np.ones(params.NUM_CELLS) + \
-           randn(params.NUM_CELLS) * params.W_MAX * volt
+    N2.v = params.ML_E_L * np.ones(2)# + \
+           #randn(2) * params.W_MAX * volt
     N2.n = 'n_inf'
+    N2.I_app_2 = np.array([0, params.ML_I_APP]) * uA
     
     # Population 2 Averaging
     inh_averaging_eqs ='''
@@ -140,111 +141,72 @@ def run_sim(cb_on=True):
         'theta_ltp_start': params.THETA_LTP_START,
         'A_ltp': params.A_LTP,
         'A_ltd': params.A_LTD,
-        'timed_G_intra': timed_G_intra, 'timed_G_inter': timed_G_inter
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
+    syn_eqs ='''
+    du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
+    T = Tmax / (1 + exp(-(x_bar_pre * (syn_input_scale) * mvolt - Vt) / Kp)) : mM
+    plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
+    dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
+    dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
+    sigma_Ca = 1 / (1 + exp(-(x_post + 0.8) / 0.2)) : 1
 
-    syn_eqs_pre = '''
-        du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
-        T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
-        plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
-        dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-        dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
-        sigma_Ca = 1 / (1 + exp(-(x_post + 0.8) / 0.2)) : 1
-
-        E : volt
-        alpha : mmolar ** -1 * second ** -1
-        beta : second ** -1
+    E : volt
+    alpha : mmolar ** -1 * second ** -1
+    beta : second ** -1
     '''
 
+    intra_syn_eqs = '''
+    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
+    ''' + syn_eqs
 
-    wpre_term = 'Wpre' if cb_on else '1'
-
-    # S2_to_2: pre=Pop2, post=Pop2
-    intra_syn_eqs = f'''
-    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
-    ''' + syn_eqs_pre
-
-    # S1_to_2: pre=Pop1, post=Pop2
-    inter_syn_eqs = f'''
-    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
-    ''' + syn_eqs_pre
-
-
+    inter_syn_eqs = '''
+    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * (syn_input_scale) * mvolt - E)) * Wpre : amp (summed)
+    ''' + syn_eqs
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_1.connect()
+    S1_to_1.connect(i=0, j=1)
     S1_to_1.E = params.SYN_E_EXC
     S1_to_1.alpha = params.SYN_ALPHA_EXC
     S1_to_1.beta = params.SYN_BETA_EXC
-
-    S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_2.connect()
-    S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
-    S1_to_2.E = params.SYN_E_EXC
-    S1_to_2.alpha = params.SYN_ALPHA_EXC
-    S1_to_2.beta = params.SYN_BETA_EXC
+    S1_to_1.Wpre = 1
+    S1_to_1.Ca = 0
 
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S2_to_2.connect()
+    S2_to_2.connect(i=0, j=1)
     S2_to_2.E = params.SYN_E_INH
     S2_to_2.alpha = params.SYN_ALPHA_INH
     S2_to_2.beta = params.SYN_BETA_INH
-
-    S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
-    S2_to_1.connect()
-    S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
-    S2_to_1.E = params.SYN_E_INH
-    S2_to_1.alpha = params.SYN_ALPHA_INH
-    S2_to_1.beta = params.SYN_BETA_INH
-
+    S2_to_2.Wpre = 1
+    S2_to_2.Ca = 0
+    
     # Don't record transient period
     run(params.TRANSIENT*second)
 
-    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
+    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
 
-    M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca', 'u'], record=True)
+    M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca'], record=True)
+    M_S2_2 = StateMonitor(S2_to_2, ['Wpre', 'Ca'], record=True)
 
     # Run
     run(params.SIM_DURATION)
-    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on)
+    data_processing.save_data(M_N1, M_N2, SM_N1, SM_N2, M_S1_1, M_S2_2)
 
-def plot_output(cb_on=True):
+def plot_output():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
     
     data = data_processing.load_sim_data()
     res = data['results']
+    syn_plt.plot_wpre_and_calcium(res)
 
-    t = res['t']
-    x1 = res['x1']
-    x2 = res['x2']
-    if cb_on:
-        wpre = res['syn_wpre'][0]
-        u = res['u'][0]
-        Ca = res['Ca'][0]
-        ph.plot_wpre(t, x1, wpre, u, Ca)
-
-
-    # Retrieve parameters from saved metadata
-    saved_params = data['params']
-    num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
-    # ph.plot_power_spec(x1, x2)
-    # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
-
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
-                    )
-
-
-def plot_output_full(cb_on=True):
+def plot_output_full():
     if not os.path.exists(FIGURES_DIR):
         os.makedirs(FIGURES_DIR)
     
@@ -254,36 +216,22 @@ def plot_output_full(cb_on=True):
     x1 = res['x1']
     y1 = res['y1']
     z1 = res['z1']
-    I_syn_inter = res['I_syn_inter_1']
-    I_syn_intra = res['I_syn_intra_1']
+    I_syn_inter_1 = res['I_syn_inter_1']
     x2 = res['x2']
     n = res['n2']
     
-    if cb_on:
-        wpre = res['syn_wpre'][0]
-        u = res['u'][0]
-        Ca = res['Ca'][0]
-        ph.plot_wpre(t, x1, wpre, u, Ca)
     # Retrieve parameters from saved metadata
     saved_params = data['params']
     num_cells = saved_params.get('NUM_CELLS', params.NUM_CELLS)
     
     # Generate spike matrices using loaded spike data
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], num_cells, 0)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], num_cells, 0)
 
 
-    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter)
+    ph.plot_hr_single(t, x1, y1, z1, I_syn_inter_1)
     ph.plot_ml_single(t, x2, n)
-    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT, 
-                    timed_g_inter=timed_G_inter, timed_g_intra=timed_G_intra, timed_coupling_strength=timed_coupling_strength, timed_x_naught=timed_x_naught)
-    
-    print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0]/amp)))
-    print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0]/amp)))
-
-    print("I_syn_inter min (raw amps):", np.min((I_syn_inter[0]/amp)))
-    print("I_syn_intra min (raw amps):", np.min((I_syn_intra[0]/amp)))
-
+    ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2, num_cells, params.SIM_DURATION/second+params.TRANSIENT)
 
 
 def analyze_populations():
@@ -352,18 +300,12 @@ def synchrony_sweep(quick=False, plot_mode='both'):
     """
     import pickle
 
-    param1_values = np.linspace(0.0, 0.5, 8)   # CE (coupling strength)
-    param2_values = np.linspace(-4.5, -2.5, 8)  # X0 (epileptogenicity)
-
+    param1_values = np.linspace(0.05, 0.5, 8)
+    param2_values = np.linspace(0.05, 0.5, 8)
+    
     n_realizations = 1
 
     chi_grid = np.full((len(param2_values), len(param1_values), n_realizations), np.nan)
-
-    run_num = 1
-    while os.path.exists(os.path.join(FIGURES_DIR, f'{run_num}_sweep_debug')):
-        run_num += 1
-    sweep_plot_dir = os.path.join(FIGURES_DIR, f'{run_num}_sweep_debug')
-    os.makedirs(sweep_plot_dir)
 
     total = len(param1_values) * len(param2_values) * n_realizations
     count = 0
@@ -372,31 +314,19 @@ def synchrony_sweep(quick=False, plot_mode='both'):
         for i, p1 in enumerate(param1_values):
             for k in range(n_realizations):
                 count += 1
-                print(f"[{count}/{total}] CE={p1:.3f}, X0={p2:.3f}, realization {k+1}")
+                print(f"[{count}/{total}] COUPLING_STRENGTH={p1:.3f}, G_INTER={p2:.3f}, realization {k+1}")
 
                 params.COUPLING_STRENGTH = p1
-                params.HR_X_NAUGHT = p2
+                params.G_INTER = p2 * uS
 
                 start_scope()
                 run_sim()
 
                 data = data_processing.load_sim_data()
-                res = data['results']
-                x1 = res['x1']
-                x2 = res['x2']
-                t  = res['t']
-                spike_matrix_1 = data_processing.create_spike_matrix_histo(res['spikes_n1'], params.NUM_CELLS, 0)
-                spike_matrix_2 = data_processing.create_spike_matrix_histo(res['spikes_n2'], params.NUM_CELLS, 0)
-
-                chi, _, _ = syn.autocorelate(x1)
+                x1 = data['results']['x1']
+                chi, _ = syn.autocorelate(x1)
                 chi_grid[j, i, k] = chi
                 print(f"  chi = {chi:.4f}")
-
-                plot_name = f'CE_{p1:.3f}_X0_{p2:.3f}_r{k+1}.png'
-                ph.standard_plot(t, x1, x2, spike_matrix_1, spike_matrix_2,
-                                 params.NUM_CELLS, params.SIM_DURATION / second,
-                                 save_path=os.path.join(sweep_plot_dir, plot_name),
-                                 show=False)
 
     # Save raw results
     sweep_results = {
@@ -404,7 +334,7 @@ def synchrony_sweep(quick=False, plot_mode='both'):
         'param1_values': param1_values,
         'param2_values': param2_values,
         'param1_name': 'COUPLING_STRENGTH',
-        'param2_name': 'HR_X_NAUGHT',
+        'param2_name': 'G_INTER',
         'n_realizations': n_realizations,
     }
     sweep_path = os.path.join(DATA_DIR, 'sweep_results.pkl')
@@ -414,27 +344,26 @@ def synchrony_sweep(quick=False, plot_mode='both'):
 
     chi_mean = np.nanmean(chi_grid, axis=2)
     chi_sd = np.nanstd(chi_grid, axis=2)
-    p1_label = r'$C_E$ (coupling strength)'
-    p2_label = r'$x_0$ (epileptogenicity)'
+    p1_label = r'coupling strength'
+    p2_label = r'$g_{inter}$ ($\mu$S)'
 
     if plot_mode == 'chi':
         ps.plot_synchrony_single(chi_mean, param1_values, param2_values,
                                  p1_label, p2_label,
                                  title=r'Synchrony $\chi$',
                                  vmin=0, vmax=1,
-                                 save_name=f'{run_num}_synchrony_chi_mean.png')
+                                 save_name='synchrony_chi_mean.png')
     elif plot_mode == 'sd':
         sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
         ps.plot_synchrony_single(chi_sd, param1_values, param2_values,
                                  p1_label, p2_label,
                                  title=r'SD of $\chi$',
                                  vmin=0, vmax=sd_max,
-                                 save_name=f'{run_num}_synchrony_chi_sd.png')
+                                 save_name='synchrony_chi_sd.png')
     else:
         ps.plot_synchrony(chi_mean, chi_sd,
                           param1_values, param2_values,
-                          p1_label, p2_label,
-                          run_num=run_num)
+                          p1_label, p2_label)
 
 
 def main():
@@ -445,31 +374,24 @@ def main():
     parser.add_argument('--sweep-plot', type=str, default='both',
                         choices=['chi', 'sd', 'both'],
                         help="Which synchrony plot to generate: 'chi', 'sd', or 'both'.")
-    parser.add_argument('--cb', action='store_true', default=True,
-                        help="Enable CB synapses (default: enabled)")
-    parser.add_argument('--no-cb', dest='cb', action='store_false',
-                        help="Disable CB synapses")
     args = parser.parse_args()
     run_mode = args.mode
-    cb_on = args.cb
 
     if ('r' in run_mode):
         print("Running simulation...")
-        run_sim(cb_on)
+        run_sim()
         print("Simulation complete.")
     if ('p' in run_mode):
         print("Generating plots...")
         if 'f' in run_mode:
-            plot_output_full(cb_on)
+            plot_output_full()
         else:
-            plot_output(cb_on)
+            plot_output()
         print(f"Plots saved to 'figures' directory.")
     if ('a' in run_mode):
         analyze_populations()
     if ('t' in run_mode):
         test()
-    if ('s' in run_mode):
-        synchrony_sweep(plot_mode=args.sweep_plot)
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 from brian2 import *
 
 # --- Simulation Control ---
-SIM_DURATION = 120 * second
+SIM_DURATION = 20 * second
 NUM_CELLS = 10
 TAU_CLOCK = 1 * msecond
 DT_SCALING = 20  # defaultclock.dt = TAU_CLOCK / DT_SCALING
@@ -10,8 +10,8 @@ TRANSIENT = 10
 # --- Coupling & Global Logic ---
 # ISOLATE = 0: decoupled, 1: coupled
 ISOLATE = 1
-COUPLING_STRENGTH = 0.1 # - Timed array
-W_MAX = 0.006 
+COUPLING_STRENGTH = 0.05 # - Timed array
+W_MAX = 0.012
 
 # --- Population 1: Hindmarsh-Rose (HR) ---
 HR_A = 1.0
@@ -19,7 +19,7 @@ HR_B = 3.0
 HR_C = 1.0
 HR_D = 5.0
 HR_S = 4.0
-HR_I_APP = 6.85
+HR_I_APP = 6
 HR_X_NAUGHT = -3.5 # - timed array
 HR_R = 0.00002 / msecond
 HR_SIGMA = 1/50
@@ -28,7 +28,7 @@ HR_REFRACTORY_CONDITION = 'x >= 0'
 
 # --- Population 2: Morris-Lecar (ML) ---
 ML_CM = 20 * ufarad
-ML_I_APP = 45 * uamp
+ML_I_APP = 37 * uamp
 ML_V1 = -1.2 * mvolt
 ML_V2 = 18 * mvolt
 ML_V3 = 12 * mvolt
@@ -60,14 +60,14 @@ SYN_BETA_INH = 0.18 / msecond
 SYN_E_INH = -80 * mV
 
 # Conductances - Replaced with Timed arrays
-# G_INTRA = 0.1 * uS  
-# G_INTER = 0.2 * uS
+G_INTRA = [0.5] * uS #[0.5, 2, 2, 0.5, 0.5] * uS
+G_INTER = [1] * uS #[1, 1, 4, 4, 1] * uS
 
 # Plasticity
-THETA_LTD_START = 0.05 # 0.05
+THETA_LTD_START = 0.25 # 0.05
 THETA_LTD_END = 0.5 # 0.1
-THETA_LTP_START = 0.55 # 0.15
-A_LTD = 1
+THETA_LTP_START = 0.75 # 0.15
+A_LTD = 0.5
 A_LTP = 2
 
 TAU_WPRE = 5 * second
