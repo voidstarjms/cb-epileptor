@@ -63,27 +63,27 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
                 'u':        np.asarray(M_S1_1.u),
                 'Ca':       np.asarray(M_S1_1.Ca),
             })
-        # e->i (HR->ML)
-        if M_S1_2 is not None:
-            sim_data['results'].update({
-                'S1_2_wpre': np.asarray(M_S1_2.Wpre),
-                'S1_2_u':    np.asarray(M_S1_2.u),
-                'S1_2_Ca':   np.asarray(M_S1_2.Ca),
-            })
-        # i->e (ML->HR)
-        if M_S2_1 is not None:
-            sim_data['results'].update({
-                'S2_1_wpre': np.asarray(M_S2_1.Wpre),
-                'S2_1_u':    np.asarray(M_S2_1.u),
-                'S2_1_Ca':   np.asarray(M_S2_1.Ca),
-            })
-        # i->i (ML->ML)
-        if M_S2_2 is not None:
-            sim_data['results'].update({
-                'S2_2_wpre': np.asarray(M_S2_2.Wpre),
-                'S2_2_u':    np.asarray(M_S2_2.u),
-                'S2_2_Ca':   np.asarray(M_S2_2.Ca),
-            })
+        # # e->i (HR->ML)
+        # if M_S1_2 is not None:
+        #     sim_data['results'].update({
+        #         'S1_2_wpre': np.asarray(M_S1_2.Wpre),
+        #         'S1_2_u':    np.asarray(M_S1_2.u),
+        #         'S1_2_Ca':   np.asarray(M_S1_2.Ca),
+        #     })
+        # # i->e (ML->HR)
+        # if M_S2_1 is not None:
+        #     sim_data['results'].update({
+        #         'S2_1_wpre': np.asarray(M_S2_1.Wpre),
+        #         'S2_1_u':    np.asarray(M_S2_1.u),
+        #         'S2_1_Ca':   np.asarray(M_S2_1.Ca),
+        #     })
+        # # i->i (ML->ML)
+        # if M_S2_2 is not None:
+        #     sim_data['results'].update({
+        #         'S2_2_wpre': np.asarray(M_S2_2.Wpre),
+        #         'S2_2_u':    np.asarray(M_S2_2.u),
+        #         'S2_2_Ca':   np.asarray(M_S2_2.Ca),
+        #     })
 
     filepath = os.path.join(filepaths.data_dir, _OUTPUT_DATA_FILE)
     with open(filepath, 'wb') as f:

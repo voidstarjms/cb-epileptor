@@ -9,6 +9,7 @@ import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from simulation.core import run_sim
+from param_loader import load_params
 from typing import Dict
 
 
@@ -126,26 +127,9 @@ REQUIRED_PARAMS = {
 }
 
 
-def load_params(params_file: str) -> Dict:
-    """Dynamically load a params .py file, validate all required keys are present,
-    and return module-level names as a plain dict."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("_params", params_file)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    params_dict = {
-        k: v for k, v in vars(mod).items()
-        if k.isupper() and isinstance(v, (int, float, str, bool, list, np.ndarray, Quantity))
-    }
-    missing = REQUIRED_PARAMS - params_dict.keys()
-    if missing:
-        raise ValueError(f"Missing required params in {params_file}: {sorted(missing)}")
-    return params_dict
-
-
 def main() -> None:
     DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = 'parameters/default_params.py'
+    DEFAULT_PARAMS = '../params.yaml'   # simulate.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
@@ -163,6 +147,9 @@ def main() -> None:
     cb_on = args.cb
     params = args.params
     params_dict = load_params(params)
+    missing = REQUIRED_PARAMS - params_dict.keys()
+    if missing:
+        raise ValueError(f"Missing required params in {params}: {sorted(missing)}")
 
     out_dir = args.out_dir
     filepaths = FilePaths(
@@ -173,8 +160,6 @@ def main() -> None:
     if 'r' in run_mode:
         print("Running simulation...")
         os.makedirs(filepaths.data_dir, exist_ok=True)
-        with open(os.path.join(filepaths.data_dir, 'params_file.txt'), 'w') as f:
-            f.write(os.path.abspath(params) + '\n')
         run_sim(filepaths, params_dict, cb_on)
         print("Simulation complete.")
 
