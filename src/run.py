@@ -8,7 +8,7 @@ import synch as syn
 import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
-from simulation.core import run_sim
+from model import run_sim
 from param_loader import load_params
 from typing import Dict
 
@@ -129,7 +129,7 @@ REQUIRED_PARAMS = {
 
 def main() -> None:
     DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = '../params.yaml'   # simulate.py runs from src/; YAML at repo root
+    DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',

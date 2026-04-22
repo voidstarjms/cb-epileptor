@@ -16,7 +16,7 @@ import params
 import data_processing
 import synch as syn
 import plotting.population_plots as ph
-from simulation.core import run_sim
+from model import run_sim
 
 
 def main():
