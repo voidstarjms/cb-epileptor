@@ -1,5 +1,5 @@
 from brian2 import *
-from brian2tools import *
+#from brian2tools import *
 import matplotlib.pyplot as plt
 import os
 import numpy as np

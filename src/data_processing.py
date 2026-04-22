@@ -5,7 +5,7 @@ import params
 import datetime 
 import pickle
 from brian2 import *
-from brian2tools import *
+#from brian2tools import *
 
 DATA_DIR = config.DATA_DIR
 FIGURES_DIR = config.FIGURES_DIR

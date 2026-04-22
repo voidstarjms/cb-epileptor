@@ -49,7 +49,7 @@ for r in all_results:
 # Build mean and SD grids — shape: (len(x0), len(ce))
 chi_grid = np.full((len(x0_values), len(ce_values)), np.nan)
 chi_sd   = np.full((len(x0_values), len(ce_values)), np.nan)
-for (ce, x0), chis in chi_by_point.items():
+for (ce, x0, Gintra, Ginter), chis in chi_by_point.items():
     i = ce_values.index(ce)
     j = x0_values.index(x0)
     chi_grid[j, i] = np.mean(chis)
