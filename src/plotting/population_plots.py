@@ -1,3 +1,4 @@
+"""LFP, rasters, per-pop state traces. standard_plot is the main one."""
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -6,17 +7,35 @@ from typing import Dict, Any
 
 
 def _apply_zoom(axes: list, params_dict: Dict) -> None:
+    """Set the x-axis of all given axes to a 5s window near the end of the sim.
+        INPUT:
+            axes: list of matplotlib Axes.
+            params_dict: needs SIM_DURATION.
+    """
     XMIN, XMAX = params_dict['SIM_DURATION']/second - 15, params_dict['SIM_DURATION']/second - 10
     for ax in axes:
         ax.set_xlim(XMIN, XMAX)
 
 def find_clim(spike_matrix: np.ndarray) -> float:
+    """Max spike count across the matrix, used as the colorbar upper bound.
+        INPUT:
+            spike_matrix: 2D spike-count matrix.
+        RETURN:
+            the max value as a float.
+    """
     return np.max(spike_matrix)
 
 def _vals_to_time_points(vals, t):
-    """Map a timed array value schedule to step-function coordinates over t.
-    For each value, generates a [bin_start, bin_end] time segment paired with
-    [v, v], then concatenates all segments into a full sparse step representation."""
+    """Map a timed-array value schedule to step-function coordinates over t.
+
+    For each value in vals, generates a [bin_start, bin_end] time segment paired
+    with [v, v], then concatenates all segments into a full sparse step representation.
+        INPUT:
+            vals: list/array of values.
+            t: time vector (only t[0] and t[-1] are used to set the span).
+        RETURN:
+            (time_points, value_points): two arrays suitable for ax.plot.
+    """
     n = len(vals)
     bin_size = (t[-1] - t[0]) / n
     time_edges = t[0] + np.arange(n + 1) * bin_size
@@ -29,6 +48,23 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         num_cells: int, sim_duration: float, zoom: bool = False,
         x_naught_vals=None, coupling_vals=None,
         g_intra_vals=None, g_inter_vals=None) -> None:
+    """Weighted-mean LFP + both spike rasters. Adds schedule panels if vals are given.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            params_dict: needs SIM_DURATION and TRANSIENT.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+            x2: (num_cells, time) ML x.
+            spike_matrix_1: HR spike count matrix.
+            spike_matrix_2: ML spike count matrix.
+            num_cells: number of neurons per population.
+            sim_duration: simulation duration in seconds.
+            zoom: if True, apply _apply_zoom after drawing.
+            x_naught_vals: optional x0 schedule; adds an extra panel if paired with coupling_vals.
+            coupling_vals: optional CE schedule; pairs with x_naught_vals.
+            g_intra_vals: optional intra-pop conductance schedule.
+            g_inter_vals: optional inter-pop conductance schedule; pairs with g_intra_vals.
+    """
 
     has_x0_ce = x_naught_vals is not None and coupling_vals is not None
     has_g = g_intra_vals is not None and g_inter_vals is not None
@@ -112,6 +148,18 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
 
 def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarray,
         x: np.ndarray, spike_matrix: np.ndarray, num_cells: int, sim_duration: float, zoom: bool = False) -> None:
+    """Mean x trace above the spike raster for one population (1=HR, else ML).
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            params_dict: used by _apply_zoom when zoom is True.
+            population: 1 for excitatory (HR), anything else for inhibitory (ML).
+            t: time vector.
+            x: (num_cells, time) state variable.
+            spike_matrix: spike count matrix.
+            num_cells: number of neurons.
+            sim_duration: simulation duration in seconds.
+            zoom: if True, apply _apply_zoom after drawing.
+    """
     population_name = ""
     if population == 1:
         population_name = "Excitatory Population"
@@ -148,6 +196,12 @@ def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarra
     plt.show()
 
 def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
+    """x-traces for the first 3 HR neurons.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+    """
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population - Multiple Neurons")
     ax1.plot(t, x1[0])
@@ -163,6 +217,15 @@ def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
 
 def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, I_syn_inter_1: np.ndarray) -> None:
+    """x, y, z, and I_syn_inter for HR neuron 0.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+            y1: (num_cells, time) HR y.
+            z1: (num_cells, time) HR z.
+            I_syn_inter_1: (num_cells, time) inter-pop synaptic current into HR.
+    """
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population Variables - One Neuron")
     ax1.plot(t, x1[0])
@@ -178,6 +241,14 @@ def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray
     plt.show()
 
 def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, z1: np.ndarray) -> None:
+    """Mean x, y, z over all HR neurons.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+            y1: (num_cells, time) HR y.
+            z1: (num_cells, time) HR z.
+    """
     # Calculate the mean across all neurons (axis=0)
     x1_mean = np.mean(x1, axis=0)
     y1_mean = np.mean(y1, axis=0)
@@ -200,6 +271,13 @@ def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, 
     plt.show()
 
 def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray) -> None:
+    """x and n for ML neuron 0.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x2: (num_cells, time) ML x.
+            n2: (num_cells, time) ML gating variable n.
+    """
     # All pop2 variables
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Inhibitory Population Variables - One Neuron")
@@ -212,9 +290,17 @@ def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray
     plt.show()
 
 def plot_ml_mean():
+    """Not implemented."""
     pass
 
 def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> None:
+    """x of neuron 0 from HR and ML, stacked.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+            x2: (num_cells, time) ML x.
+    """
     # One neuron from both pops
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
     fig.suptitle("One Neuron From Excitatory and Inhibitory Populations")
@@ -231,6 +317,16 @@ def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> 
 
 def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, x2: np.ndarray, n: np.ndarray) -> None:
+    """Mean x of HR and ML, stacked. y1, z1, n are unused.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            t: time vector.
+            x1: (num_cells, time) HR x.
+            y1: unused.
+            z1: unused.
+            x2: (num_cells, time) ML x.
+            n: unused.
+    """
     # neurons averaged from both pops
     x1_mean = np.mean(x1, axis=0)
     y1_mean = np.mean(y1, axis=0)

@@ -1,3 +1,4 @@
+"""CLI entry point. Runs the sim, makes plots, prints analysis."""
 import argparse
 import os
 import numpy as np
@@ -21,6 +22,12 @@ class FilePaths:
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Load sim data and make the default plots (LFP + both rasters).
+        INPUT:
+            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -44,6 +51,12 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+        INPUT:
+            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -80,6 +93,12 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
 
 
 def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> None:
+    """Print chi and mean KOP r for both pops. Writes autocorr/KOP plots and a spike dump.
+        INPUT:
+            filepaths: FilePaths. Spike dump goes to data_dir, plots to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            data: dict returned by data_processing.load_sim_data.
+    """
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
@@ -108,6 +127,7 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print(f'r: {np.mean(r)}')
 
 
+# Keys the YAML file must contain. Missing ones raise at startup.
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
     'ISOLATE', 'W_MAX', 'I_SCALE',
@@ -128,6 +148,7 @@ REQUIRED_PARAMS = {
 
 
 def main() -> None:
+    """Parse args and run the phases selected by --mode (r=run, p=plot, a=analyze, f=full plots)."""
     DEFAULT_OUT_DIR = 'output/'
     DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
 
