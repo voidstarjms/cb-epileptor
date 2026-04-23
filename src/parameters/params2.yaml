@@ -1,0 +1,80 @@
+# --- Simulation Control ---
+SIM_DURATION: 120        # seconds  (unit: second)
+NUM_CELLS: 10
+TAU_CLOCK: 1             # ms       (unit: msecond)
+DT_SCALING: 20           # defaultclock.dt = TAU_CLOCK / DT_SCALING
+TRANSIENT: 10            # seconds (unitless, passed as float)
+
+# --- Coupling & Global Logic ---
+# ISOLATE = 0: decoupled, 1: coupled
+ISOLATE: 1
+W_MAX: 0.006
+
+# --- Population 1: Hindmarsh-Rose (HR) ---
+HR_A: 1.0
+HR_B: 3.0
+HR_C: 1.0
+HR_D: 5.0
+HR_S: 4.0
+HR_I_APP: 6
+HR_X_NAUGHT: -3.5
+HR_R: 0.00002            # per ms  (unit: 1/msecond)
+HR_SIGMA: 0.02           # = 1/50
+HR_THRESHOLD: "x > 1.5"
+HR_REFRACTORY_CONDITION: "x >= 0"
+I_SCALE: 0.05            # uA      (unit: uamp)
+NOISE_INIT_OFFSET: 1.5
+
+# --- Population 2: Morris-Lecar (ML) ---
+ML_CM: 20                # uF      (unit: ufarad)
+ML_I_APP: 37             # uA      (unit: uamp)
+ML_V1: -1.2              # mV      (unit: mvolt)
+ML_V2: 18.0              # mV      (unit: mvolt)
+ML_V3: 12.0              # mV      (unit: mvolt)
+ML_V4: 17.4              # mV      (unit: mvolt)
+ML_PHI: 0.067            # per ms  (unit: 1/msecond)
+ML_E_CA: 120.0           # mV      (unit: mvolt)
+ML_E_K: -84.0            # mV      (unit: mvolt)
+ML_E_L: -60.0            # mV      (unit: mvolt)
+ML_GL: 2.0               # mS      (unit: msiemens)
+ML_GCA: 4.0              # mS      (unit: msiemens)
+ML_GK: 8.0               # mS      (unit: msiemens)
+ML_SIGMA: 50             # uA      (unit: uA)
+ML_THRESHOLD: "x > 0.95"
+ML_REFRACTORY_CONDITION: "x >= 0"
+ML_Z_BAR_SCALE: 0.3
+ML_Z_BAR_OFFSET: 6
+
+# --- Synaptic Parameters ---
+SYN_VT: 2                # mV      (unit: mV)
+SYN_KP: 5                # mV      (unit: mV)
+SYN_TMAX: 1              # mM      (unit: mmolar)
+
+# Excitatory (Pop 1)
+SYN_ALPHA_EXC: 1.1       # per (mM·ms)  (unit: 1/(mmolar*msecond))
+SYN_BETA_EXC: 0.19       # per ms       (unit: 1/msecond)
+SYN_E_EXC: 0             # mV           (unit: mV)
+
+# Inhibitory (Pop 2)
+SYN_ALPHA_INH: 5.0       # per (mM·ms)  (unit: 1/(mmolar*msecond))
+SYN_BETA_INH: 0.18       # per ms       (unit: 1/msecond)
+SYN_E_INH: -80           # mV           (unit: mV)
+
+# --- Plasticity ---
+THETA_LTD_START: 0.25
+THETA_LTD_END: 0.5
+THETA_LTP_START: 0.75
+A_LTD: 0.5
+A_LTP: 2
+TAU_WPRE: 5              # s       (unit: second)
+TAU_CA: 200              # ms      (unit: msecond)
+
+# Sigmoid calcium function
+CA_SIGMOID_SHIFT: 0.8
+CA_SIGMOID_SLOPE: 0.2
+
+# --- Timed Array Schedules ---
+X_NAUGHT_VALS: [-2.5]
+COUPLING_VALS: [0]
+G_INTER_VALS: [1]      # uS  (unit: uS)
+G_INTRA_VALS: [0.5]  # uS  (unit: uS)

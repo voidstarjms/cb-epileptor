@@ -4,10 +4,14 @@
 # data
 .npz
 
-src/__pycache__
+**/__pycache__
+**/*.pyc
 src/data
 src/figures
+src/output
 src/current_run.txt
 condor/condor.sub
 condor/logs/*
 !condor/logs/.gitkeep
+*cc.md
+**/.DS_Store

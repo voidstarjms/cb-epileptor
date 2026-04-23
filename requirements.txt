@@ -3,4 +3,4 @@ brian2tools
 matplotlib
 scipy
 numpy
-brian2tools
+pyyaml
