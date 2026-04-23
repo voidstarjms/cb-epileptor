@@ -1,6 +1,6 @@
-"""CLI entry point. Runs the sim, makes plots, prints analysis."""
 import argparse
 import os
+import shutil
 import numpy as np
 from brian2 import *
 from dataclasses import dataclass
@@ -127,10 +127,13 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print(f'r: {np.mean(r)}')
 
 
-# Keys the YAML file must contain. Missing ones raise at startup.
+def _save_params(params_file: str, run_dir: str) -> None:
+    shutil.copy2(params_file, os.path.join(run_dir, os.path.basename(params_file)))
+
+
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
-    'ISOLATE', 'W_MAX', 'I_SCALE',
+    'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
     'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
     'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
     'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
@@ -179,10 +182,12 @@ def main() -> None:
     )
 
     if 'r' in run_mode:
+        os.makedirs(filepaths.data_dir)
+        os.makedirs(filepaths.figures_dir)
+        _save_params(params, out_dir)
         print("Running simulation...")
-        os.makedirs(filepaths.data_dir, exist_ok=True)
         run_sim(filepaths, params_dict, cb_on)
-        print("Simulation complete.")
+        print(f"Simulation complete. Results saved to {out_dir}")
 
     if 'p' in run_mode:
         print("Generating plots...")

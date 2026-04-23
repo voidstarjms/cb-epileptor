@@ -7,6 +7,8 @@ import scipy
 from scipy import signal
 from typing import Dict, Any
 
+import plotting.style  # noqa: F401
+
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     """Overlay raw and Gaussian-smoothed traces for neuron 0, past the transient.

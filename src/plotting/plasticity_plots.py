@@ -5,6 +5,8 @@ import os
 import numpy as np
 from typing import Dict, Any
 
+import plotting.style  # noqa: F401
+
 def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
     """Seven panels: x of two neurons, Wpre, u, Ca, plasticity, and sigma_Ca.
 

@@ -5,6 +5,8 @@ import numpy as np
 from brian2 import *
 from typing import Dict, Any
 
+import plotting.style  # noqa: F401
+
 
 def _apply_zoom(axes: list, params_dict: Dict) -> None:
     """Set the x-axis of all given axes to a 5s window near the end of the sim.
@@ -94,8 +96,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, HR_CLIM))
 
-    ax2.set_ylabel('Neuron index', fontsize=12)
-    ax2.set_title('Excitatory Population Spike Raster (Spike Count)', fontsize=14)
+    ax2.set_ylabel('Neuron index')
+    ax2.set_title('Excitatory Population Spike Raster (Spike Count)')
 
     # config colorbar
     cbar = fig.colorbar(raster1, ax=ax2, location='right', aspect=25, pad=0.001)
@@ -107,8 +109,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, ML_CLIM))
 
     # ax3.set_xlabel('Time (s)', fontsize=12)
-    ax3.set_ylabel('Neuron index', fontsize=12)
-    ax3.set_title('Inhibitory Population Spike Raster (Spike Count)', fontsize=14)
+    ax3.set_ylabel('Neuron index')
+    ax3.set_title('Inhibitory Population Spike Raster (Spike Count)')
 
     # config colorbar
     cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
@@ -178,9 +180,9 @@ def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarra
     raster = ax2.imshow(spike_matrix, interpolation='none', aspect='auto',
                    origin='lower', extent=[0, sim_duration, 0, num_cells], clim=(0, clim_max))
 
-    ax2.set_xlabel('Time (s)', fontsize=12)
-    ax2.set_ylabel('Neuron index', fontsize=12)
-    ax2.set_title(f'{population_name} Spike Raster (Spike Count)', fontsize=14)
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('Neuron index')
+    ax2.set_title(f'{population_name} Spike Raster (Spike Count)')
 
     # config colorbar
     cbar = fig.colorbar(raster, ax=ax2, location='right', aspect=25, pad=0.001)

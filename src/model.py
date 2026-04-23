@@ -39,7 +39,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'd': params_dict['HR_D'], 's': params_dict['HR_S'], 'I_app_1': params_dict['HR_I_APP'],
         'x_naught': params_dict['HR_X_NAUGHT'], 'r': params_dict['HR_R'],
         'sigma_1': params_dict['HR_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
-        'ISOLATE': params_dict['ISOLATE'],
+        'ISOLATE': params_dict['ISOLATE'], 'NOISE_INIT_OFFSET': params_dict['NOISE_INIT_OFFSET'],
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
         'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
@@ -64,11 +64,11 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
                      threshold=params_dict['HR_THRESHOLD'], reset='',
                      namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
 
-    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+1.5) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
+    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
-    # Summed-variable synapses to compute the population mean of x and z.
+    # Population 1 Averaging
     exc_averaging_eqs ='''
     x_bar_post = x_pre / num_cells : 1 (summed)
     z_bar_post = z_pre / num_cells : 1 (summed)

@@ -38,21 +38,8 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
 
 
 def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
-              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, cb_on: bool = True) -> None:
-    """Save monitors as numpy arrays to `filepaths.data_dir/output.pkl`.
-
-    If cb_on and M_S1_1 is given, the plasticity traces (Wpre, Ca, u) are
-    saved too.
-        INPUT:
-            filepaths: FilePaths with data_dir.
-            params_dict: parameter dict, stored alongside the results.
-            M_N1: StateMonitor on Pop1 (records x, y, z, I_syn_inter, I_syn_intra).
-            M_N2: StateMonitor on Pop2 (records x, n, I_syn_inter).
-            SM_N1: SpikeMonitor on Pop1.
-            SM_N2: SpikeMonitor on Pop2.
-            M_S1_1: optional StateMonitor on S1->1 synapses (Wpre, Ca, u).
-            cb_on: if True and M_S1_1 given, save plasticity traces.
-    """
+              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None, 
+              M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True) -> None:
     os.makedirs(filepaths.data_dir, exist_ok=True)
     sim_data = {
         'metadata': {
