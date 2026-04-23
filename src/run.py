@@ -10,8 +10,8 @@ import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from model import run_sim
+from param_loader import load_params
 from typing import Dict
-import yaml
 
 
 @dataclass
@@ -22,6 +22,12 @@ class FilePaths:
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Load sim data and make the default plots (LFP + both rasters).
+        INPUT:
+            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -45,6 +51,12 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+        INPUT:
+            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -81,6 +93,12 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
 
 
 def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> None:
+    """Print chi and mean KOP r for both pops. Writes autocorr/KOP plots and a spike dump.
+        INPUT:
+            filepaths: FilePaths. Spike dump goes to data_dir, plots to figures_dir.
+            params_dict: parameter dict loaded from YAML.
+            data: dict returned by data_processing.load_sim_data.
+    """
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
@@ -131,58 +149,11 @@ REQUIRED_PARAMS = {
     'X_NAUGHT_VALS', 'COUPLING_VALS', 'G_INTER_VALS', 'G_INTRA_VALS',
 }
 
-# Maps YAML param keys to their Brian2 units. Keys absent from this dict are unitless.
-_PARAM_UNITS: Dict = {
-    'SIM_DURATION':  second,
-    'TAU_CLOCK':     msecond,
-    'TAU_WPRE':      second,
-    'TAU_CA':        msecond,
-    'I_SCALE':       uamp,
-    'HR_R':          1 / msecond,
-    'ML_CM':         ufarad,
-    'ML_I_APP':      uamp,
-    'ML_V1':  mvolt, 'ML_V2': mvolt, 'ML_V3': mvolt, 'ML_V4': mvolt,
-    'ML_PHI':        1 / msecond,
-    'ML_E_CA': mvolt, 'ML_E_K': mvolt, 'ML_E_L': mvolt,
-    'ML_GL':  msiemens, 'ML_GCA': msiemens, 'ML_GK': msiemens,
-    'ML_SIGMA':      uA,
-    'SYN_VT':  mV,   'SYN_KP': mV,
-    'SYN_TMAX':      mmolar,
-    'SYN_ALPHA_EXC': 1 / (mmolar * msecond),
-    'SYN_BETA_EXC':  1 / msecond,
-    'SYN_E_EXC':     mV,
-    'SYN_ALPHA_INH': 1 / (mmolar * msecond),
-    'SYN_BETA_INH':  1 / msecond,
-    'SYN_E_INH':     mV,
-    'G_INTER_VALS':  uS,
-    'G_INTRA_VALS':  uS,
-}
-
-
-def load_params(params_file: str) -> Dict:
-    """Load and validate a YAML params file."""
-    ext = os.path.splitext(params_file)[1].lower()
-    if ext not in ('.yaml', '.yml'):
-        raise ValueError(f"Unsupported params file type: {ext}. Expected .yaml or .yml")
-    params_dict = _load_params_yaml(params_file)
-    missing = REQUIRED_PARAMS - params_dict.keys()
-    if missing:
-        raise ValueError(f"Missing required params in {params_file}: {sorted(missing)}")
-    return params_dict
-
-
-def _load_params_yaml(params_file: str) -> Dict:
-    with open(params_file, 'r') as f:
-        raw = yaml.safe_load(f)
-    return {
-        k: (v * _PARAM_UNITS[k] if k in _PARAM_UNITS else v)
-        for k, v in raw.items()
-    }
-
 
 def main() -> None:
+    """Parse args and run the phases selected by --mode (r=run, p=plot, a=analyze, f=full plots)."""
     DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = 'parameters/params1.yaml'
+    DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
@@ -200,6 +171,9 @@ def main() -> None:
     cb_on = args.cb
     params = args.params
     params_dict = load_params(params)
+    missing = REQUIRED_PARAMS - params_dict.keys()
+    if missing:
+        raise ValueError(f"Missing required params in {params}: {sorted(missing)}")
 
     out_dir = args.out_dir
     filepaths = FilePaths(

@@ -1,30 +1,32 @@
-
+"""Synchrony measures: chi and the Kuramoto order parameter."""
 import numpy as np
 import scipy
 from typing import Tuple
 
 
 def autocorrelate(data: np.ndarray) -> Tuple[float, np.ndarray, np.ndarray]:
-    # apply gaussian smoothing
+    """Smooth data with a Gaussian, then return chi, autocorr, lag.
+        INPUT:
+            data: (num_neurons, time) array of a state variable.
+        RETURN:
+            chi: synchrony measure (scalar).
+            autocorr: autocorrelation of the population mean.
+            lag: lag values matching autocorr.
+    """
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
     chi, autocorr, lag = synchrony_stats(smoothed_data)
     return chi, autocorr, lag
 
 def synchrony_stats(data: np.ndarray, maxlags: int = 3000) -> Tuple[float, np.ndarray, np.ndarray]:
-    '''
-    Synchrony measures
-
-    Parameters
-    ==========
-      data: numneuron x time
-      dt: time spacing
-      maxlags: maximal lag for autocorrelation, default=3000 ms
-
-    Returns
-    =======
-      chi: synchrony measure
-      autocorr: autocorrelation of population avg \bar{data}(t)
-    '''
+    """Compute chi (population synchrony) and the autocorrelation of the population mean.
+        INPUT:
+            data: (num_neurons, time) array.
+            maxlags: maximal lag for autocorrelation, default 3000 ms.
+        RETURN:
+            chi: synchrony measure (ratio of pop-mean variance to mean single-neuron variance).
+            autocorr: autocorrelation of the population mean.
+            lag: lag values matching autocorr.
+    """
     data_pop=np.mean(data, axis=0) # pop avg
     sigma_pop=np.mean(np.square(data_pop)) - np.square(np.mean(data_pop))
     sigma=np.mean(np.square(data), axis=1) - np.square(np.mean(data, axis=1))
@@ -39,6 +41,16 @@ def synchrony_stats(data: np.ndarray, maxlags: int = 3000) -> Tuple[float, np.nd
 
 
 def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Kuramoto order parameter from spike-derived phases.
+        INPUT:
+            neuron_idx: per-spike neuron index.
+            spike_times: per-spike times (seconds).
+            duration: simulation duration (seconds).
+        RETURN:
+            Z: complex mean of exp(i*phase) across neurons, shape (time,).
+            r: magnitude of Z (0 = no lock, 1 = full lock).
+            psi: angle of Z in radians (the collective phase).
+    """
     phase = compute_phase(neuron_idx, spike_times, duration)
     Z = np.mean(np.exp(1j * phase), axis=0)
 
@@ -50,6 +62,14 @@ def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tup
 
     
 def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> np.ndarray:
+    """Interpolate phase on a 1 ms grid: the k-th spike gets phase 2*pi*k.
+        INPUT:
+            neuron_idx: per-spike neuron index.
+            spike_times: per-spike times (seconds).
+            duration: simulation duration (seconds).
+        RETURN:
+            (num_unique_neurons, num_time_steps) phase matrix in radians.
+    """
     time_bin_size = 0.001 # 0.001 of a second = millisecond
     # Uniform discritized representation of time. 
     # All oscillators will be mapped to this scale

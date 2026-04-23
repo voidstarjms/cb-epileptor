@@ -1,3 +1,4 @@
+"""Signal-analysis plots: smoothed LFP, KOP phase, autocorrelation, power spectrum."""
 from brian2 import *
 import matplotlib.pyplot as plt
 import os
@@ -10,6 +11,12 @@ import plotting.style  # noqa: F401
 
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
+    """Overlay raw and Gaussian-smoothed traces for neuron 0, past the transient.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            params_dict: needs TAU_CLOCK, DT_SCALING, TRANSIENT.
+            data: (num_neurons, time) signal.
+    """
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
 
     # plot data and smoothed data on same plot in different color
@@ -27,6 +34,11 @@ def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     plt.show()
 
 def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
+    """Plot the interpolated phase trace of the first neuron.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            phase_matrix: (num_neurons, time) phase in radians, from synch.compute_phase.
+    """
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Kop Phase For a Single Neuron")
@@ -37,6 +49,12 @@ def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
     plt.show()
 
 def plot_autocorr(filepaths: Any, autocorr: np.ndarray, lag: np.ndarray) -> None:
+    """Plot autocorrelation vs. lag.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            autocorr: autocorrelation values.
+            lag: lag values, same length as autocorr.
+    """
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Autocorrelation")
     ax.set_xlabel("Lag (s)")
@@ -47,6 +65,7 @@ def plot_autocorr(filepaths: Any, autocorr: np.ndarray, lag: np.ndarray) -> None
 
 
 def plot_mean_potential():
+    """Not implemented."""
     pass
     # pop1_mean = np.mean(x1, axis=0)
     # pop2_mean = np.mean(x2, axis=0)
@@ -57,6 +76,13 @@ def plot_mean_potential():
     # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
 def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray) -> None:
+    """Welch power spectrum of the 80/20 HR/ML weighted-mean signal.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            params_dict: needs TAU_CLOCK and DT_SCALING to set the sampling rate.
+            x1: (num_cells, time) HR x.
+            x2: (num_cells, time) ML x.
+    """
     # compute mean potential
     x1_mean = np.mean(x1, axis=0)
     x2_mean = np.mean(x2, axis=0)

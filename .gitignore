@@ -14,3 +14,4 @@ condor/condor.sub
 condor/logs/*
 !condor/logs/.gitkeep
 *cc.md
+**/.DS_Store
