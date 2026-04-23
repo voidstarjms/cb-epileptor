@@ -1,3 +1,4 @@
+"""Brian2 simulation of the two-population seizure model (Naze et al. 2015)."""
 from brian2 import *
 from brian2tools import *
 import numpy as np
@@ -5,8 +6,14 @@ import data_processing
 from typing import Dict, Any
 
 def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> None:
-    """
-    Runs the full simulation with given parameters, saves results to data_dir.
+    """Build both populations and their synapses, run the sim, save the output.
+
+    If cb_on is False, Wpre is dropped from the synaptic current (plasticity
+    still evolves but has no effect on the dynamics).
+        INPUT:
+            filepaths: FilePaths. save_data writes to filepaths.data_dir/output.pkl.
+            params_dict: flat dict from param_loader. Expected keys listed in run.REQUIRED_PARAMS.
+            cb_on: if False, Wpre is held at 1 in the synaptic current.
     """
     # Setup Simulation
     defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']
@@ -20,7 +27,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'ml_e_l':       params_dict['ML_E_L'],
     }
 
-    # Build timed arrays from current params at call time
+    # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
     timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['X_NAUGHT_VALS']))
     timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['COUPLING_VALS']))
     timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTER_VALS']))
@@ -61,7 +68,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 
-    # Population 1 Averaging
+    # Summed-variable synapses to compute the population mean of x and z.
     exc_averaging_eqs ='''
     x_bar_post = x_pre / num_cells : 1 (summed)
     z_bar_post = z_pre / num_cells : 1 (summed)
@@ -179,6 +186,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
+    # Pass HR's z_bar into ML so pop2's eqs can read it.
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = syn_namespace['E_exc']
     S1_to_2.alpha = syn_namespace['alpha_exc']
@@ -192,12 +200,13 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
+    # Pass ML's x_bar into HR as x2_bar so pop1's dz/dt can read it.
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = syn_namespace['E_inh']
     S2_to_1.alpha = syn_namespace['alpha_inh']
     S2_to_1.beta = syn_namespace['beta_inh']
 
-    # Don't record transient period
+    # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
 
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
