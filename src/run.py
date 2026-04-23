@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import numpy as np
 from brian2 import *
 from dataclasses import dataclass
@@ -8,8 +9,9 @@ import synch as syn
 import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
-from simulation.core import run_sim
+from model import run_sim
 from typing import Dict
+import yaml
 
 
 @dataclass
@@ -107,9 +109,13 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print(f'r: {np.mean(r)}')
 
 
+def _save_params(params_file: str, run_dir: str) -> None:
+    shutil.copy2(params_file, os.path.join(run_dir, os.path.basename(params_file)))
+
+
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
-    'ISOLATE', 'W_MAX', 'I_SCALE',
+    'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
     'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
     'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
     'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
@@ -125,27 +131,58 @@ REQUIRED_PARAMS = {
     'X_NAUGHT_VALS', 'COUPLING_VALS', 'G_INTER_VALS', 'G_INTRA_VALS',
 }
 
+# Maps YAML param keys to their Brian2 units. Keys absent from this dict are unitless.
+_PARAM_UNITS: Dict = {
+    'SIM_DURATION':  second,
+    'TAU_CLOCK':     msecond,
+    'TAU_WPRE':      second,
+    'TAU_CA':        msecond,
+    'I_SCALE':       uamp,
+    'HR_R':          1 / msecond,
+    'ML_CM':         ufarad,
+    'ML_I_APP':      uamp,
+    'ML_V1':  mvolt, 'ML_V2': mvolt, 'ML_V3': mvolt, 'ML_V4': mvolt,
+    'ML_PHI':        1 / msecond,
+    'ML_E_CA': mvolt, 'ML_E_K': mvolt, 'ML_E_L': mvolt,
+    'ML_GL':  msiemens, 'ML_GCA': msiemens, 'ML_GK': msiemens,
+    'ML_SIGMA':      uA,
+    'SYN_VT':  mV,   'SYN_KP': mV,
+    'SYN_TMAX':      mmolar,
+    'SYN_ALPHA_EXC': 1 / (mmolar * msecond),
+    'SYN_BETA_EXC':  1 / msecond,
+    'SYN_E_EXC':     mV,
+    'SYN_ALPHA_INH': 1 / (mmolar * msecond),
+    'SYN_BETA_INH':  1 / msecond,
+    'SYN_E_INH':     mV,
+    'G_INTER_VALS':  uS,
+    'G_INTRA_VALS':  uS,
+}
+
 
 def load_params(params_file: str) -> Dict:
-    """Dynamically load a params .py file, validate all required keys are present,
-    and return module-level names as a plain dict."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("_params", params_file)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    params_dict = {
-        k: v for k, v in vars(mod).items()
-        if k.isupper() and isinstance(v, (int, float, str, bool, list, np.ndarray, Quantity))
-    }
+    """Load and validate a YAML params file."""
+    ext = os.path.splitext(params_file)[1].lower()
+    if ext not in ('.yaml', '.yml'):
+        raise ValueError(f"Unsupported params file type: {ext}. Expected .yaml or .yml")
+    params_dict = _load_params_yaml(params_file)
     missing = REQUIRED_PARAMS - params_dict.keys()
     if missing:
         raise ValueError(f"Missing required params in {params_file}: {sorted(missing)}")
     return params_dict
 
 
+def _load_params_yaml(params_file: str) -> Dict:
+    with open(params_file, 'r') as f:
+        raw = yaml.safe_load(f)
+    return {
+        k: (v * _PARAM_UNITS[k] if k in _PARAM_UNITS else v)
+        for k, v in raw.items()
+    }
+
+
 def main() -> None:
     DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = 'parameters/default_params.py'
+    DEFAULT_PARAMS = 'parameters/params1.yaml'
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
@@ -171,12 +208,12 @@ def main() -> None:
     )
 
     if 'r' in run_mode:
+        os.makedirs(filepaths.data_dir)
+        os.makedirs(filepaths.figures_dir)
+        _save_params(params, out_dir)
         print("Running simulation...")
-        os.makedirs(filepaths.data_dir, exist_ok=True)
-        with open(os.path.join(filepaths.data_dir, 'params_file.txt'), 'w') as f:
-            f.write(os.path.abspath(params) + '\n')
         run_sim(filepaths, params_dict, cb_on)
-        print("Simulation complete.")
+        print(f"Simulation complete. Results saved to {out_dir}")
 
     if 'p' in run_mode:
         print("Generating plots...")

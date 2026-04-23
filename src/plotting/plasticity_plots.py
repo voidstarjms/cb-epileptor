@@ -4,6 +4,8 @@ import os
 import numpy as np
 from typing import Dict, Any
 
+import plotting.style  # noqa: F401
+
 def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 8), sharex=True)
     Ca = np.asarray(Ca)

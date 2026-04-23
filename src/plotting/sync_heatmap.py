@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+import plotting.style  # noqa: F401
+
 def plot_synchrony(filepaths, chi_mean, chi_sd,
                    param1_values, param2_values,
                    param1_label, param2_label,
@@ -37,9 +39,9 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
 
     im = ax.pcolormesh(p1_edges, p2_edges, chi_matrix,
                        cmap='YlOrRd', vmin=vmin, vmax=vmax, shading='flat')
-    ax.set_xlabel(param1_label, fontsize=13)
-    ax.set_ylabel(param2_label, fontsize=13)
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_xlabel(param1_label)
+    ax.set_ylabel(param2_label)
+    ax.set_title(title, fontweight='bold')
     fig.colorbar(im, ax=ax, pad=0.02)
 
     fig.tight_layout()

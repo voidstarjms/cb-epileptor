@@ -6,6 +6,8 @@ import scipy
 from scipy import signal
 from typing import Dict, Any
 
+import plotting.style  # noqa: F401
+
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)

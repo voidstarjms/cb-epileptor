@@ -29,7 +29,8 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
 
 
 def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
-              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, cb_on: bool = True) -> None:
+              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None, 
+              M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True) -> None:
     os.makedirs(filepaths.data_dir, exist_ok=True)
     sim_data = {
         'metadata': {
