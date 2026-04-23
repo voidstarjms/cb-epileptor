@@ -49,7 +49,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         x1: np.ndarray, x2: np.ndarray, spike_matrix_1: np.ndarray, spike_matrix_2: np.ndarray,
         num_cells: int, sim_duration: float, zoom: bool = False,
         x_naught_vals=None, coupling_vals=None,
-        g_intra_vals=None, g_inter_vals=None) -> None:
+        g_intra_vals=None, g_inter_vals=None, show: bool = True) -> None:
     """Weighted-mean LFP + both spike rasters. Adds schedule panels if vals are given.
         INPUT:
             filepaths: FilePaths with figures_dir.
@@ -145,7 +145,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     out_path = os.path.join(filepaths.figures_dir, "standard_plot.png")
     plt.savefig(out_path, format='png')
 
-    plt.show()
+    if show:
+        plt.show()
     plt.close()
 
 def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarray,

@@ -7,8 +7,8 @@ import pickle
 import tempfile
 
 # Headless backend. Must be set before any pyplot import, direct or transitive.
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
 from brian2 import prefs, seed, second
 
@@ -24,6 +24,8 @@ def main():
     """Run one sim and write its chi summary plus a debug plot."""
     parser = argparse.ArgumentParser(description='Run one simulation for a given CE and X0.')
     parser.add_argument('--ce', type=float, required=True, help='Coupling strength CE')
+    parser.add_argument('--Gintra', type=float, required=True, help='Intrapopulation synapse strength')
+    parser.add_argument('--Ginter', type=float, required=True, help='Interpopulation synapse strength')
     parser.add_argument('--x0', type=float, required=True, help='Epileptogenicity X0')
     parser.add_argument('--realization', type=int, default=1,
                         help='Realization number (sets random seed)')
@@ -35,8 +37,10 @@ def main():
     # Collapse the sweep dimensions to one value each for this job.
     params_dict['COUPLING_VALS'] = [args.ce]
     params_dict['X_NAUGHT_VALS'] = [args.x0]
-
-    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_r{args.realization}'
+    params_dict['G_INTRA_VALS'] = [args.Gintra]
+    params_dict['G_INTER_VALS'] = [args.Ginter]
+    
+    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_inter_{args.Ginter}_intra_{args.Gintra}_r{args.realization}'
 
     # Unique cache dir so parallel jobs don't collide on C++ compilation.
     cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
@@ -72,6 +76,8 @@ def main():
     job_result = {
         'ce':          args.ce,
         'x0':          args.x0,
+        'Gintra':      args.Gintra,
+        'Ginter':      args.Ginter,
         'realization': args.realization,
         'chi':         float(chi),
     }
@@ -89,7 +95,8 @@ def main():
                      g_inter_vals=params_dict['G_INTER_VALS'],
                      g_intra_vals=params_dict['G_INTRA_VALS'],
                      coupling_vals=params_dict['COUPLING_VALS'],
-                     x_naught_vals=params_dict['X_NAUGHT_VALS'])
+                     x_naught_vals=params_dict['X_NAUGHT_VALS'],
+                     show=False)
 
     print(f"Done: {job_id}")
 
