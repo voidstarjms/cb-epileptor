@@ -50,7 +50,7 @@ def main():
     data_processing.DATA_DIR = job_data_dir
 
     # Run simulation — save_data writes to job_data_dir/output_data.pkl
-    run_sim()
+    run_sim(cb_on=False)
 
     # Load results
     data = data_processing.load_sim_data()

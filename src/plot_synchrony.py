@@ -2,6 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import config
+from matplotlib import gridspec
+from matplotlib import cm
+from matplotlib import colors
 
 FIGURES_DIR = config.FIGURES_DIR
 
@@ -55,7 +58,7 @@ def plot_synchrony_single(chi_matrix, param1_values, param2_values,
 def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
                                 param3_values, param4_values, param1_label,
                                 param2_label, param3_label, param4_label,
-                                title='Synchrony $\chi$', vmin=0, vmax=1,
+                                title=r'Synchrony $\chi$', vmin=0, vmax=1,
                                 save_name='synchrony_all_params.png'):
     
     if not os.path.exists(FIGURES_DIR):
@@ -69,12 +72,12 @@ def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
     OUTER_RIGHT = 0.1
     OUTER_TOP = 0.1
 
-    HSPACE = 0.55
-    WSPACE = 0.45
+    HSPACE = 0.45
+    WSPACE = 0.35
 
-    OUTER_AXIS_OFFSET = 0.06
+    OUTER_AXIS_OFFSET = 0.09
 
-    fig = plt.figure(figsize=(7, 6))
+    fig = plt.figure(figsize=(8, 6))
 
     gs = gridspec.GridSpec(
         n_outer_rows, n_outer_cols,
@@ -99,6 +102,7 @@ def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
                 origin="lower",
                 aspect="auto",
                 cmap='YlOrRd',
+                norm=colors.Normalize(vmin=vmin, vmax=vmax)
             )
 
             ax.set_xticks(range(len(param3_values)))
@@ -126,7 +130,7 @@ def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
     row_height = (gs_top - gs_bottom) / n_outer_rows
 
     for i, p1 in enumerate(param1_values):
-        row_center = gs_top - (i + 0.5) * row_height
+        row_center = gs_bottom + (i + 0.5) * row_height
 
         fig.add_artist(plt.Line2D(
             [gs_left - OUTER_AXIS_OFFSET - 0.01, gs_left - OUTER_AXIS_OFFSET],
@@ -148,6 +152,11 @@ def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
         transform=fig.transFigure,
         color="black", linewidth=0.8, clip_on=False,
     ))
+
+    fig.text(gs_left - OUTER_AXIS_OFFSET - OUTER_LEFT / 2 + 0.01,
+            (gs_top - gs_bottom) / 2, param1_label, ha="center", va="center",
+            fontsize=11, fontweight="bold", transform=fig.transFigure,
+            rotation=90)
 
     col_width = (gs_right - gs_left) / n_outer_cols
 
@@ -188,13 +197,13 @@ def plot_synchrony_multifaceted(chi_matrix, param1_values, param2_values,
         0.025,
         gs_top - gs_bottom,
     ])
-    cb = fig.colorbar(ScalarMappable(cmap=cmap), cax=cbar_ax)
+    cb = fig.colorbar(cm.ScalarMappable(cmap='YlOrRd'), cax=cbar_ax)
     cb.set_label("Synchrony", fontsize=11, fontweight="bold")
     cb.ax.tick_params(labelsize=8)
 
-    fig.suptitle(title, fontsize=13, fontweight="bold", y=0.98)
+    #fig.suptitle(title, fontsize=13, fontweight="bold", y=0.98)
 
-    filepath = os.path.join(FIGURES_DIR, savename)
+    filepath = os.path.join(FIGURES_DIR, save_name)
     plt.savefig(filepath, dpi=200, bbox_inches="tight")
     plt.show()
 

@@ -32,7 +32,7 @@ if len(all_results) == 0:
 print(f"Loaded {len(all_results)} job results")
 
 parser = argparse.ArgumentParser(description='Aggregate chi values from experiments into a heat map')
-parser.add_argument('--full', type=bool, default=False, help='Plot multifaceted heatmap to include synaptic conductances')
+parser.add_argument('--full', default=False, action='store_true', help='Plot multifaceted heatmap to include synaptic conductances')
 args = parser.parse_args()
 
 # Reconstruct param axes from results
@@ -127,7 +127,7 @@ else:
     else:
         # Fallback: pick next available number
         run_num = 1
-        while os.path.exists(os.path.join(figures_dir, f'{run_num}_sweep_debug')):
+        while os.path.exists(os.path.join(figures_dir, f'{run_num}_sweep_debug_full')):
             run_num += 1
 
     # TODO This doesn't compute STD yet
@@ -135,5 +135,5 @@ else:
                   np.array(ce_values), np.array(x0_values), np.array(Gintra_values),
                   np.array(Ginter_values), p1_label, p2_label, p3_label, p4_label)
     
-    print("Saved: synchrony_all_params.png")
+    print("Saved: {run_num}_full_param_space.png")
     #print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")

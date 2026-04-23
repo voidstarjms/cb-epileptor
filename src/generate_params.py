@@ -5,7 +5,7 @@ import numpy as np
 
 GRANULARITY = 2
 
-param1_values = np.linspace(0.0, 0.5, GRANULARITY)    # CE (coupling strength)
+param1_values = np.linspace(0.0, 0.1, GRANULARITY)    # CE (coupling strength)
 param2_values = np.linspace(-4.5, -2.5, GRANULARITY)  # X0 (epileptogenicity)
 param3_values = np.linspace(0.5, 2, GRANULARITY)      # Gintra (intrapopulation synapse weight)
 param4_values = np.linspace(1, 4, GRANULARITY)        # Ginter (interpopulation synapse weight)
