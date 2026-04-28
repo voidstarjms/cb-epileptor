@@ -48,7 +48,7 @@ print(f"Gintra values ({len(Gintra_values)}): {[round(v,3) for v in Gintra_value
 print(f"Ginter values ({len(Ginter_values)}): {[round(v,3) for v in Ginter_values]}")
 
 p1_label = r'$C_E$ (coupling strength)'
-p2_label = r'$x_0$ (epileptogenicity)'
+p2_label = r'$x_0$ (innate excitability)'
 
 # Group chi values by (ce, x0, Gintra, Ginter) across realizations
 chi_by_point = defaultdict(list)
@@ -102,6 +102,7 @@ if args.full == False:
                   run_num=run_num)
 
     print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")
+# 4-axis plot
 else:
     p3_label = r'$G_{intra}$ (intrapop conductance)'
     p4_label = r'$G_{inter}$ (interpop conductance)'
@@ -134,8 +135,7 @@ else:
         while os.path.exists(os.path.join(figures_dir, f'{run_num}_sweep_debug_full')):
             run_num += 1
 
-    # TODO This doesn't compute STD yet
-    ps.plot_synchrony_multifaceted(filepaths, chi_grid,
+    ps.plot_synchrony_multifaceted(filepaths, chi_grid, chi_sd,
                   np.array(ce_values), np.array(x0_values), np.array(Gintra_values),
                   np.array(Ginter_values), p1_label, p2_label, p3_label, p4_label)
     

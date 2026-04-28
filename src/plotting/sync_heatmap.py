@@ -76,8 +76,41 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
     plt.show()
     print(f"Saved to {filepath}")
 
-# TODO run nums are not in the save_names yet
-def plot_synchrony_multifaceted(filepaths, chi_matrix, param1_values, param2_values,
+def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
+                                param1_values, param2_values, param3_values,
+                                param4_values, param1_label, param2_label,
+                                param3_label, param4_label, run_num=1):
+    """Write the multifaceted mean-chi and SD-chi heatmaps, both prefixed with run_num.
+        INPUT:
+            filepaths: FilePaths with figures_dir.
+            chi_mean: 4D array of mean chi values, shape (len(param2), len(param1),
+                len(param4), len(param3)).
+            chi_sd: 4D array of chi SDs, same shape as chi_mean.
+            param1_values: values along the outer x axis.
+            param2_values: values along the outer y axis.
+            param3_values: values along the inner x axis.
+            param4_values: values along the inner y axis.
+            param1_label: outer x-axis label (LaTeX allowed).
+            param2_label: outer y-axis label (LaTeX allowed).
+            param3_label: inner x-axis label (LaTeX allowed).
+            param4_label: inner y-axis label (LaTeX allowed).
+            run_num: integer prefix for the output filenames.
+    """
+    plot_synchrony_multifaceted_single(filepaths, chi_mean, param1_values, param2_values,
+                          param3_values, param4_values, param1_label, param2_label,
+                          param3_label, param4_label, title=r'Synchrony $\chi$',
+                          vmin=0, vmax=1,
+                          save_name=f'{run_num}_synchrony_chi_mean_full.png')
+
+    sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
+    plot_synchrony_multifaceted_single(filepaths, chi_sd, param1_values, param2_values,
+                          param3_values, param4_values, param1_label, param2_label,
+                          param3_label, param4_label, title=r'SD of $\chi$',
+                          vmin=0, vmax=sd_max,
+                          save_name=f'{run_num}_synchrony_chi_sd_full.png')
+
+
+def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, param2_values,
                                 param3_values, param4_values, param1_label,
                                 param2_label, param3_label, param4_label,
                                 title='Synchrony $\chi$', vmin=0, vmax=1,
@@ -216,7 +249,8 @@ def plot_synchrony_multifaceted(filepaths, chi_matrix, param1_values, param2_val
 
     fig.suptitle(title, fontsize=13, fontweight="bold", y=0.98)
 
-    plt.savefig(filepaths.figures_dir, dpi=200, bbox_inches="tight")
+    fname = os.path.join(filepaths.figures_dir, save_name)
+    plt.savefig(fname, dpi=200, bbox_inches="tight")
     plt.show()
 
 
