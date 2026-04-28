@@ -47,6 +47,8 @@ ML_REFRACTORY_CONDITION: "x >= 0"
 SYN_VT: "2*mV"
 SYN_KP: "5*mV"
 SYN_TMAX: "1*mmolar"
+G_INTRA: "0.5*uS"
+G_INTER: "1*uS"
 
 # Excitatory (Pop 1)
 SYN_ALPHA_EXC: "1.1/(mmolar*msecond)"
@@ -78,3 +80,5 @@ ML_Z_BAR_SCALE: 0.3
 ML_Z_BAR_OFFSET: 6
 CA_SIGMOID_SHIFT: 0.8
 CA_SIGMOID_SLOPE: 0.2
+
+NOISE_INIT_OFFSET: 1.5

@@ -12,6 +12,8 @@ import tempfile
 
 from brian2 import prefs, seed, second
 
+import sys
+sys.path.append("..")
 import data_processing
 import synch as syn
 import plotting.population_plots as ph
@@ -29,8 +31,8 @@ def main():
     parser.add_argument('--x0', type=float, required=True, help='Epileptogenicity X0')
     parser.add_argument('--realization', type=int, default=1,
                         help='Realization number (sets random seed)')
-    parser.add_argument('--params', type=str, default='../params.yaml',
-                        help="YAML params file (default: '../params.yaml')")
+    parser.add_argument('--params', type=str, default='../../params.yaml',
+                        help="YAML params file (default: '../../params.yaml')")
     args = parser.parse_args()
 
     params_dict = load_params(args.params)

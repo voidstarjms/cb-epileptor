@@ -10,6 +10,8 @@ import pickle
 import numpy as np
 from collections import defaultdict
 
+sys.path.append("..")
+from run import FilePaths
 import plotting.sync_heatmap as ps
 
 results_dir = os.path.join('data', 'results')
@@ -54,6 +56,13 @@ for r in all_results:
     key = (round(r['ce'], 6), round(r['x0'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
     chi_by_point[key].append(r['chi'])
 
+figures_dir = 'figures'
+os.makedirs(figures_dir, exist_ok=True)
+run_num_file = 'current_run.txt'
+filepaths = FilePaths(
+    None, 'figures'
+)
+
 # 2-axis plot
 if args.full == False:
     # Build mean and SD grids — shape: (len(x0), len(ce))
@@ -77,9 +86,6 @@ if args.full == False:
         print("All grid points complete.")
 
     # Read run number set by setup_condor.sh so logs/figures/debug all share the same number
-    figures_dir = 'figures'
-    os.makedirs(figures_dir, exist_ok=True)
-    run_num_file = 'current_run.txt'
     if os.path.exists(run_num_file):
         with open(run_num_file) as f:
             run_num = int(f.read().strip())
@@ -90,7 +96,7 @@ if args.full == False:
             run_num += 1
 
 
-    ps.plot_synchrony(chi_grid, chi_sd,
+    ps.plot_synchrony(filepaths, chi_grid, chi_sd,
                   np.array(ce_values), np.array(x0_values),
                   p1_label, p2_label,
                   run_num=run_num)
@@ -118,9 +124,7 @@ else:
         print("All grid points complete.")
 
     # Read run number set by setup_condor.sh so logs/figures/debug all share the same number
-    figures_dir = 'figures'
-    os.makedirs(figures_dir, exist_ok=True)
-    run_num_file = 'current_run.txt'
+   
     if os.path.exists(run_num_file):
         with open(run_num_file) as f:
             run_num = int(f.read().strip())
@@ -131,7 +135,7 @@ else:
             run_num += 1
 
     # TODO This doesn't compute STD yet
-    ps.plot_synchrony_multifaceted(chi_grid,
+    ps.plot_synchrony_multifaceted(filepaths, chi_grid,
                   np.array(ce_values), np.array(x0_values), np.array(Gintra_values),
                   np.array(Ginter_values), p1_label, p2_label, p3_label, p4_label)
     

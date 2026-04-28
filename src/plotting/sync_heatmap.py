@@ -1,7 +1,10 @@
 """Sweep heatmaps: mean chi and SD chi over a (param1, param2) grid."""
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
+from matplotlib.cm import ScalarMappable
 import os
+from run import FilePaths
 
 import plotting.style  # noqa: F401
 
@@ -72,6 +75,149 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
     fig.savefig(filepath, dpi=200, bbox_inches='tight')
     plt.show()
     print(f"Saved to {filepath}")
+
+# TODO run nums are not in the save_names yet
+def plot_synchrony_multifaceted(filepaths, chi_matrix, param1_values, param2_values,
+                                param3_values, param4_values, param1_label,
+                                param2_label, param3_label, param4_label,
+                                title='Synchrony $\chi$', vmin=0, vmax=1,
+                                save_name='synchrony_all_params.png'):
+
+    n_outer_rows = len(param1_values)
+    n_outer_cols = len(param2_values)
+
+    OUTER_LEFT = 0.18
+    OUTER_BOTTOM = 0.1
+    OUTER_RIGHT = 0.1
+    OUTER_TOP = 0.1
+
+    HSPACE = 0.55
+    WSPACE = 0.45
+
+    OUTER_AXIS_OFFSET = 0.06
+
+    fig = plt.figure(figsize=(7, 6))
+
+    gs = gridspec.GridSpec(
+        n_outer_rows, n_outer_cols,
+        figure=fig,
+        left=OUTER_LEFT, right=1 - OUTER_RIGHT,
+        bottom=OUTER_BOTTOM, top=1 - OUTER_TOP,
+        hspace=HSPACE, wspace=WSPACE,
+    )
+
+    axes = np.empty((n_outer_rows, n_outer_cols), dtype=object)
+    for i in range(n_outer_rows):
+        for j in range(n_outer_cols):
+            axes[i, j] = fig.add_subplot(gs[i, j])
+
+    for i, p1 in enumerate(param1_values):
+        for j, p2 in enumerate(param2_values):
+            ax = axes[i, j]
+            data = chi_matrix[i, j, :, :]
+
+            im = ax.imshow(
+                data.T,
+                origin="lower",
+                aspect="auto",
+                cmap='viridis',
+            )
+
+            ax.set_xticks(range(len(param3_values)))
+            ax.set_xticklabels(
+                [str(v) for v in param3_values],
+                fontsize=7, rotation=45, ha="right",
+            )
+
+            ax.set_yticks(range(len(param4_values)))
+            ax.set_yticklabels([str(v) for v in param4_values], fontsize=7)
+
+            if i == n_outer_rows - 1:
+                ax.set_xlabel(param3_label, fontsize=8, labelpad=4)
+            if j == 0:
+                ax.set_ylabel(param4_label, fontsize=8, labelpad=4)
+
+            for spine in ax.spines.values():
+                spine.set_linewidth(0.5)
+
+    gs_left = gs.left
+    gs_right = gs.right
+    gs_top = gs.top
+    gs_bottom = gs.bottom
+
+    row_height = (gs_top - gs_bottom) / n_outer_rows
+
+    for i, p1 in enumerate(param1_values):
+        row_center = gs_top - (i + 0.5) * row_height
+
+        fig.add_artist(plt.Line2D(
+            [gs_left - OUTER_AXIS_OFFSET - 0.01, gs_left - OUTER_AXIS_OFFSET],
+            [row_center, row_center],
+            transform=fig.transFigure,
+            color="black", linewidth=0.8, clip_on=False,
+        ))
+
+        fig.text(
+            gs_left - OUTER_AXIS_OFFSET - 0.015, row_center,
+            str(p1),
+            ha="right", va="center", fontsize=9,
+            transform=fig.transFigure,
+        )
+
+    fig.add_artist(plt.Line2D(
+        [gs_left - OUTER_AXIS_OFFSET, gs_left - OUTER_AXIS_OFFSET],
+        [gs_bottom, gs_top],
+        transform=fig.transFigure,
+        color="black", linewidth=0.8, clip_on=False,
+    ))
+
+    col_width = (gs_right - gs_left) / n_outer_cols
+
+    for j, p2 in enumerate(param2_values):
+        col_center = gs_left + (j + 0.5) * col_width
+
+        fig.add_artist(plt.Line2D(
+            [col_center, col_center],
+            [gs_top + 0.005, gs_top + 0.015],
+            transform=fig.transFigure,
+            color="black", linewidth=0.8, clip_on=False,
+        ))
+
+        fig.text(
+            col_center, gs_top + 0.025,
+            str(p2),
+            ha="center", va="bottom", fontsize=9,
+            transform=fig.transFigure,
+        )
+
+    fig.add_artist(plt.Line2D(
+        [gs_left, gs_right],
+        [gs_top + 0.015, gs_top + 0.015],
+        transform=fig.transFigure,
+        color="black", linewidth=0.8, clip_on=False,
+    ))
+
+    fig.text(
+        (gs_left + gs_right) / 2, gs_top + 0.065,
+        param2_label,
+        ha="center", va="bottom", fontsize=11, fontweight="bold",
+        transform=fig.transFigure,
+    )
+
+    cbar_ax = fig.add_axes([
+        1 - OUTER_RIGHT + 0.01,
+        gs_bottom,
+        0.025,
+        gs_top - gs_bottom,
+    ])
+    cb = fig.colorbar(ScalarMappable(cmap='viridis'), cax=cbar_ax)
+    cb.set_label("Synchrony", fontsize=11, fontweight="bold")
+    cb.ax.tick_params(labelsize=8)
+
+    fig.suptitle(title, fontsize=13, fontweight="bold", y=0.98)
+
+    plt.savefig(filepaths.figures_dir, dpi=200, bbox_inches="tight")
+    plt.show()
 
 
 def _make_edges(values):
