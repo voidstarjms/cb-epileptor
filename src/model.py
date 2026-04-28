@@ -42,16 +42,17 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'ISOLATE': params_dict['ISOLATE'], 'NOISE_INIT_OFFSET': params_dict['NOISE_INIT_OFFSET'],
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
+        'ce': params_dict['COUPLING_STRENGTH'],
         'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
     }
 
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + ISOLATE * (timed_CE(t) * (x_bar - x)
+        + ISOLATE * (ce * (x_bar - x)
         + Wmax * xi * sqrt(second)
         + sigma_1 * (I_syn_intra + I_syn_inter) / I_scale)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x0(t)) - z_bar) : 1
+    dz/dt = r * (s * (x + ISOLATE * x2_bar - x_naught) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
@@ -86,7 +87,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
         'Wmax': params_dict['W_MAX'],
         'ISOLATE': params_dict['ISOLATE'],
-        'timed_CE': timed_coupling_strength,
+        'ce': params_dict['COUPLING_STRENGTH'], 'timed_CE': timed_coupling_strength,
         'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
         'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
     }
@@ -94,7 +95,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + timed_CE(t) * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
+        + ce * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -138,6 +139,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'theta_ltp_start': params_dict['THETA_LTP_START'],
         'A_ltp': params_dict['A_LTP'],
         'A_ltd': params_dict['A_LTD'],
+        'G_intra': params_dict['G_INTRA'],
+        'G_inter': params_dict['G_INTER'],
         'timed_G_intra': timed_G_intra,
         'timed_G_inter': timed_G_inter,
         'ca_sigmoid_shift': params_dict['CA_SIGMOID_SHIFT'],
@@ -170,12 +173,12 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # S1_to_1: pre=Pop1, post=Pop1
     intra_syn_eqs = f'''
-    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
+    I_syn_intra_post = (-G_intra * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
     # S1_to_2: pre=Pop1, post=Pop2
     inter_syn_eqs = f'''
-    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
+    I_syn_inter_post = (-G_inter * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
