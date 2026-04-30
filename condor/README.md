@@ -20,39 +20,46 @@ All commands should be run from the `cb-epileptor/` project root unless otherwis
 
 **1. Pull the latest code**
 ```
-git pull origin synchronicity_plotting
+git pull origin <branch>
 ```
 
-**2. Generate the parameter list**
+**2. Generate the per-job param YAMLs**
 ```
-cd src
+cd src/sweep
 python generate_params.py
-cd ..
+cd ../..
 ```
-Creates `src/params_list.txt` with 64 CE/X0 pairs (8x8 grid).
+Edit the grid in `generate_params.py` first if needed (CE, X0, Gintra, Ginter,
+n_realizations). Output:
+- `src/sweep/params/param_N.yaml` — one full YAML per job (N starts at 1)
+- `src/sweep/params_list.txt` — list of YAML paths (one per line) for Condor
+
+Each generated YAML is a standalone copy of `params.yaml` with `COUPLING_STRENGTH`,
+`HR_X_NAUGHT`, `G_INTRA`, `G_INTER`, the matching `*_VALS` schedules, and a `SEED`
+field overridden for that job.
 
 **3. Generate condor.sub and the log folder**
 ```
 bash condor/setup_condor.sh
 ```
 This determines the run number, creates `condor/logs/{run_num}_synchrony/`,
-writes `src/current_run.txt`, and generates `condor/condor.sub`.
+writes `src/sweep/current_run.txt`, and generates `condor/condor.sub`.
 
 **4. Test one job manually**
 ```
-cd src
-python run_single_sim.py --ce 0.25 --x0 -3.5
-cd ..
+cd src/sweep
+python run_single_sim.py --params params/param_1.yaml
+cd ../..
 ```
-Confirm it completes without errors and that a `.pkl` appears in `src/data/results/`.
+Confirm it completes without errors and that a `.pkl` appears in
+`src/sweep/data/results/`.
 
-**5. Submit all 64 jobs**
+**5. Submit all jobs**
 ```
 condor_submit condor/condor.sub
 ```
-This command runs 64 instances of run_single_sim.py in parallel.
-Jobs will initially appear as idle (`I`) — this is normal. Condor is queuing them
-and will assign machines as they become available. Monitor with:
+Each line in `params_list.txt` becomes one Condor job. Jobs initially appear as
+idle (`I`) — this is normal. Monitor with:
 ```
 condor_q
 ```
@@ -60,14 +67,14 @@ Jobs transition from idle (`I`) to running (`R`) and disappear when complete.
 
 **6. Generate heatmaps**
 ```
-cd src
+cd src/sweep
 python aggregate.py
 ```
 
 Output files all share the same run number, e.g. for run 1:
-- `src/figures/1_synchrony_chi_mean.png`
-- `src/figures/1_synchrony_chi_sd.png`
-- `src/figures/1_sweep_debug/` — per-simulation LFP + raster plots
+- `src/sweep/figures/1_synchrony_chi_mean.png`
+- `src/sweep/figures/1_synchrony_chi_sd.png`
+- `src/sweep/figures/sweep_debug/` — per-simulation LFP + raster plots
 - `condor/logs/1_synchrony/` — Condor stdout/stderr logs
 
 ## Subsequent Runs
@@ -81,3 +88,5 @@ If a job fails, check its error log:
 ```
 cat condor/logs/{run_num}_synchrony/err_{process_num}.log
 ```
+The job ID is the YAML basename (e.g. `param_37`); per-job sim outputs live at
+`src/sweep/data/jobs/{job_id}/` and `src/sweep/figures/sweep_debug/{job_id}/`.
