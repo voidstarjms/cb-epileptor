@@ -28,7 +28,14 @@ from run import FilePaths
 
 
 def _to_uS_float(v):
-    """Convert a Brian2 conductance quantity (or plain number) to a float in uS."""
+    """Convert a Brian2 conductance quantity (or plain number) to a float in uS.
+
+    Args:
+        v: Brian2 conductance quantity (e.g. 0.5 * uS) or a plain number.
+
+    Returns:
+        float: The value expressed in microsiemens.
+    """
     try:
         return float(v / uS)
     except (TypeError, ValueError):
@@ -36,7 +43,16 @@ def _to_uS_float(v):
 
 
 def main():
-    """Run one sim from a YAML, write its chi summary plus a debug plot."""
+    """Run one sim from a YAML, write its chi summary plus a debug plot.
+
+    Reads the YAML pointed to by --params, runs the simulation via model.run_sim,
+    computes synchrony chi over the HR population, and writes:
+
+      - data/jobs/<job_id>/output.pkl: full sim output.
+      - data/results/<job_id>.pkl: compact summary {ce, x0, Gintra, Ginter,
+        realization, chi} consumed by aggregate.py.
+      - figures/sweep_debug/<job_id>/standard_plot.png: per-job debug plot.
+    """
     parser = argparse.ArgumentParser(description='Run one simulation from a YAML param file.')
     parser.add_argument('--params', type=str, required=True,
                         help='Path to a YAML param file (e.g. params/param_1.yaml).')

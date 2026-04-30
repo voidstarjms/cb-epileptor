@@ -1,4 +1,9 @@
-"""Brian2 simulation of the two-population seizure model (Naze et al. 2015)."""
+"""Brian2 simulation of the two-population seizure model (Naze et al. 2015).
+
+Builds two coupled populations (Hindmarsh-Rose excitatory + Morris-Lecar
+inhibitory), wires up intra/inter-population chemical synapses with calcium
+control plasticity, and runs the simulation. Saves output via data_processing.
+"""
 from brian2 import *
 from brian2tools import *
 import numpy as np
@@ -10,10 +15,12 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     If cb_on is False, Wpre is dropped from the synaptic current (plasticity
     still evolves but has no effect on the dynamics).
-        INPUT:
-            filepaths: FilePaths. save_data writes to filepaths.data_dir/output.pkl.
-            params_dict: flat dict from param_loader. Expected keys listed in run.REQUIRED_PARAMS.
-            cb_on: if False, Wpre is held at 1 in the synaptic current.
+
+    Args:
+        filepaths (Any): FilePaths. save_data writes to filepaths.data_dir/output.pkl.
+        params_dict (Dict[str, Any]): Flat dict from param_loader. Expected keys
+            listed in run.REQUIRED_PARAMS.
+        cb_on (bool): If False, Wpre is held at 1 in the synaptic current.
     """
     # Setup Simulation
     defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']

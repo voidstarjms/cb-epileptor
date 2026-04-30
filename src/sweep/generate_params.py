@@ -2,8 +2,9 @@
 
 Each YAML is a complete, self-contained copy of the base params.yaml with the
 sweep dimensions (CE, X0, Gintra, Ginter) overridden and a SEED field added.
+Run once before submitting:
 
-Run once before submitting: python generate_params.py
+    python generate_params.py
 """
 import os
 import shutil
@@ -26,7 +27,19 @@ n_realizations = 5
 
 
 def _job_yaml(base, ce, x0, gintra, ginter, seed):
-    """Return a base-copy dict with sweep dims and SEED overridden."""
+    """Return a base-copy dict with sweep dims and SEED overridden.
+
+    Args:
+        base (dict): Base YAML loaded from params.yaml.
+        ce (float): Coupling strength.
+        x0 (float): Epileptogenicity (HR_X_NAUGHT).
+        gintra (float): Intra-pop conductance in microsiemens.
+        ginter (float): Inter-pop conductance in microsiemens.
+        seed (int): Random seed for the job (stored as SEED field).
+
+    Returns:
+        dict: A copy of base with the four sweep dims and SEED replaced.
+    """
     out = dict(base)
     # Override the constants that the model eqs actually read.
     out['COUPLING_STRENGTH'] = float(ce)
@@ -43,6 +56,12 @@ def _job_yaml(base, ce, x0, gintra, ginter, seed):
 
 
 def main():
+    """Wipe params/, write one YAML per job in the Cartesian sweep grid.
+
+    Also writes params_list.txt with one relative path per job, suitable for
+    Condor's `Queue params_file from ...` directive (resolved against the
+    Initialdir set in setup_condor.sh).
+    """
     with open(BASE_YAML) as f:
         base = yaml.safe_load(f)
 

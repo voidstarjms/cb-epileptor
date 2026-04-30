@@ -1,4 +1,7 @@
-"""Signal-analysis plots: smoothed LFP, KOP phase, autocorrelation, power spectrum."""
+"""Signal-analysis plots: smoothed LFP, KOP phase, autocorrelation, power spectrum.
+
+Each plot writes a PNG under filepaths.figures_dir.
+"""
 from brian2 import *
 import matplotlib.pyplot as plt
 import os
@@ -12,10 +15,11 @@ import plotting.style  # noqa: F401
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     """Overlay raw and Gaussian-smoothed traces for neuron 0, past the transient.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: needs TAU_CLOCK, DT_SCALING, TRANSIENT.
-            data: (num_neurons, time) signal.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Needs TAU_CLOCK, DT_SCALING, TRANSIENT.
+        data: (num_neurons, time) signal.
     """
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
 
@@ -35,9 +39,11 @@ def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
 
 def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
     """Plot the interpolated phase trace of the first neuron.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            phase_matrix: (num_neurons, time) phase in radians, from synch.compute_phase.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        phase_matrix (np.ndarray): (num_neurons, time) phase in radians, from
+            synch.compute_phase.
     """
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
@@ -50,10 +56,11 @@ def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
 
 def plot_autocorr(filepaths: Any, autocorr: np.ndarray, lag: np.ndarray) -> None:
     """Plot autocorrelation vs. lag.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            autocorr: autocorrelation values.
-            lag: lag values, same length as autocorr.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        autocorr (np.ndarray): Autocorrelation values.
+        lag (np.ndarray): Lag values, same length as autocorr.
     """
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Autocorrelation")
@@ -77,11 +84,12 @@ def plot_mean_potential():
 
 def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray) -> None:
     """Welch power spectrum of the 80/20 HR/ML weighted-mean signal.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: needs TAU_CLOCK and DT_SCALING to set the sampling rate.
-            x1: (num_cells, time) HR x.
-            x2: (num_cells, time) ML x.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Needs TAU_CLOCK and DT_SCALING to set the sampling rate.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        x2 (np.ndarray): (num_cells, time) ML x.
     """
     # compute mean potential
     x1_mean = np.mean(x1, axis=0)
