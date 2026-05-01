@@ -57,7 +57,7 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
-    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+    """Same as plot_output but also plots Epop (x, y, z, I_syn_inter) and Ipop (x, n) traces.
 
     Args:
         filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
@@ -119,7 +119,7 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
         np.asarray(pop1_spike_times),
     )
 
-    print("============HINDMARSH ROSE STATS============")
+    print("============EPOP STATS============")
     chi, autocorr, lag = syn.autocorrelate(x1)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
     z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second)
@@ -128,7 +128,7 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     phase_matrix = syn.compute_phase(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second)
     analysis_plotter.plot_kop(filepaths, phase_matrix)
 
-    print("\n============MORRIS LECAR STATS============")
+    print("\n============IPOP STATS============")
     chi, autocorr, lag = syn.autocorrelate(x2)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
     z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params_dict['SIM_DURATION'] / second)
@@ -148,12 +148,12 @@ def _save_params(params_file: str, run_dir: str) -> None:
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
     'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
-    'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
-    'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
-    'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
-    'ML_GCA', 'ML_E_CA', 'ML_V1', 'ML_V2', 'ML_V3', 'ML_V4',
-    'ML_PHI', 'ML_SIGMA', 'ML_Z_BAR_SCALE', 'ML_Z_BAR_OFFSET',
-    'ML_THRESHOLD', 'ML_REFRACTORY_CONDITION',
+    'EPOP_A', 'EPOP_B', 'EPOP_C', 'EPOP_D', 'EPOP_S', 'EPOP_I_APP',
+    'EPOP_X_NAUGHT', 'EPOP_R', 'EPOP_SIGMA', 'EPOP_THRESHOLD', 'EPOP_REFRACTORY_CONDITION',
+    'IPOP_CM', 'IPOP_I_APP', 'IPOP_GL', 'IPOP_E_L', 'IPOP_GK', 'IPOP_E_K',
+    'IPOP_GCA', 'IPOP_E_CA', 'IPOP_V1', 'IPOP_V2', 'IPOP_V3', 'IPOP_V4',
+    'IPOP_PHI', 'IPOP_SIGMA', 'IPOP_Z_BAR_SCALE', 'IPOP_Z_BAR_OFFSET',
+    'IPOP_THRESHOLD', 'IPOP_REFRACTORY_CONDITION',
     'SYN_TMAX', 'SYN_VT', 'SYN_KP',
     'SYN_ALPHA_EXC', 'SYN_BETA_EXC', 'SYN_E_EXC',
     'SYN_ALPHA_INH', 'SYN_BETA_INH', 'SYN_E_INH',

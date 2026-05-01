@@ -1,4 +1,4 @@
-"""Plots for the Ca-dependent plasticity gate Wpre on HR->HR synapses.
+"""Plots for the Ca-dependent plasticity gate Wpre on Epop->Epop synapses.
 
 Recomputes plasticity and sigma_Ca from saved Ca traces so thresholds can be
 tweaked without re-running the simulation.
@@ -22,7 +22,7 @@ def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
         params_dict (Dict): Needs A_LTD, A_LTP, THETA_LTD_START, THETA_LTD_END,
             THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
         t: Time vector.
-        x: (num_neurons, time) HR x. Uses x[0] and x[1].
+        x: (num_neurons, time) Epop x. Uses x[0] and x[1].
         wpre: Wpre trace for one synapse.
         u: u (neurotransmitter) trace for one synapse.
         Ca: Ca trace for one synapse.

@@ -32,7 +32,7 @@ def _job_yaml(base, ce, x0, gintra, ginter, seed):
     Args:
         base (dict): Base YAML loaded from params.yaml.
         ce (float): Coupling strength.
-        x0 (float): Epileptogenicity (HR_X_NAUGHT).
+        x0 (float): Epileptogenicity (EPOP_X_NAUGHT).
         gintra (float): Intra-pop conductance in microsiemens.
         ginter (float): Inter-pop conductance in microsiemens.
         seed (int): Random seed for the job (stored as SEED field).
@@ -43,7 +43,7 @@ def _job_yaml(base, ce, x0, gintra, ginter, seed):
     out = dict(base)
     # Override the constants that the model eqs actually read.
     out['COUPLING_STRENGTH'] = float(ce)
-    out['HR_X_NAUGHT']       = float(x0)
+    out['EPOP_X_NAUGHT']       = float(x0)
     out['G_INTRA']           = f'{float(gintra)} * uS'
     out['G_INTER']           = f'{float(ginter)} * uS'
     # Also override the timed-array schedules so plots/labels stay consistent.
@@ -63,7 +63,7 @@ def main():
     Initialdir set in setup_condor.sh).
     """
     with open(BASE_YAML) as f:
-        base = yaml.safe_load(f)
+        base = yaml.load(f, yaml.UnsafeLoader)
 
     if os.path.isdir(OUT_DIR):
         shutil.rmtree(OUT_DIR)
@@ -76,7 +76,7 @@ def main():
         job_yaml = _job_yaml(base, ce, x0, gintra, ginter, seed=r)
         name = f'param_{job}.yaml'
         with open(os.path.join(OUT_DIR, name), 'w') as f:
-            yaml.safe_dump(job_yaml, f, sort_keys=False)
+            yaml.dump(job_yaml, f, sort_keys=False)
         # params_list.txt holds paths relative to the Condor Initialdir
         # (which is set to src/sweep/ in setup_condor.sh).
         rel_paths.append(os.path.join('params', name))

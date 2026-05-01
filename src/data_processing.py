@@ -47,14 +47,14 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
     Args:
         filepaths (Any): FilePaths with data_dir.
         params_dict (Dict): Parameter dict from param_loader; pickled alongside results.
-        M_N1 (Any): StateMonitor on the HR population.
-        M_N2 (Any): StateMonitor on the ML population.
-        SM_N1 (Any): SpikeMonitor on the HR population.
-        SM_N2 (Any): SpikeMonitor on the ML population.
-        M_S1_1 (Any): Optional StateMonitor on HR->HR synapses (Wpre, u, Ca).
-        M_S1_2 (Any): Optional StateMonitor on HR->ML synapses (currently unused).
-        M_S2_1 (Any): Optional StateMonitor on ML->HR synapses (currently unused).
-        M_S2_2 (Any): Optional StateMonitor on ML->ML synapses (currently unused).
+        M_N1 (Any): StateMonitor on the Epop population.
+        M_N2 (Any): StateMonitor on the Ipop population.
+        SM_N1 (Any): SpikeMonitor on the Epop population.
+        SM_N2 (Any): SpikeMonitor on the Ipop population.
+        M_S1_1 (Any): Optional StateMonitor on Epop->Epop synapses (Wpre, u, Ca).
+        M_S1_2 (Any): Optional StateMonitor on Epop->Ipop synapses (currently unused).
+        M_S2_1 (Any): Optional StateMonitor on Ipop->Epop synapses (currently unused).
+        M_S2_2 (Any): Optional StateMonitor on Ipop->Ipop synapses (currently unused).
         cb_on (bool): If True, include plasticity traces (Wpre, u, Ca) in the output.
     """
     os.makedirs(filepaths.data_dir, exist_ok=True)
@@ -83,28 +83,28 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
     }
 
     if cb_on:
-        # e->e (HR->HR)
+        # e->e (Epop->Epop)
         if M_S1_1 is not None:
             sim_data['results'].update({
                 'syn_wpre': np.asarray(M_S1_1.Wpre),
                 'u':        np.asarray(M_S1_1.u),
                 'Ca':       np.asarray(M_S1_1.Ca),
             })
-        # # e->i (HR->ML)
+        # # e->i (Epop->Ipop)
         # if M_S1_2 is not None:
         #     sim_data['results'].update({
         #         'S1_2_wpre': np.asarray(M_S1_2.Wpre),
         #         'S1_2_u':    np.asarray(M_S1_2.u),
         #         'S1_2_Ca':   np.asarray(M_S1_2.Ca),
         #     })
-        # # i->e (ML->HR)
+        # # i->e (Ipop->Epop)
         # if M_S2_1 is not None:
         #     sim_data['results'].update({
         #         'S2_1_wpre': np.asarray(M_S2_1.Wpre),
         #         'S2_1_u':    np.asarray(M_S2_1.u),
         #         'S2_1_Ca':   np.asarray(M_S2_1.Ca),
         #     })
-        # # i->i (ML->ML)
+        # # i->i (Ipop->Ipop)
         # if M_S2_2 is not None:
         #     sim_data['results'].update({
         #         'S2_2_wpre': np.asarray(M_S2_2.Wpre),

@@ -46,7 +46,7 @@ def main():
     """Run one sim from a YAML, write its chi summary plus a debug plot.
 
     Reads the YAML pointed to by --params, runs the simulation via model.run_sim,
-    computes synchrony chi over the HR population, and writes:
+    computes synchrony chi over the Epop population, and writes:
 
       - data/jobs/<job_id>/output.pkl: full sim output.
       - data/results/<job_id>.pkl: compact summary {ce, x0, Gintra, Ginter,
@@ -93,7 +93,7 @@ def main():
     # Pull the sweep dims back out of the YAML so aggregate.py can reconstruct
     # the grid without re-parsing filenames.
     ce     = float(params_dict['COUPLING_STRENGTH'])
-    x0     = float(params_dict['HR_X_NAUGHT'])
+    x0     = float(params_dict['EPOP_X_NAUGHT'])
     Gintra = _to_uS_float(params_dict['G_INTRA'])
     Ginter = _to_uS_float(params_dict['G_INTER'])
 

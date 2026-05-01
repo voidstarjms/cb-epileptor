@@ -2,11 +2,11 @@
 
 Brian2 simulation of seizure dynamics in two coupled neuronal populations.
 
-The model couples an excitatory Hindmarsh-Rose population (HR) with an
-inhibitory Morris-Lecar population (ML) through chemical synapses with a
-calcium-controlled plasticity gate (Wpre). It reproduces seizure-like
-dynamics — bursting, post-ictal depression, and the slow drift of the HR
-slow-variable z that drives epileptogenicity.
+The model couples an excitatory population (Epop) with an inhibitory
+population (Ipop) through chemical synapses with a calcium-controlled
+plasticity gate (Wpre). It reproduces seizure-like dynamics — bursting,
+post-ictal depression, and the slow drift of the Epop slow-variable z
+that drives epileptogenicity.
 
 ## Setup
 
@@ -44,7 +44,7 @@ condor/                 # HTCondor sweep submission
 
 src/
   run.py                # main entrypoint (CLI: -m rp / rpa / rpf)
-  model.py              # Brian2 sim: HR + ML populations, synapses, plasticity
+  model.py              # Brian2 sim: Epop + Ipop populations, synapses, plasticity
   param_loader.py       # YAML -> dict, resolving Brian2 expressions
   data_processing.py    # save/load output.pkl, spike histograms
   synch.py              # chi synchrony measure + Kuramoto order parameter
@@ -68,7 +68,7 @@ then analyze.
 |---|---|
 | `r` | Run the simulation, write `output.pkl` |
 | `p` | Generate the LFP+raster plot and (if cb is on) plasticity plot |
-| `f` | Combined with `p`, also draw HR (x,y,z,I_syn) and ML (x,n) traces |
+| `f` | Combined with `p`, also draw Epop (x,y,z,I_syn) and Ipop (x,n) traces |
 | `a` | Print chi/KOP stats and write autocorr+KOP plots |
 
 `--no-cb` keeps the Wpre dynamics evolving but drops Wpre from the
@@ -81,7 +81,7 @@ All keys in `run.REQUIRED_PARAMS` must be present.
 ## Parameter sweep workflow (HTCondor)
 
 The sweep dispatches one Condor job per YAML in `src/sweep/params/`. Each
-job runs a single sim, computes the chi synchrony measure over the HR
+job runs a single sim, computes the chi synchrony measure over the Epop
 population, and writes a compact result file. `aggregate.py` then
 assembles the chi grid into heatmaps. See
 [condor/README.md](condor/README.md) for the full submission workflow.
@@ -98,7 +98,7 @@ them at load time, so any valid Brian2 expression is accepted.
 The four `*_VALS` arrays (`X_NAUGHT_VALS`, `COUPLING_VALS`, `G_INTER_VALS`,
 `G_INTRA_VALS`) are present for time-varying schedules, but the model
 equations currently read the corresponding scalar constants
-(`HR_X_NAUGHT`, `COUPLING_STRENGTH`, `G_INTER`, `G_INTRA`); the sweep
+(`EPOP_X_NAUGHT`, `COUPLING_STRENGTH`, `G_INTER`, `G_INTRA`); the sweep
 overrides both for safety.
 
 ## Output

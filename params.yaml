@@ -11,37 +11,37 @@ ISOLATE: 1
 COUPLING_STRENGTH: 0.1
 W_MAX: 0.006
 
-# --- Population 1: Hindmarsh-Rose ---
-HR_A: 1.0
-HR_B: 3.0
-HR_C: 1.0
-HR_D: 5.0
-HR_S: 4.0
-HR_I_APP: 6
-HR_X_NAUGHT: -3.5
-HR_R: "0.00002/msecond"
-HR_SIGMA: 0.02  # was 1/50 in params.py; = 0.02 exactly
-HR_THRESHOLD: "x > 1.5"
-HR_REFRACTORY_CONDITION: "x >= 0"
+# --- Excitatory population (Epop) ---
+EPOP_A: 1.0
+EPOP_B: 3.0
+EPOP_C: 1.0
+EPOP_D: 5.0
+EPOP_S: 4.0
+EPOP_I_APP: 6
+EPOP_X_NAUGHT: -3.5
+EPOP_R: "0.00002/msecond"
+EPOP_SIGMA: 0.02  # was 1/50 in params.py; = 0.02 exactly
+EPOP_THRESHOLD: "x > 1.5"
+EPOP_REFRACTORY_CONDITION: "x >= 0"
 I_SCALE: "0.05*uamp"
 
-# --- Population 2: Morris-Lecar ---
-ML_CM: "20*ufarad"
-ML_I_APP: "37*uamp"
-ML_V1: "-1.2*mvolt"
-ML_V2: "18*mvolt"
-ML_V3: "12*mvolt"
-ML_V4: "17.4*mvolt"
-ML_PHI: "0.067/msecond"
-ML_E_CA: "120*mvolt"
-ML_E_K: "-84*mvolt"
-ML_E_L: "-60*mvolt"
-ML_GL: "2*msiemens"
-ML_GCA: "4.0*msiemens"
-ML_GK: "8.0*msiemens"
-ML_SIGMA: "50*uamp"  # was `uA` in source; same unit, normalized name
-ML_THRESHOLD: "x > 0.95"
-ML_REFRACTORY_CONDITION: "x >= 0"
+# --- Inhibitory population (Ipop) ---
+IPOP_CM: "20*ufarad"
+IPOP_I_APP: "37*uamp"
+IPOP_V1: "-1.2*mvolt"
+IPOP_V2: "18*mvolt"
+IPOP_V3: "12*mvolt"
+IPOP_V4: "17.4*mvolt"
+IPOP_PHI: "0.067/msecond"
+IPOP_E_CA: "120*mvolt"
+IPOP_E_K: "-84*mvolt"
+IPOP_E_L: "-60*mvolt"
+IPOP_GL: "2*msiemens"
+IPOP_GCA: "4.0*msiemens"
+IPOP_GK: "8.0*msiemens"
+IPOP_SIGMA: "50*uamp"  # was `uA` in source; same unit, normalized name
+IPOP_THRESHOLD: "x > 0.95"
+IPOP_REFRACTORY_CONDITION: "x >= 0"
 
 # --- Synaptic Parameters ---
 SYN_VT: "2*mV"
@@ -76,8 +76,8 @@ G_INTER_VALS: "[1, 1, 4, 4, 1] * uS"
 G_INTRA_VALS: "[0.5, 2, 2, 0.5, 0.5] * uS"
 
 # --- Z-bar, Ca sigmoid ---
-ML_Z_BAR_SCALE: 0.3
-ML_Z_BAR_OFFSET: 6
+IPOP_Z_BAR_SCALE: 0.3
+IPOP_Z_BAR_OFFSET: 6
 CA_SIGMOID_SHIFT: 0.8
 CA_SIGMOID_SLOPE: 0.2
 

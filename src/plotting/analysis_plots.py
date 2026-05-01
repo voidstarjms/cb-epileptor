@@ -83,13 +83,13 @@ def plot_mean_potential():
     # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
 def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray) -> None:
-    """Welch power spectrum of the 80/20 HR/ML weighted-mean signal.
+    """Welch power spectrum of the 80/20 Epop/Ipop weighted-mean signal.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs TAU_CLOCK and DT_SCALING to set the sampling rate.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x1 (np.ndarray): (num_cells, time) Epop x.
+        x2 (np.ndarray): (num_cells, time) Ipop x.
     """
     # compute mean potential
     x1_mean = np.mean(x1, axis=0)

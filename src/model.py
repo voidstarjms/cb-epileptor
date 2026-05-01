@@ -1,8 +1,8 @@
 """Brian2 simulation of the two-population seizure model (Naze et al. 2015).
 
-Builds two coupled populations (Hindmarsh-Rose excitatory + Morris-Lecar
-inhibitory), wires up intra/inter-population chemical synapses with calcium
-control plasticity, and runs the simulation. Saves output via data_processing.
+Builds two coupled populations (an excitatory Epop and an inhibitory Ipop),
+wires up intra/inter-population chemical synapses with calcium control
+plasticity, and runs the simulation. Saves output via data_processing.
 """
 from brian2 import *
 from brian2tools import *
@@ -31,7 +31,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'num_cells':    params_dict['NUM_CELLS'],
         'sim_duration': params_dict['SIM_DURATION'],
         'transient':    params_dict['TRANSIENT'],
-        'ml_e_l':       params_dict['ML_E_L'],
+        'ml_e_l':       params_dict['IPOP_E_L'],
     }
 
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
@@ -40,12 +40,12 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTER_VALS']))
     timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTRA_VALS']))
 
-    # --- Population 1: Hindmarsh-Rose ---
+    # --- Excitatory population (Epop) ---
     pop1_namespace = {
-        'a': params_dict['HR_A'], 'b': params_dict['HR_B'], 'c': params_dict['HR_C'],
-        'd': params_dict['HR_D'], 's': params_dict['HR_S'], 'I_app_1': params_dict['HR_I_APP'],
-        'x_naught': params_dict['HR_X_NAUGHT'], 'r': params_dict['HR_R'],
-        'sigma_1': params_dict['HR_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
+        'a': params_dict['EPOP_A'], 'b': params_dict['EPOP_B'], 'c': params_dict['EPOP_C'],
+        'd': params_dict['EPOP_D'], 's': params_dict['EPOP_S'], 'I_app_1': params_dict['EPOP_I_APP'],
+        'x_naught': params_dict['EPOP_X_NAUGHT'], 'r': params_dict['EPOP_R'],
+        'sigma_1': params_dict['EPOP_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
         'ISOLATE': params_dict['ISOLATE'], 'NOISE_INIT_OFFSET': params_dict['NOISE_INIT_OFFSET'],
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
@@ -69,8 +69,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     '''
 
     N1 = NeuronGroup(sim_namespace['num_cells'], pop1_eqs, method='euler',
-                     threshold=params_dict['HR_THRESHOLD'], reset='',
-                     namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
+                     threshold=params_dict['EPOP_THRESHOLD'], reset='',
+                     namespace=pop1_namespace, refractory=params_dict['EPOP_REFRACTORY_CONDITION'])
 
     N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
@@ -85,18 +85,18 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     gap_junctions_1.connect()
 
 
-    # --- Population 2: Morris-Lecar ---
+    # --- Inhibitory population (Ipop) ---
     pop2_namespace = {
-        'Cm': params_dict['ML_CM'], 'I_app_2': params_dict['ML_I_APP'], 'gL': params_dict['ML_GL'],
-        'E_L': params_dict['ML_E_L'], 'gK': params_dict['ML_GK'], 'E_K': params_dict['ML_E_K'],
-        'gCa': params_dict['ML_GCA'], 'E_Ca': params_dict['ML_E_CA'],
-        'v1': params_dict['ML_V1'], 'v2': params_dict['ML_V2'], 'v3': params_dict['ML_V3'], 'v4': params_dict['ML_V4'],
-        'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
+        'Cm': params_dict['IPOP_CM'], 'I_app_2': params_dict['IPOP_I_APP'], 'gL': params_dict['IPOP_GL'],
+        'E_L': params_dict['IPOP_E_L'], 'gK': params_dict['IPOP_GK'], 'E_K': params_dict['IPOP_E_K'],
+        'gCa': params_dict['IPOP_GCA'], 'E_Ca': params_dict['IPOP_E_CA'],
+        'v1': params_dict['IPOP_V1'], 'v2': params_dict['IPOP_V2'], 'v3': params_dict['IPOP_V3'], 'v4': params_dict['IPOP_V4'],
+        'phi': params_dict['IPOP_PHI'], 'sigma_2': params_dict['IPOP_SIGMA'],
         'Wmax': params_dict['W_MAX'],
         'ISOLATE': params_dict['ISOLATE'],
         'ce': params_dict['COUPLING_STRENGTH'], 'timed_CE': timed_coupling_strength,
-        'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
-        'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
+        'ml_z_bar_scale': params_dict['IPOP_Z_BAR_SCALE'],
+        'ml_z_bar_offset': params_dict['IPOP_Z_BAR_OFFSET'],
     }
 
     pop2_eqs = '''
@@ -119,8 +119,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     '''
 
     N2 = NeuronGroup(sim_namespace['num_cells'], pop2_eqs, method='euler',
-                     threshold=params_dict['ML_THRESHOLD'], reset='',
-                     namespace=pop2_namespace, refractory=params_dict['ML_REFRACTORY_CONDITION'])
+                     threshold=params_dict['IPOP_THRESHOLD'], reset='',
+                     namespace=pop2_namespace, refractory=params_dict['IPOP_REFRACTORY_CONDITION'])
 
     N2.v = pop2_namespace['E_L'] * np.ones(sim_namespace['num_cells']) + \
            randn(sim_namespace['num_cells']) * pop2_namespace['Wmax'] * volt
@@ -196,7 +196,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
-    # Pass HR's z_bar into ML so pop2's eqs can read it.
+    # Pass Epop's z_bar into Ipop so pop2's eqs can read it.
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = syn_namespace['E_exc']
     S1_to_2.alpha = syn_namespace['alpha_exc']
@@ -210,7 +210,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
-    # Pass ML's x_bar into HR as x2_bar so pop1's dz/dt can read it.
+    # Pass Ipop's x_bar into Epop as x2_bar so pop1's dz/dt can read it.
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = syn_namespace['E_inh']
     S2_to_1.alpha = syn_namespace['alpha_inh']

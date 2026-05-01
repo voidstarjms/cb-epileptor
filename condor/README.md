@@ -35,7 +35,7 @@ n_realizations). Output:
 - `src/sweep/params_list.txt` — list of YAML paths (one per line) for Condor
 
 Each generated YAML is a standalone copy of `params.yaml` with `COUPLING_STRENGTH`,
-`HR_X_NAUGHT`, `G_INTRA`, `G_INTER`, the matching `*_VALS` schedules, and a `SEED`
+`EPOP_X_NAUGHT`, `G_INTRA`, `G_INTER`, the matching `*_VALS` schedules, and a `SEED`
 field overridden for that job.
 
 **3. Generate condor.sub and the log folder**

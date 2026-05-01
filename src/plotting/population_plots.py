@@ -67,10 +67,10 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
-        spike_matrix_1 (np.ndarray): HR spike count matrix.
-        spike_matrix_2 (np.ndarray): ML spike count matrix.
+        x1 (np.ndarray): (num_cells, time) Epop x.
+        x2 (np.ndarray): (num_cells, time) Ipop x.
+        spike_matrix_1 (np.ndarray): Epop spike count matrix.
+        spike_matrix_2 (np.ndarray): Ipop spike count matrix.
         num_cells (int): Number of neurons per population.
         sim_duration (float): Simulation duration in seconds.
         zoom (bool): If True, apply _apply_zoom after drawing.
@@ -105,9 +105,9 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     ax1.set_title("LFP signal (80/20 weight excitatory/inhibitory)")
 
     # raster 1
-    HR_CLIM = find_clim(spike_matrix_1)
+    EPOP_CLIM = find_clim(spike_matrix_1)
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
-                   origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, HR_CLIM))
+                   origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, EPOP_CLIM))
 
     ax2.set_ylabel('Neuron index')
     ax2.set_title('Excitatory Population Spike Raster (Spike Count)')
@@ -117,9 +117,9 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     cbar.minorticks_on()
 
     # raster 2
-    ML_CLIM = find_clim(spike_matrix_2)
+    IPOP_CLIM = find_clim(spike_matrix_2)
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
-                   origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, ML_CLIM))
+                   origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, IPOP_CLIM))
 
     # ax3.set_xlabel('Time (s)', fontsize=12)
     ax3.set_ylabel('Neuron index')
@@ -164,12 +164,12 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
 
 def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarray,
         x: np.ndarray, spike_matrix: np.ndarray, num_cells: int, sim_duration: float, zoom: bool = False) -> None:
-    """Mean x trace above the spike raster for one population (1=HR, else ML).
+    """Mean x trace above the spike raster for one population (1=Epop, else Ipop).
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Used by _apply_zoom when zoom is True.
-        population (int): 1 for excitatory (HR), anything else for inhibitory (ML).
+        population (int): 1 for excitatory (Epop), anything else for inhibitory (Ipop).
         t (np.ndarray): Time vector.
         x (np.ndarray): (num_cells, time) state variable.
         spike_matrix (np.ndarray): Spike count matrix.
@@ -213,12 +213,12 @@ def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarra
     plt.show()
 
 def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
-    """x-traces for the first 3 HR neurons.
+    """x-traces for the first 3 Epop neurons.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
+        x1 (np.ndarray): (num_cells, time) Epop x.
     """
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population - Multiple Neurons")
@@ -235,15 +235,15 @@ def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
 
 def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, I_syn_inter_1: np.ndarray) -> None:
-    """x, y, z, and I_syn_inter for HR neuron 0.
+    """x, y, z, and I_syn_inter for Epop neuron 0.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        y1 (np.ndarray): (num_cells, time) HR y.
-        z1 (np.ndarray): (num_cells, time) HR z.
-        I_syn_inter_1 (np.ndarray): (num_cells, time) inter-pop synaptic current into HR.
+        x1 (np.ndarray): (num_cells, time) Epop x.
+        y1 (np.ndarray): (num_cells, time) Epop y.
+        z1 (np.ndarray): (num_cells, time) Epop z.
+        I_syn_inter_1 (np.ndarray): (num_cells, time) inter-pop synaptic current into Epop.
     """
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population Variables - One Neuron")
@@ -260,14 +260,14 @@ def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray
     plt.show()
 
 def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, z1: np.ndarray) -> None:
-    """Mean x, y, z over all HR neurons.
+    """Mean x, y, z over all Epop neurons.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        y1 (np.ndarray): (num_cells, time) HR y.
-        z1 (np.ndarray): (num_cells, time) HR z.
+        x1 (np.ndarray): (num_cells, time) Epop x.
+        y1 (np.ndarray): (num_cells, time) Epop y.
+        z1 (np.ndarray): (num_cells, time) Epop z.
     """
     # Calculate the mean across all neurons (axis=0)
     x1_mean = np.mean(x1, axis=0)
@@ -291,13 +291,13 @@ def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, 
     plt.show()
 
 def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray) -> None:
-    """x and n for ML neuron 0.
+    """x and n for Ipop neuron 0.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x2 (np.ndarray): (num_cells, time) ML x.
-        n2 (np.ndarray): (num_cells, time) ML gating variable n.
+        x2 (np.ndarray): (num_cells, time) Ipop x.
+        n2 (np.ndarray): (num_cells, time) Ipop gating variable n.
     """
     # All pop2 variables
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
@@ -315,13 +315,13 @@ def plot_ml_mean():
     pass
 
 def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> None:
-    """x of neuron 0 from HR and ML, stacked.
+    """x of neuron 0 from Epop and Ipop, stacked.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x1 (np.ndarray): (num_cells, time) Epop x.
+        x2 (np.ndarray): (num_cells, time) Ipop x.
     """
     # One neuron from both pops
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
@@ -339,15 +339,15 @@ def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> 
 
 def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, x2: np.ndarray, n: np.ndarray) -> None:
-    """Mean x of HR and ML, stacked. y1, z1, n are unused.
+    """Mean x of Epop and Ipop, stacked. y1, z1, n are unused.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
+        x1 (np.ndarray): (num_cells, time) Epop x.
         y1: Unused.
         z1: Unused.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x2 (np.ndarray): (num_cells, time) Ipop x.
         n: Unused.
     """
     # neurons averaged from both pops
