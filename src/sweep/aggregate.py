@@ -53,8 +53,9 @@ p2_label = r'$x_0$ (innate excitability)'
 # Group chi values by (ce, x0, Gintra, Ginter) across realizations
 chi_by_point = defaultdict(list)
 for r in all_results:
+    print(r)
     key = (round(r['ce'], 6), round(r['x0'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
-    chi_by_point[key].append(r['chi'])
+    chi_by_point[key].append(r['r'])
 
 figures_dir = 'figures'
 os.makedirs(figures_dir, exist_ok=True)
@@ -139,5 +140,5 @@ else:
                   np.array(ce_values), np.array(x0_values), np.array(Gintra_values),
                   np.array(Ginter_values), p1_label, p2_label, p3_label, p4_label)
     
-    print("Saved: {run_num}_full_param_space.png")
+    print(f"Saved: {run_num}_synchrony_chi_mean_full.png and {run_num}_synchrony_chi_sd_full.png")
     #print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")

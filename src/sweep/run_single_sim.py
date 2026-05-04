@@ -5,12 +5,14 @@ import argparse
 import os
 import pickle
 import tempfile
+import numpy as np
 
 # Headless backend. Must be set before any pyplot import, direct or transitive.
 # import matplotlib
 # matplotlib.use('Agg')
 
-from brian2 import prefs, seed, second
+from brian2 import prefs, seed
+from brian2.units import *
 
 import sys
 sys.path.append("..")
@@ -37,10 +39,10 @@ def main():
 
     params_dict = load_params(args.params)
     # Collapse the sweep dimensions to one value each for this job.
-    params_dict['COUPLING_VALS'] = [args.ce]
-    params_dict['X_NAUGHT_VALS'] = [args.x0]
-    params_dict['G_INTRA_VALS'] = [args.Gintra]
-    params_dict['G_INTER_VALS'] = [args.Ginter]
+    params_dict['COUPLING_STRENGTH'] = args.ce
+    params_dict['HR_X_NAUGHT'] = args.x0
+    params_dict['G_INTRA'] = args.Gintra * usiemens
+    params_dict['G_INTER'] = args.Ginter * usiemens
     
     job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_inter_{args.Ginter}_intra_{args.Gintra}_r{args.realization}'
 
@@ -60,17 +62,21 @@ def main():
     os.makedirs(filepaths.data_dir, exist_ok=True)
     os.makedirs(filepaths.figures_dir, exist_ok=True)
 
-    run_sim(filepaths, params_dict)
+    run_sim(filepaths, params_dict, cb_on=False)
 
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
     t  = res['t']
+    spikes_1 = res['spikes_n1']
 
     # Compute synchrony
     chi, _, _ = syn.autocorrelate(x1)
+    _, r, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
+    r = np.mean(r)
     print(f"  chi = {chi:.4f}")
+    print(f"  r = {r:.4f}")
 
     # Save per-job result to data/results/
     results_dir = os.path.join('data', 'results')
@@ -82,6 +88,7 @@ def main():
         'Ginter':      args.Ginter,
         'realization': args.realization,
         'chi':         float(chi),
+        'r':           float(r),
     }
     with open(os.path.join(results_dir, f'{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)

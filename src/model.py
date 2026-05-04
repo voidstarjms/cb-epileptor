@@ -1,6 +1,5 @@
 """Brian2 simulation of the two-population seizure model (Naze et al. 2015)."""
 from brian2 import *
-from brian2tools import *
 import numpy as np
 import data_processing
 from typing import Dict, Any
@@ -65,7 +64,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
                      threshold=params_dict['HR_THRESHOLD'], reset='',
                      namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
 
-    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
+    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['HR_X_NAUGHT']+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
     N1.z = '(s*(x - x_naught))'
 

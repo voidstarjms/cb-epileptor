@@ -4,7 +4,6 @@ import numpy as np
 import datetime
 import pickle
 from brian2 import *
-from brian2tools import *
 from typing import Dict, Any
 
 _OUTPUT_DATA_FILE = 'output.pkl'

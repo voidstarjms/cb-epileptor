@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 import os
 from run import FilePaths
 
@@ -113,7 +114,7 @@ def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
 def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, param2_values,
                                 param3_values, param4_values, param1_label,
                                 param2_label, param3_label, param4_label,
-                                title='Synchrony $\chi$', vmin=0, vmax=1,
+                                title=r'Synchrony $\chi$', vmin=0, vmax=1,
                                 save_name='synchrony_all_params.png'):
 
     n_outer_rows = len(param1_values)
@@ -124,8 +125,8 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     OUTER_RIGHT = 0.1
     OUTER_TOP = 0.1
 
-    HSPACE = 0.55
-    WSPACE = 0.45
+    HSPACE = 0.15
+    WSPACE = 0.15
 
     OUTER_AXIS_OFFSET = 0.06
 
@@ -138,6 +139,8 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         bottom=OUTER_BOTTOM, top=1 - OUTER_TOP,
         hspace=HSPACE, wspace=WSPACE,
     )
+
+    norm = Normalize(vmin=vmin, vmax=vmax)
 
     axes = np.empty((n_outer_rows, n_outer_cols), dtype=object)
     for i in range(n_outer_rows):
@@ -154,6 +157,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
                 origin="lower",
                 aspect="auto",
                 cmap='viridis',
+                norm=norm,
             )
 
             ax.set_xticks(range(len(param3_values)))
@@ -181,7 +185,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     row_height = (gs_top - gs_bottom) / n_outer_rows
 
     for i, p1 in enumerate(param1_values):
-        row_center = gs_top - (i + 0.5) * row_height
+        row_center = gs_bottom + (i + 0.5) * row_height
 
         fig.add_artist(plt.Line2D(
             [gs_left - OUTER_AXIS_OFFSET - 0.01, gs_left - OUTER_AXIS_OFFSET],

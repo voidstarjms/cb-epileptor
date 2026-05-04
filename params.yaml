@@ -1,5 +1,5 @@
 # --- Simulation Control ---
-SIM_DURATION: "120*second"
+SIM_DURATION: "30*second"
 NUM_CELLS: 10
 TAU_CLOCK: "1*msecond"
 DT_SCALING: 20
@@ -9,7 +9,7 @@ TRANSIENT: 10
 # ISOLATE = 0 decoupled, 1 coupled
 ISOLATE: 1
 COUPLING_STRENGTH: 0.1
-W_MAX: 0.006
+W_MAX: 0.012
 
 # --- Population 1: Hindmarsh-Rose ---
 HR_A: 1.0
@@ -76,7 +76,7 @@ G_INTER_VALS: "[1, 1, 4, 4, 1] * uS"
 G_INTRA_VALS: "[0.5, 2, 2, 0.5, 0.5] * uS"
 
 # --- Z-bar, Ca sigmoid ---
-ML_Z_BAR_SCALE: 0.3
+ML_Z_BAR_SCALE: 0.15
 ML_Z_BAR_OFFSET: 6
 CA_SIGMOID_SHIFT: 0.8
 CA_SIGMOID_SLOPE: 0.2
