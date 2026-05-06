@@ -80,7 +80,7 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
 def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
                                 param1_values, param2_values, param3_values,
                                 param4_values, param1_label, param2_label,
-                                param3_label, param4_label, run_num=1):
+                                param3_label, param4_label, run_num=1, plot_mode='r'):
     """Write the multifaceted mean-chi and SD-chi heatmaps, both prefixed with run_num.
         INPUT:
             filepaths: FilePaths with figures_dir.
@@ -97,40 +97,42 @@ def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
             param4_label: inner y-axis label (LaTeX allowed).
             run_num: integer prefix for the output filenames.
     """
+    save_name_prefix = f'{run_num}_synchrony_r' if plot_mode == 'r' else f'{run_num}_synchrony_chi'
+    plot_sync_metric_name = 'r' if plot_mode == 'r' else r'$\chi$'
     plot_synchrony_multifaceted_single(filepaths, chi_mean, param1_values, param2_values,
                           param3_values, param4_values, param1_label, param2_label,
-                          param3_label, param4_label, title=r'Synchrony $\chi$',
+                          param3_label, param4_label, title='Synchrony '+plot_sync_metric_name,
                           vmin=0, vmax=1,
-                          save_name=f'{run_num}_synchrony_chi_mean_full.png')
+                          save_name=save_name_prefix+'_mean_full.png')
 
     sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
     plot_synchrony_multifaceted_single(filepaths, chi_sd, param1_values, param2_values,
                           param3_values, param4_values, param1_label, param2_label,
-                          param3_label, param4_label, title=r'SD of $\chi$',
+                          param3_label, param4_label, title='SD of '+plot_sync_metric_name,
                           vmin=0, vmax=sd_max,
-                          save_name=f'{run_num}_synchrony_chi_sd_full.png')
+                          save_name=save_name_prefix+'_sd_full.png')
 
 
 def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, param2_values,
                                 param3_values, param4_values, param1_label,
                                 param2_label, param3_label, param4_label,
-                                title=r'Synchrony $\chi$', vmin=0, vmax=1,
+                                title, vmin=0, vmax=1,
                                 save_name='synchrony_all_params.png'):
 
     n_outer_rows = len(param1_values)
     n_outer_cols = len(param2_values)
 
     OUTER_LEFT = 0.18
-    OUTER_BOTTOM = 0.1
+    OUTER_BOTTOM = 0.05
     OUTER_RIGHT = 0.1
-    OUTER_TOP = 0.1
+    OUTER_TOP = 0.12
 
     HSPACE = 0.15
     WSPACE = 0.15
 
     OUTER_AXIS_OFFSET = 0.06
 
-    fig = plt.figure(figsize=(7, 6))
+    fig = plt.figure(figsize=(16, 13))
 
     gs = gridspec.GridSpec(
         n_outer_rows, n_outer_cols,
@@ -146,7 +148,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     for i in range(n_outer_rows):
         for j in range(n_outer_cols):
             axes[i, j] = fig.add_subplot(gs[i, j])
-
+    print(param1_values)
     for i, p1 in enumerate(param1_values):
         for j, p2 in enumerate(param2_values):
             ax = axes[i, j]
@@ -156,7 +158,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
                 data.T,
                 origin="lower",
                 aspect="auto",
-                cmap='viridis',
+                cmap='nipy_spectral',
                 norm=norm,
             )
 
@@ -170,9 +172,9 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
             ax.set_yticklabels([str(v) for v in param4_values], fontsize=7)
 
             if i == n_outer_rows - 1:
-                ax.set_xlabel(param3_label, fontsize=8, labelpad=4)
+                ax.set_xlabel(param3_label, fontsize=10, labelpad=4)
             if j == 0:
-                ax.set_ylabel(param4_label, fontsize=8, labelpad=4)
+                ax.set_ylabel(param4_label, fontsize=10, labelpad=4)
 
             for spine in ax.spines.values():
                 spine.set_linewidth(0.5)
@@ -233,11 +235,20 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         transform=fig.transFigure,
         color="black", linewidth=0.8, clip_on=False,
     ))
-
+    
+    # Param 1 label
     fig.text(
-        (gs_left + gs_right) / 2, gs_top + 0.065,
+        gs_left - 0.15, (gs_top + gs_bottom) / 2,
+        param1_label,
+        ha="center", va="top", fontsize=11, fontweight="bold",
+        transform=fig.transFigure, rotation=90,
+    )
+    
+    # Param 2 label
+    fig.text(
+        (gs_left + gs_right) / 2, gs_top + 0.05,
         param2_label,
-        ha="center", va="bottom", fontsize=11, fontweight="bold",
+        ha="center", va="center", fontsize=11, fontweight="bold",
         transform=fig.transFigure,
     )
 
@@ -247,7 +258,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         0.025,
         gs_top - gs_bottom,
     ])
-    cb = fig.colorbar(ScalarMappable(cmap='viridis'), cax=cbar_ax)
+    cb = fig.colorbar(ScalarMappable(cmap='nipy_spectral'), cax=cbar_ax)
     cb.set_label("Synchrony", fontsize=11, fontweight="bold")
     cb.ax.tick_params(labelsize=8)
 

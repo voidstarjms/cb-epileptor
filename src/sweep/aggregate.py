@@ -105,17 +105,17 @@ if args.full == False:
     print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")
 # 4-axis plot
 else:
-    p3_label = r'$G_{intra}$ (intrapop conductance)'
-    p4_label = r'$G_{inter}$ (interpop conductance)'
+    p3_label = r'$G_{inter}$'
+    p4_label = r'$G_{intra}$'
 
     # Build mean and SD grids — shape: (len(x0), len(ce), len(Gintra), len(Ginter))
     chi_grid = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
     chi_sd   = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
     for (ce, x0, Gintra, Ginter), chis in chi_by_point.items():
-        i = ce_values.index(ce)
         j = x0_values.index(x0)
-        k = Gintra_values.index(Gintra)
-        l = Ginter_values.index(Ginter)
+        i = ce_values.index(ce)
+        k = Ginter_values.index(Ginter)
+        l = Gintra_values.index(Gintra)
         chi_grid[j, i, k, l] = np.mean(chis)
         chi_sd[j, i, k, l]   = np.std(chis)
 

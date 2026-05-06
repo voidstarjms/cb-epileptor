@@ -68,6 +68,7 @@ A_LTD: 0.5
 A_LTP: 2
 TAU_WPRE: "5*second"
 TAU_CA: "200*msecond"
+CBD_AMOUNT: 0
 
 # --- Timed array schedules ---
 X_NAUGHT_VALS: [-2.5]

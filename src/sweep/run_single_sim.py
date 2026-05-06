@@ -39,10 +39,10 @@ def main():
 
     params_dict = load_params(args.params)
     # Collapse the sweep dimensions to one value each for this job.
-    params_dict['COUPLING_STRENGTH'] = args.ce
-    params_dict['HR_X_NAUGHT'] = args.x0
-    params_dict['G_INTRA'] = args.Gintra * usiemens
-    params_dict['G_INTER'] = args.Ginter * usiemens
+    params_dict['COUPLING_VALS'] = [args.ce]
+    params_dict['X_NAUGHT_VALS'] = [args.x0]
+    params_dict['G_INTRA_VALS'] = [args.Gintra] * usiemens
+    params_dict['G_INTER_VALS'] = [args.Ginter] * usiemens
     
     job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_inter_{args.Ginter}_intra_{args.Gintra}_r{args.realization}'
 
