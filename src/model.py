@@ -162,7 +162,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
         plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
-        beta_CBD = 1 / 1 + cbd : 1
+        beta_CBD = 1 / (1 + cbd) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
         dCa/dt = (sigma_Ca - beta_CBD * Ca) / tau_ca : 1 (clock-driven)
         sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1

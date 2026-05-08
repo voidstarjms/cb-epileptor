@@ -47,8 +47,8 @@ print(f"X0 values ({len(x0_values)}): {[round(v,3) for v in x0_values]}")
 print(f"Gintra values ({len(Gintra_values)}): {[round(v,3) for v in Gintra_values]}")
 print(f"Ginter values ({len(Ginter_values)}): {[round(v,3) for v in Ginter_values]}")
 
-p1_label = r'$C_E$ (coupling strength)'
-p2_label = r'$x_0$ (innate excitability)'
+p1_label = r'Coupling Strength ($C_E$)'
+p2_label = r'Innate Excitability ($x_0$)'
 
 # Group chi values by (ce, x0, Gintra, Ginter) across realizations
 chi_by_point = defaultdict(list)

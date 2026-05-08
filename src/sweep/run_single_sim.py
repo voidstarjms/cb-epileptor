@@ -62,7 +62,7 @@ def main():
     os.makedirs(filepaths.data_dir, exist_ok=True)
     os.makedirs(filepaths.figures_dir, exist_ok=True)
 
-    run_sim(filepaths, params_dict, cb_on=False)
+    run_sim(filepaths, params_dict, cb_on=True)
 
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
