@@ -5,7 +5,6 @@ inhibitory), wires up intra/inter-population chemical synapses with calcium
 control plasticity, and runs the simulation. Saves output via data_processing.
 """
 from brian2 import *
-from brian2tools import *
 import numpy as np
 import data_processing
 from typing import Dict, Any
@@ -25,6 +24,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     # Setup Simulation
     defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']
     print("defaultclock.dt is: ", defaultclock.dt)
+
+    print("============================================In model=============================================")
+    print(params_dict)
 
     # Simulation-control namespace hyper-params (used throughout)
     sim_namespace = {
@@ -50,16 +52,15 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
         'ce': params_dict['COUPLING_STRENGTH'],
-        'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
     }
 
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + ISOLATE * (ce * (x_bar - x)
+        + ISOLATE * (timed_coupling_strength(t) * (x_bar - x)
         + Wmax * xi * sqrt(second)
         + sigma_1 * (I_syn_intra + I_syn_inter) / I_scale)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + ISOLATE * x2_bar - x_naught) - z_bar) : 1
+    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x_naught(t)) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
@@ -72,9 +73,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
                      threshold=params_dict['HR_THRESHOLD'], reset='',
                      namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
 
-    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
+    N1.x = np.ones(sim_namespace['num_cells']) * (timed_x_naught(0 * second)+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
-    N1.z = '(s*(x - x_naught))'
+    N1.z = '(s*(x - timed_x_naught(0 * second)))'
 
     # Population 1 Averaging
     exc_averaging_eqs ='''
@@ -94,7 +95,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
         'Wmax': params_dict['W_MAX'],
         'ISOLATE': params_dict['ISOLATE'],
-        'ce': params_dict['COUPLING_STRENGTH'], 'timed_CE': timed_coupling_strength,
+        'ce': params_dict['COUPLING_STRENGTH'], 
         'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
         'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
     }
@@ -102,7 +103,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + ce * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
+        + timed_coupling_strength(t) * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -158,6 +159,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'E_inh': params_dict['SYN_E_INH'],
         'alpha_inh': params_dict['SYN_ALPHA_INH'],
         'beta_inh': params_dict['SYN_BETA_INH'],
+        'cbd': params_dict['CBD_AMOUNT'],
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
@@ -167,8 +169,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
         plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
+        beta_CBD = 1 / (1 + cbd) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-        dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
+        dCa/dt = (sigma_Ca - beta_CBD * Ca) / tau_ca : 1 (clock-driven)
         sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1
 
         E : volt
@@ -180,12 +183,12 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # S1_to_1: pre=Pop1, post=Pop1
     intra_syn_eqs = f'''
-    I_syn_intra_post = (-G_intra * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
+    I_syn_intra_post = (-timed_G_intra(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
     # S1_to_2: pre=Pop1, post=Pop2
     inter_syn_eqs = f'''
-    I_syn_inter_post = (-G_inter * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
+    I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)

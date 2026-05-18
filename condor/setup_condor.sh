@@ -22,14 +22,14 @@ Universe   = vanilla
 Executable = $CONDOR_DIR/wrapper.sh
 Arguments  = run_single_sim.py --params \$(params_file)
 
-Initialdir = $SWEEP_DIR
+Initialdir = $PROJ_DIR/src/sweep
 
 Output = $LOG_DIR/out_\$(Process).log
 Error  = $LOG_DIR/err_\$(Process).log
 Log    = $LOG_DIR/condor.log
 
 Request_Cpus   = 1
-Request_Memory = 8GB
+Request_Memory = 16GB
 
 +CSCI_GrpDesktop = True
 
