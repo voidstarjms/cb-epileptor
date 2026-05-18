@@ -1,4 +1,9 @@
-"""LFP, rasters, per-pop state traces. standard_plot is the main one."""
+"""LFP, rasters, per-pop state traces. standard_plot is the main one.
+
+standard_plot draws the 80/20 weighted-mean LFP, both spike rasters, and
+optionally schedule overlays for x0/CE/g_intra/g_inter when those vals are
+provided.
+"""
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -10,9 +15,10 @@ import plotting.style  # noqa: F401
 
 def _apply_zoom(axes: list, params_dict: Dict) -> None:
     """Set the x-axis of all given axes to a 5s window near the end of the sim.
-        INPUT:
-            axes: list of matplotlib Axes.
-            params_dict: needs SIM_DURATION.
+
+    Args:
+        axes (list): List of matplotlib Axes.
+        params_dict (Dict): Needs SIM_DURATION.
     """
     XMIN, XMAX = params_dict['SIM_DURATION']/second - 15, params_dict['SIM_DURATION']/second - 10
     for ax in axes:
@@ -20,10 +26,12 @@ def _apply_zoom(axes: list, params_dict: Dict) -> None:
 
 def find_clim(spike_matrix: np.ndarray) -> float:
     """Max spike count across the matrix, used as the colorbar upper bound.
-        INPUT:
-            spike_matrix: 2D spike-count matrix.
-        RETURN:
-            the max value as a float.
+
+    Args:
+        spike_matrix (np.ndarray): 2D spike-count matrix.
+
+    Returns:
+        float: The max value across the matrix.
     """
     return np.max(spike_matrix)
 
@@ -32,11 +40,14 @@ def _vals_to_time_points(vals, t):
 
     For each value in vals, generates a [bin_start, bin_end] time segment paired
     with [v, v], then concatenates all segments into a full sparse step representation.
-        INPUT:
-            vals: list/array of values.
-            t: time vector (only t[0] and t[-1] are used to set the span).
-        RETURN:
-            (time_points, value_points): two arrays suitable for ax.plot.
+
+    Args:
+        vals: List/array of values.
+        t: Time vector (only t[0] and t[-1] are used to set the span).
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: (time_points, value_points) suitable
+        for ax.plot.
     """
     n = len(vals)
     bin_size = (t[-1] - t[0]) / n
@@ -51,21 +62,23 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         x_naught_vals=None, coupling_vals=None,
         g_intra_vals=None, g_inter_vals=None, show: bool = True) -> None:
     """Weighted-mean LFP + both spike rasters. Adds schedule panels if vals are given.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: needs SIM_DURATION and TRANSIENT.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            x2: (num_cells, time) ML x.
-            spike_matrix_1: HR spike count matrix.
-            spike_matrix_2: ML spike count matrix.
-            num_cells: number of neurons per population.
-            sim_duration: simulation duration in seconds.
-            zoom: if True, apply _apply_zoom after drawing.
-            x_naught_vals: optional x0 schedule; adds an extra panel if paired with coupling_vals.
-            coupling_vals: optional CE schedule; pairs with x_naught_vals.
-            g_intra_vals: optional intra-pop conductance schedule.
-            g_inter_vals: optional inter-pop conductance schedule; pairs with g_intra_vals.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        x2 (np.ndarray): (num_cells, time) ML x.
+        spike_matrix_1 (np.ndarray): HR spike count matrix.
+        spike_matrix_2 (np.ndarray): ML spike count matrix.
+        num_cells (int): Number of neurons per population.
+        sim_duration (float): Simulation duration in seconds.
+        zoom (bool): If True, apply _apply_zoom after drawing.
+        x_naught_vals: Optional x0 schedule; adds an extra panel if paired with coupling_vals.
+        coupling_vals: Optional CE schedule; pairs with x_naught_vals.
+        g_intra_vals: Optional intra-pop conductance schedule.
+        g_inter_vals: Optional inter-pop conductance schedule; pairs with g_intra_vals.
+        show (bool): If True, call plt.show() before closing the figure.
     """
 
     has_x0_ce = x_naught_vals is not None and coupling_vals is not None
@@ -152,16 +165,17 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
 def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarray,
         x: np.ndarray, spike_matrix: np.ndarray, num_cells: int, sim_duration: float, zoom: bool = False) -> None:
     """Mean x trace above the spike raster for one population (1=HR, else ML).
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: used by _apply_zoom when zoom is True.
-            population: 1 for excitatory (HR), anything else for inhibitory (ML).
-            t: time vector.
-            x: (num_cells, time) state variable.
-            spike_matrix: spike count matrix.
-            num_cells: number of neurons.
-            sim_duration: simulation duration in seconds.
-            zoom: if True, apply _apply_zoom after drawing.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Used by _apply_zoom when zoom is True.
+        population (int): 1 for excitatory (HR), anything else for inhibitory (ML).
+        t (np.ndarray): Time vector.
+        x (np.ndarray): (num_cells, time) state variable.
+        spike_matrix (np.ndarray): Spike count matrix.
+        num_cells (int): Number of neurons.
+        sim_duration (float): Simulation duration in seconds.
+        zoom (bool): If True, apply _apply_zoom after drawing.
     """
     population_name = ""
     if population == 1:
@@ -200,10 +214,11 @@ def raster_plot(filepaths: Any, params_dict: Dict, population: int, t: np.ndarra
 
 def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
     """x-traces for the first 3 HR neurons.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
     """
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population - Multiple Neurons")
@@ -221,13 +236,14 @@ def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray) -> None:
 def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, I_syn_inter_1: np.ndarray) -> None:
     """x, y, z, and I_syn_inter for HR neuron 0.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: (num_cells, time) HR y.
-            z1: (num_cells, time) HR z.
-            I_syn_inter_1: (num_cells, time) inter-pop synaptic current into HR.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        y1 (np.ndarray): (num_cells, time) HR y.
+        z1 (np.ndarray): (num_cells, time) HR z.
+        I_syn_inter_1 (np.ndarray): (num_cells, time) inter-pop synaptic current into HR.
     """
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population Variables - One Neuron")
@@ -245,12 +261,13 @@ def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray
 
 def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, z1: np.ndarray) -> None:
     """Mean x, y, z over all HR neurons.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: (num_cells, time) HR y.
-            z1: (num_cells, time) HR z.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        y1 (np.ndarray): (num_cells, time) HR y.
+        z1 (np.ndarray): (num_cells, time) HR z.
     """
     # Calculate the mean across all neurons (axis=0)
     x1_mean = np.mean(x1, axis=0)
@@ -275,11 +292,12 @@ def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray, 
 
 def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray) -> None:
     """x and n for ML neuron 0.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x2: (num_cells, time) ML x.
-            n2: (num_cells, time) ML gating variable n.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x2 (np.ndarray): (num_cells, time) ML x.
+        n2 (np.ndarray): (num_cells, time) ML gating variable n.
     """
     # All pop2 variables
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(30, 10), sharex=True)
@@ -298,11 +316,12 @@ def plot_ml_mean():
 
 def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> None:
     """x of neuron 0 from HR and ML, stacked.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            x2: (num_cells, time) ML x.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        x2 (np.ndarray): (num_cells, time) ML x.
     """
     # One neuron from both pops
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
@@ -321,14 +340,15 @@ def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray) -> 
 def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, x2: np.ndarray, n: np.ndarray) -> None:
     """Mean x of HR and ML, stacked. y1, z1, n are unused.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: unused.
-            z1: unused.
-            x2: (num_cells, time) ML x.
-            n: unused.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        y1: Unused.
+        z1: Unused.
+        x2 (np.ndarray): (num_cells, time) ML x.
+        n: Unused.
     """
     # neurons averaged from both pops
     x1_mean = np.mean(x1, axis=0)

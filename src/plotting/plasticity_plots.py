@@ -1,4 +1,8 @@
-"""Plots for the Ca-dependent plasticity gate Wpre on HR->HR synapses."""
+"""Plots for the Ca-dependent plasticity gate Wpre on HR->HR synapses.
+
+Recomputes plasticity and sigma_Ca from saved Ca traces so thresholds can be
+tweaked without re-running the simulation.
+"""
 from brian2 import *
 import matplotlib.pyplot as plt
 import os
@@ -12,15 +16,16 @@ def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
 
     Plasticity and sigma_Ca are recomputed here so thresholds can be tweaked
     without re-running the sim.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: needs A_LTD, A_LTP, THETA_LTD_START, THETA_LTD_END,
-                         THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
-            t: time vector.
-            x: (num_neurons, time) HR x. Uses x[0] and x[1].
-            wpre: Wpre trace for one synapse.
-            u: u (neurotransmitter) trace for one synapse.
-            Ca: Ca trace for one synapse.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Needs A_LTD, A_LTP, THETA_LTD_START, THETA_LTD_END,
+            THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
+        t: Time vector.
+        x: (num_neurons, time) HR x. Uses x[0] and x[1].
+        wpre: Wpre trace for one synapse.
+        u: u (neurotransmitter) trace for one synapse.
+        Ca: Ca trace for one synapse.
     """
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 8), sharex=True)
     Ca = np.asarray(Ca)

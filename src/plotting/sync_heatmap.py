@@ -1,4 +1,8 @@
-"""Sweep heatmaps: mean chi and SD chi over a (param1, param2) grid."""
+"""Sweep heatmaps: mean chi and SD chi over a (param1, param2) grid.
+
+Used by sweep/aggregate.py after a Condor run to visualize synchrony across
+the swept parameter combinations.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -14,15 +18,16 @@ def plot_synchrony(filepaths, chi_mean, chi_sd,
                    param1_label, param2_label,
                    run_num=1):
     """Write the mean-chi and SD-chi heatmaps, both prefixed with run_num.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            chi_mean: 2D array of mean chi values, shape (len(param2), len(param1)).
-            chi_sd: 2D array of chi SDs, same shape as chi_mean.
-            param1_values: values along the x axis.
-            param2_values: values along the y axis.
-            param1_label: x-axis label (LaTeX allowed).
-            param2_label: y-axis label (LaTeX allowed).
-            run_num: integer prefix for the output filenames.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        chi_mean (np.ndarray): 2D array of mean chi values, shape (len(param2), len(param1)).
+        chi_sd (np.ndarray): 2D array of chi SDs, same shape as chi_mean.
+        param1_values: Values along the x axis.
+        param2_values: Values along the y axis.
+        param1_label (str): x-axis label (LaTeX allowed).
+        param2_label (str): y-axis label (LaTeX allowed).
+        run_num (int): Integer prefix for the output filenames.
     """
     plot_synchrony_single(filepaths, chi_mean, param1_values, param2_values,
                           param1_label, param2_label,
@@ -44,17 +49,18 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
                           vmin=0, vmax=1,
                           save_name='synchrony_single.png'):
     """pcolormesh of chi_matrix with param1 on x, param2 on y.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            chi_matrix: 2D array, shape (len(param2), len(param1)).
-            param1_values: x-axis values.
-            param2_values: y-axis values.
-            param1_label: x-axis label.
-            param2_label: y-axis label.
-            title: plot title.
-            vmin: colormap lower bound.
-            vmax: colormap upper bound.
-            save_name: output filename inside filepaths.figures_dir.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        chi_matrix (np.ndarray): 2D array, shape (len(param2), len(param1)).
+        param1_values: x-axis values.
+        param2_values: y-axis values.
+        param1_label (str): x-axis label.
+        param2_label (str): y-axis label.
+        title (str): Plot title.
+        vmin (float): Colormap lower bound.
+        vmax (float): Colormap upper bound.
+        save_name (str): Output filename inside filepaths.figures_dir.
     """
     if not os.path.exists(filepaths.figures_dir):
         os.makedirs(filepaths.figures_dir)
@@ -273,10 +279,12 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
 
 def _make_edges(values):
     """Convert cell-center values to cell-edge values for pcolormesh.
-        INPUT:
-            values: 1D array of cell centers.
-        RETURN:
-            1D array of cell edges, length len(values)+1.
+
+    Args:
+        values (np.ndarray): 1D array of cell centers.
+
+    Returns:
+        np.ndarray: 1D array of cell edges, length len(values)+1.
     """
     values = np.asarray(values, dtype=float)
     if len(values) < 2:

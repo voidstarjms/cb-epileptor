@@ -1,7 +1,14 @@
-"""
-Aggregation script — run after all Condor jobs finish.
-Reads all per-job result pkls, reconstructs chi grid, generates heatmap plots.
-Run as: python aggregate.py
+"""Aggregation script — run after all Condor jobs finish.
+
+Reads all per-job result pkls under data/results/, groups by (ce, x0, Gintra,
+Ginter), computes mean and SD chi across realizations, and writes heatmap PNGs
+to figures/. The run number is prefixed onto output filenames so successive
+sweeps don't overwrite each other.
+
+Usage:
+
+    python aggregate.py             # default 2-D heatmap
+    python aggregate.py --full      # multifaceted (Gintra x Ginter) panel grid
 """
 import os
 import sys
