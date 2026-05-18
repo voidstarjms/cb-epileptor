@@ -25,7 +25,9 @@ all_results = []
 for fname in sorted(os.listdir(results_dir)):
     if fname.endswith('.pkl'):
         with open(os.path.join(results_dir, fname), 'rb') as f:
-            all_results.append(pickle.load(f))
+            contents = pickle.load(f)
+            all_results.append(contents)
+            print(contents)
 
 if len(all_results) == 0:
     print("No result files found in data/results/")
@@ -112,12 +114,12 @@ else:
     chi_grid = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
     chi_sd   = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
     for (ce, x0, Gintra, Ginter), chis in chi_by_point.items():
-        j = x0_values.index(x0)
-        i = ce_values.index(ce)
-        k = Ginter_values.index(Ginter)
+        i = x0_values.index(x0)
+        j = ce_values.index(ce)
         l = Gintra_values.index(Gintra)
-        chi_grid[j, i, k, l] = np.mean(chis)
-        chi_sd[j, i, k, l]   = np.std(chis)
+        k = Ginter_values.index(Ginter)
+        chi_grid[i, j, k, l] = np.mean(chis)
+        chi_sd[i, j, k, l]   = np.std(chis)
 
     missing = int(np.sum(np.isnan(chi_grid)))
     if missing > 0:
@@ -137,8 +139,8 @@ else:
             run_num += 1
 
     ps.plot_synchrony_multifaceted(filepaths, chi_grid, chi_sd,
-                  np.array(ce_values), np.array(x0_values), np.array(Gintra_values),
-                  np.array(Ginter_values), p1_label, p2_label, p3_label, p4_label)
+                  np.array(x0_values), np.array(ce_values), np.array(Ginter_values),
+                  np.array(Gintra_values), p2_label, p1_label, p3_label, p4_label)
     
     print(f"Saved: {run_num}_synchrony_chi_mean_full.png and {run_num}_synchrony_chi_sd_full.png")
     #print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")

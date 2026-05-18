@@ -101,7 +101,7 @@ def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
     plot_sync_metric_name = 'r' if plot_mode == 'r' else r'$\chi$'
     plot_synchrony_multifaceted_single(filepaths, chi_mean, param1_values, param2_values,
                           param3_values, param4_values, param1_label, param2_label,
-                          param3_label, param4_label, title='Synchrony '+plot_sync_metric_name,
+                          param3_label, param4_label, title='Synchrony of Network (CB On)',#+plot_sync_metric_name,
                           vmin=0.5, vmax=1,
                           save_name=save_name_prefix+'_mean_full.png')
 
@@ -122,17 +122,17 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     n_outer_rows = len(param1_values)
     n_outer_cols = len(param2_values)
 
-    OUTER_LEFT = 0.12
+    OUTER_LEFT = 0.13
     OUTER_BOTTOM = 0.07
     OUTER_RIGHT = 0.1
-    OUTER_TOP = 0.12
+    OUTER_TOP = 0.13
 
     HSPACE = 0.15
     WSPACE = 0.15
 
     OUTER_AXIS_OFFSET = 0.045
 
-    fig = plt.figure(figsize=(15, 14))
+    fig = plt.figure(figsize=(15, 15))
 
     gs = gridspec.GridSpec(
         n_outer_rows, n_outer_cols,
@@ -148,7 +148,6 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     for i in range(n_outer_rows):
         for j in range(n_outer_cols):
             axes[i, j] = fig.add_subplot(gs[i, j])
-    print(param1_values)
     for i, p1 in enumerate(param1_values):
         for j, p2 in enumerate(param2_values):
             ax = axes[i, j]
@@ -199,7 +198,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         fig.text(
             gs_left - OUTER_AXIS_OFFSET - 0.015, row_center,
             '%.3f' % p1,
-            ha="right", va="center", fontsize=7,
+            ha="right", va="center", fontsize=11,
             transform=fig.transFigure,
         )
 
@@ -225,7 +224,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         fig.text(
             col_center, gs_top + 0.025,
             '%.3f' % p2,
-            ha="center", va="bottom", fontsize=7,
+            ha="center", va="bottom", fontsize=11,
             transform=fig.transFigure,
         )
 
@@ -238,7 +237,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     
     # Param 1 label
     fig.text(
-        gs_left - 0.1, (gs_top + gs_bottom) / 2,
+        gs_left - 0.12, (gs_top + gs_bottom) / 2,
         param1_label,
         ha="left", va="center", fontsize=11, fontweight="bold",
         transform=fig.transFigure, rotation=90,
@@ -246,7 +245,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     
     # Param 2 label
     fig.text(
-        (gs_left + gs_right) / 2, gs_top + 0.05,
+        (gs_left + gs_right) / 2, gs_top + 0.07,
         param2_label,
         ha="center", va="top", fontsize=11, fontweight="bold",
         transform=fig.transFigure,
@@ -258,8 +257,11 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         0.025,
         gs_top - gs_bottom,
     ])
-    cb = fig.colorbar(ScalarMappable(cmap='viridis'), cax=cbar_ax)
-    cb.set_label("Synchrony", fontsize=11, fontweight="bold")
+    cbar_ax.set_ylim(vmin, vmax)
+    sm = ScalarMappable(cmap='viridis')
+    sm.set_clim(vmin, vmax)
+    cb = fig.colorbar(sm, cax=cbar_ax)
+    cb.set_label("Synchrony (KOP r)", fontsize=11, fontweight="bold")
     cb.ax.tick_params(labelsize=8)
 
     fig.suptitle(title, fontsize=24, fontweight="bold", y=0.98)
