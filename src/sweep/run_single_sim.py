@@ -50,7 +50,6 @@ def main():
     Reads the YAML pointed to by --params, runs the simulation via model.run_sim,
     computes synchrony chi over the HR population, and writes:
 
-      - data/jobs/<job_id>/output.pkl: full sim output.
       - data/results/<job_id>.pkl: compact summary {ce, x0, Gintra, Ginter,
         realization, chi} consumed by aggregate.py.
       - figures/sweep_debug/<job_id>/standard_plot.png: per-job debug plot.
@@ -95,6 +94,8 @@ def main():
     t  = res['t']
     spikes_1 = res['spikes_n1']
 
+    data_processing.delete_sim_data(filepaths)
+
     # Compute synchrony
     chi, _, _ = syn.autocorrelate(x1)
     _, r, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
@@ -121,7 +122,7 @@ def main():
         'chi':         float(chi),
         'r':           float(r),
     }
-    with open(os.path.join(results_dir, f'{job_id}.pkl'), 'wb') as f:
+    with open(os.path.join(results_dir, f'metrics_{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)
 
     spike_matrix_1 = data_processing.create_spike_matrix_histo(
