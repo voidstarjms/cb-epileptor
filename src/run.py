@@ -70,12 +70,12 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     res = data['results']
     t = res['t']
     x1 = res['x1']
-    y1 = res['y1']
-    z1 = res['z1']
-    I_syn_inter = res['I_syn_inter_1']
-    I_syn_intra = res['I_syn_intra_1']
+    # y1 = res['y1']
+    # z1 = res['z1']
+    # I_syn_inter = res['I_syn_inter_1']
+    # I_syn_intra = res['I_syn_intra_1']
     x2 = res['x2']
-    n = res['n2']
+    # n = res['n2']
 
     if cb_on:
         wpre = res['syn_wpre'][0]
@@ -95,10 +95,10 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
                             #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
                             #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
-    print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0] / amp)))
-    print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0] / amp)))
-    print("I_syn_inter min (raw amps):", np.min((I_syn_inter[0] / amp)))
-    print("I_syn_intra min (raw amps):", np.min((I_syn_intra[0] / amp)))
+    # print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0] / amp)))
+    # print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0] / amp)))
+    # print("I_syn_inter min (raw amps):", np.min((I_syn_inter[0] / amp)))
+    # print("I_syn_intra min (raw amps):", np.min((I_syn_intra[0] / amp)))
 
 
 def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> None:
@@ -156,7 +156,7 @@ REQUIRED_PARAMS = {
     'ML_GCA', 'ML_E_CA', 'ML_V1', 'ML_V2', 'ML_V3', 'ML_V4',
     'ML_PHI', 'ML_SIGMA', 'ML_Z_BAR_SCALE', 'ML_Z_BAR_OFFSET',
     'ML_THRESHOLD', 'ML_REFRACTORY_CONDITION',
-    'SYN_TMAX', 'SYN_VT', 'SYN_KP',
+    'SYN_TMAX', 'SYN_VT', 'SYN_KP', 'PCT_CONNECT',
     'SYN_ALPHA_EXC', 'SYN_BETA_EXC', 'SYN_E_EXC',
     'SYN_ALPHA_INH', 'SYN_BETA_INH', 'SYN_E_INH',
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
@@ -176,14 +176,14 @@ def main() -> None:
     'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
     an already-saved output.
     """
-    DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
+    DEFAULT_OUT_DIR = 'output/run1'
+    DEFAULT_PARAMS = 'parameters/params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
                         help="Run mode: 'r' run, 'p' plot, 'a' analyze, 't' test.")
-    parser.add_argument('--cb', action='store_true', default=True,
-                        help="Enable CB synapses (default: enabled)")
+    parser.add_argument('--cb', action='store_true', default=False,
+                        help="Enable CB synapses (default: disabled)")
     parser.add_argument('--no-cb', dest='cb', action='store_false',
                         help="Disable CB synapses")
     parser.add_argument('--params', type=str, default=DEFAULT_PARAMS,
@@ -206,8 +206,8 @@ def main() -> None:
     )
 
     if 'r' in run_mode:
-        os.makedirs(filepaths.data_dir)
-        os.makedirs(filepaths.figures_dir)
+        os.makedirs(filepaths.data_dir, exist_ok=True)
+        os.makedirs(filepaths.figures_dir, exist_ok=True)
         _save_params(params, out_dir)
         print("Running simulation...")
         run_sim(filepaths, params_dict, cb_on)

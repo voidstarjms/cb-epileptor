@@ -33,15 +33,19 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'num_cells':    params_dict['NUM_CELLS'],
         'sim_duration': params_dict['SIM_DURATION'],
         'transient':    params_dict['TRANSIENT'],
-        'ml_e_l':       params_dict['ML_E_L'],
     }
 
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
     timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=params_dict['X_NAUGHT_DT'])
     timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=params_dict['COUPLING_DT'])
-    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=params_dict['G_INTER_DT'])
-    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=params_dict['G_INTRA_DT'])
 
+    # compute effective synapse strength when factoring network connection percentage
+    eff_g_inter_vals = params_dict['G_INTER_VALS'] / params_dict['PCT_CONNECT']
+    eff_g_intra_vals = params_dict['G_INTRA_VALS'] / params_dict['PCT_CONNECT']
+
+    timed_G_inter = TimedArray(eff_g_inter_vals, dt=params_dict['G_INTER_DT'])
+    timed_G_intra = TimedArray(eff_g_intra_vals, dt=params_dict['G_INTRA_DT'])
+    
     # --- Population 1: Hindmarsh-Rose ---
     pop1_namespace = {
         'a': params_dict['HR_A'], 'b': params_dict['HR_B'], 'c': params_dict['HR_C'],
@@ -139,6 +143,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # --- Synapses ---
     syn_namespace = {
+        'pct_connect': params_dict['PCT_CONNECT'],
         'Tmax': params_dict['SYN_TMAX'],
         'Vt': params_dict['SYN_VT'],
         'Kp': params_dict['SYN_KP'],
@@ -149,8 +154,6 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'theta_ltp_start': params_dict['THETA_LTP_START'],
         'A_ltp': params_dict['A_LTP'],
         'A_ltd': params_dict['A_LTD'],
-        'G_intra': params_dict['G_INTRA'],
-        'G_inter': params_dict['G_INTER'],
         'timed_G_intra': timed_G_intra,
         'timed_G_inter': timed_G_inter,
         'ca_sigmoid_shift': params_dict['CA_SIGMOID_SHIFT'],
@@ -194,13 +197,13 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     ''' + syn_eqs_pre
 
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_1.connect()
+    S1_to_1.connect(p=syn_namespace['pct_connect'])
     S1_to_1.E = syn_namespace['E_exc']
     S1_to_1.alpha = syn_namespace['alpha_exc']
     S1_to_1.beta = syn_namespace['beta_exc']
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
-    S1_to_2.connect()
+    S1_to_2.connect(p=syn_namespace['pct_connect'])
     # Pass HR's z_bar into ML so pop2's eqs can read it.
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = syn_namespace['E_exc']
@@ -208,13 +211,13 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     S1_to_2.beta = syn_namespace['beta_exc']
 
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
-    S2_to_2.connect()
+    S2_to_2.connect(p=syn_namespace['pct_connect'])
     S2_to_2.E = syn_namespace['E_inh']
     S2_to_2.alpha = syn_namespace['alpha_inh']
     S2_to_2.beta = syn_namespace['beta_inh']
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
-    S2_to_1.connect()
+    S2_to_1.connect(p=syn_namespace['pct_connect'])
     # Pass ML's x_bar into HR as x2_bar so pop1's dz/dt can read it.
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = syn_namespace['E_inh']
