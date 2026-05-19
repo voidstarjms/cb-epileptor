@@ -68,13 +68,13 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
             't': np.asarray(M_N1.t),
             # POP 1
             'x1': np.asarray(M_N1.x),
-            'y1': np.asarray(M_N1.y),
-            'z1': np.asarray(M_N1.z),
-            'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
-            'I_syn_intra_1': np.asarray(M_N1.I_syn_intra),
+            # 'y1': np.asarray(M_N1.y),
+            # 'z1': np.asarray(M_N1.z),
+            # 'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
+            # 'I_syn_intra_1': np.asarray(M_N1.I_syn_intra),
             # POP 2
             'x2': np.asarray(M_N2.x),
-            'n2': np.asarray(M_N2.n),
+            # 'n2': np.asarray(M_N2.n),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
             # SPIKES
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
@@ -139,6 +139,14 @@ def load_sim_data(filepaths: Any) -> Dict:
         data = pickle.load(f)
     return data
 
+def delete_sim_data(filepaths: Any) -> None:
+    """Delete the dict written by save_data.
+
+    Args:
+        filepaths (Any): FilePaths dataclass with data_dir.
+    """
+    filepath = os.path.join(filepaths.data_dir, _OUTPUT_DATA_FILE)
+    os.remove(filepath)
 
 def dump_spikes_to_file(filename: str, neuron_idx: np.ndarray, spike_times: np.ndarray) -> None:
     """Dump spike times for neuron 0 to a text file for manual correctness checks.
@@ -161,3 +169,5 @@ def dump_array_to_file(filename: str, arr: np.ndarray) -> None:
         arr (np.ndarray): Array to write.
     """
     np.savetxt(filename, arr, fmt='%f', delimiter=' ')
+
+
