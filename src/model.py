@@ -37,10 +37,10 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     }
 
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
-    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['X_NAUGHT_VALS']))
-    timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['COUPLING_VALS']))
-    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTER_VALS']))
-    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTRA_VALS']))
+    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=params_dict['X_NAUGHT_DT'])
+    timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=params_dict['COUPLING_DT'])
+    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=params_dict['G_INTER_DT'])
+    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=params_dict['G_INTRA_DT'])
 
     # --- Population 1: Hindmarsh-Rose ---
     pop1_namespace = {
@@ -67,6 +67,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     x2_bar : 1
     I_syn_intra : amp
     I_syn_inter : amp
+    x0_t = timed_x_naught(t) : 1
+    ce_t = timed_coupling_strength(t) : 1
     '''
 
     N1 = NeuronGroup(sim_namespace['num_cells'], pop1_eqs, method='euler',
@@ -221,9 +223,11 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
+    print(sim_namespace['transient'])
 
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
+    M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
@@ -232,4 +236,4 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # Run
     run(sim_namespace['sim_duration'])
-    data_processing.save_data(filepaths, params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on)
+    data_processing.save_data(filepaths, params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on=cb_on, M_param=M_PARAM)

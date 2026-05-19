@@ -9,6 +9,7 @@
 src/data
 src/figures
 src/output
+src/parameters/*
 src/current_run.txt
 src/sweep/data
 src/sweep/figures

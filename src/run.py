@@ -11,6 +11,7 @@ import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from model import run_sim
 from param_loader import load_params
+from config import ZoomConfig
 from typing import Dict
 
 
@@ -51,9 +52,9 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                              num_cells, params_dict['SIM_DURATION'] / second,
-                              g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                              coupling_vals=params_dict['COUPLING_VALS'], x_naught_vals=params_dict['X_NAUGHT_VALS'])
+                              num_cells, params_dict['SIM_DURATION'] / second,)
+                            #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
+                            #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
@@ -86,12 +87,13 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
 
-    pop_plotter.plot_hr_single(filepaths, t, x1, y1, z1, I_syn_inter)
-    pop_plotter.plot_ml_single(filepaths, t, x2, n)
+    zoom = ZoomConfig(start=60, end=60.2)
+    pop_plotter.plot_hr_single(filepaths, t, x1, y1, z1, I_syn_inter, zoom=zoom)
+    pop_plotter.plot_ml_single(filepaths, t, x2, n, zoom=zoom)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                              num_cells, params_dict['SIM_DURATION'] / second,
-                              g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                              coupling_vals=params_dict['COUPLING_VALS'], x_naught_vals=params_dict['X_NAUGHT_VALS'])
+                              num_cells, params_dict['SIM_DURATION'] / second, zoom=zoom)
+                            #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
+                            #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
     print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0] / amp)))
     print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0] / amp)))
@@ -160,7 +162,10 @@ REQUIRED_PARAMS = {
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
     'A_LTD', 'A_LTP', 'TAU_WPRE', 'TAU_CA',
     'CA_SIGMOID_SHIFT', 'CA_SIGMOID_SLOPE',
-    'X_NAUGHT_VALS', 'COUPLING_VALS', 'G_INTER_VALS', 'G_INTRA_VALS',
+    'X_NAUGHT_VALS', 'X_NAUGHT_DT',
+    'COUPLING_VALS', 'COUPLING_DT',
+    'G_INTER_VALS', 'G_INTER_DT',
+    'G_INTRA_VALS', 'G_INTRA_DT',
 }
 
 
