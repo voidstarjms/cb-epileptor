@@ -9,6 +9,7 @@
 src/data
 src/figures
 src/output
+src/parameters
 src/current_run.txt
 condor/condor.sub
 condor/logs/*
