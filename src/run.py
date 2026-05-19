@@ -17,17 +17,23 @@ from typing import Dict
 
 @dataclass
 class FilePaths:
-    """Groups output paths; instantiated from CLI args in main() and injected throughout."""
+    """Groups output paths; instantiated from CLI args in main() and injected throughout.
+
+    Attributes:
+        data_dir (str): Directory for sim output (output.pkl, spike dumps).
+        figures_dir (str): Directory for generated plots.
+    """
     data_dir: str
     figures_dir: str
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
     """Load sim data and make the default plots (LFP + both rasters).
-        INPUT:
-            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
-            params_dict: parameter dict loaded from YAML.
-            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+
+    Args:
+        filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        cb_on (bool): If True, also plot the plasticity (Wpre, u, Ca) traces.
     """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
@@ -53,10 +59,11 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
     """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
-        INPUT:
-            filepaths: FilePaths. Reads from data_dir, writes to figures_dir.
-            params_dict: parameter dict loaded from YAML.
-            cb_on: if True, also plot the plasticity (Wpre, u, Ca) traces.
+
+    Args:
+        filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        cb_on (bool): If True, also plot the plasticity (Wpre, u, Ca) traces.
     """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
@@ -96,10 +103,11 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
 
 def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> None:
     """Print chi and mean KOP r for both pops. Writes autocorr/KOP plots and a spike dump.
-        INPUT:
-            filepaths: FilePaths. Spike dump goes to data_dir, plots to figures_dir.
-            params_dict: parameter dict loaded from YAML.
-            data: dict returned by data_processing.load_sim_data.
+
+    Args:
+        filepaths (FilePaths): Spike dump goes to data_dir, plots to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        data (Dict): Dict returned by data_processing.load_sim_data.
     """
     res = data['results']
     x1 = res['x1']
@@ -130,6 +138,12 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
 
 
 def _save_params(params_file: str, run_dir: str) -> None:
+    """Copy the params YAML into run_dir so each run is reproducible from its output.
+
+    Args:
+        params_file (str): Source YAML path.
+        run_dir (str): Destination directory.
+    """
     shutil.copy2(params_file, os.path.join(run_dir, os.path.basename(params_file)))
 
 
@@ -156,7 +170,12 @@ REQUIRED_PARAMS = {
 
 
 def main() -> None:
-    """Parse args and run the phases selected by --mode (r=run, p=plot, a=analyze, f=full plots)."""
+    """Parse CLI args and run the phases selected by --mode.
+
+    Mode flags ('r', 'p', 'a', 'f') are independent and stackable: e.g.
+    'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
+    an already-saved output.
+    """
     DEFAULT_OUT_DIR = 'output/'
     DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
 

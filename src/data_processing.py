@@ -11,12 +11,14 @@ _OUTPUT_DATA_FILE = 'output.pkl'
 
 def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: int) -> np.ndarray:
     """Bin spikes into a (num_cells, time_bins) count matrix using 20 ms bins.
-        INPUT:
-            params_dict: needs SIM_DURATION and TRANSIENT.
-            spike_data: dict with 't' (spike times in seconds) and 'i' (neuron indices).
-            num_cells: number of neurons; sets the neuron-axis size.
-        RETURN:
-            2D numpy array of shape (num_cells, num_time_bins) holding spike counts.
+
+    Args:
+        params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
+        spike_data (Dict): Dict with 't' (spike times in seconds) and 'i' (neuron indices).
+        num_cells (int): Number of neurons; sets the neuron-axis size.
+
+    Returns:
+        np.ndarray: 2D array of shape (num_cells, num_time_bins) holding spike counts.
     """
     spike_times = spike_data['t']
     neuron_indices = spike_data['i']
@@ -40,6 +42,21 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
               SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None,
               M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True,
               M_param: Any = None) -> None:
+    """Pickle the sim's monitors and parameters to filepaths.data_dir/output.pkl.
+
+    Args:
+        filepaths (Any): FilePaths with data_dir.
+        params_dict (Dict): Parameter dict from param_loader; pickled alongside results.
+        M_N1 (Any): StateMonitor on the HR population.
+        M_N2 (Any): StateMonitor on the ML population.
+        SM_N1 (Any): SpikeMonitor on the HR population.
+        SM_N2 (Any): SpikeMonitor on the ML population.
+        M_S1_1 (Any): Optional StateMonitor on HR->HR synapses (Wpre, u, Ca).
+        M_S1_2 (Any): Optional StateMonitor on HR->ML synapses (currently unused).
+        M_S2_1 (Any): Optional StateMonitor on ML->HR synapses (currently unused).
+        M_S2_2 (Any): Optional StateMonitor on ML->ML synapses (currently unused).
+        cb_on (bool): If True, include plasticity traces (Wpre, u, Ca) in the output.
+    """
     os.makedirs(filepaths.data_dir, exist_ok=True)
     sim_data = {
         'metadata': {
@@ -110,10 +127,12 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
 
 def load_sim_data(filepaths: Any) -> Dict:
     """Return the dict written by save_data.
-        INPUT:
-            filepaths: FilePaths with data_dir.
-        RETURN:
-            dict with keys 'metadata', 'params', 'results'.
+
+    Args:
+        filepaths (Any): FilePaths with data_dir.
+
+    Returns:
+        Dict: Dict with keys 'metadata', 'params', 'results'.
     """
     filepath = os.path.join(filepaths.data_dir, _OUTPUT_DATA_FILE)
     with open(filepath, 'rb') as f:
@@ -123,10 +142,11 @@ def load_sim_data(filepaths: Any) -> Dict:
 
 def dump_spikes_to_file(filename: str, neuron_idx: np.ndarray, spike_times: np.ndarray) -> None:
     """Dump spike times for neuron 0 to a text file for manual correctness checks.
-        INPUT:
-            filename: output text file path.
-            neuron_idx: per-spike neuron index (e.g. SpikeMonitor.i).
-            spike_times: per-spike times (e.g. SpikeMonitor.t).
+
+    Args:
+        filename (str): Output text file path.
+        neuron_idx (np.ndarray): Per-spike neuron index (e.g. SpikeMonitor.i).
+        spike_times (np.ndarray): Per-spike times (e.g. SpikeMonitor.t).
     """
     mask = np.where(neuron_idx == 0)
     n0_spikes = spike_times[mask]
@@ -135,8 +155,9 @@ def dump_spikes_to_file(filename: str, neuron_idx: np.ndarray, spike_times: np.n
 
 def dump_array_to_file(filename: str, arr: np.ndarray) -> None:
     """Write arr as whitespace-separated floats.
-        INPUT:
-            filename: output text file path.
-            arr: array to write.
+
+    Args:
+        filename (str): Output text file path.
+        arr (np.ndarray): Array to write.
     """
     np.savetxt(filename, arr, fmt='%f', delimiter=' ')

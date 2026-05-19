@@ -1,4 +1,9 @@
-"""LFP, rasters, per-pop state traces. standard_plot is the main one."""
+"""LFP, rasters, per-pop state traces. standard_plot is the main one.
+
+standard_plot draws the 80/20 weighted-mean LFP, both spike rasters, and
+optionally schedule overlays for x0/CE/g_intra/g_inter when those vals are
+provided.
+"""
 import matplotlib.pyplot as plt
 import os
 import numpy as np
@@ -20,10 +25,12 @@ def _apply_zoom(axes: list, zoom: ZoomConfig) -> None:
 
 def find_clim(spike_matrix: np.ndarray) -> float:
     """Max spike count across the matrix, used as the colorbar upper bound.
-        INPUT:
-            spike_matrix: 2D spike-count matrix.
-        RETURN:
-            the max value as a float.
+
+    Args:
+        spike_matrix (np.ndarray): 2D spike-count matrix.
+
+    Returns:
+        float: The max value across the matrix.
     """
     return np.max(spike_matrix)
 
@@ -32,11 +39,14 @@ def _vals_to_time_points(vals, t):
 
     For each value in vals, generates a [bin_start, bin_end] time segment paired
     with [v, v], then concatenates all segments into a full sparse step representation.
-        INPUT:
-            vals: list/array of values.
-            t: time vector (only t[0] and t[-1] are used to set the span).
-        RETURN:
-            (time_points, value_points): two arrays suitable for ax.plot.
+
+    Args:
+        vals: List/array of values.
+        t: Time vector (only t[0] and t[-1] are used to set the span).
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: (time_points, value_points) suitable
+        for ax.plot.
     """
     n = len(vals)
     bin_size = (t[-1] - t[0]) / n
@@ -51,21 +61,23 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         x0_t=None, ce_t=None,
         g_intra_vals=None, g_inter_vals=None, show: bool = True) -> None:
     """Weighted-mean LFP + both spike rasters. Adds schedule panels if vals are given.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            params_dict: needs SIM_DURATION and TRANSIENT.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            x2: (num_cells, time) ML x.
-            spike_matrix_1: HR spike count matrix.
-            spike_matrix_2: ML spike count matrix.
-            num_cells: number of neurons per population.
-            sim_duration: simulation duration in seconds.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
-            x0_t: optional 1D array of x0 values recorded by the state monitor (same time axis as t).
-            ce_t: optional 1D array of CE values recorded by the state monitor (same time axis as t).
-            g_intra_vals: optional intra-pop conductance schedule.
-            g_inter_vals: optional inter-pop conductance schedule; pairs with g_intra_vals.
+
+    Args:
+        filepaths (Any): FilePaths with figures_dir.
+        params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
+        t (np.ndarray): Time vector.
+        x1 (np.ndarray): (num_cells, time) HR x.
+        x2 (np.ndarray): (num_cells, time) ML x.
+        spike_matrix_1 (np.ndarray): HR spike count matrix.
+        spike_matrix_2 (np.ndarray): ML spike count matrix.
+        num_cells (int): Number of neurons per population.
+        sim_duration (float): Simulation duration in seconds.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+        x0_t: Optional x0 schedule; adds an extra panel if paired with coupling_vals.
+        ce_t: Optional CE schedule; pairs with x_naught_vals.
+        g_intra_vals: Optional intra-pop conductance schedule.
+        g_inter_vals: Optional inter-pop conductance schedule; pairs with g_intra_vals.
+        show (bool): If True, call plt.show() before closing the figure.
     """
 
     has_x0_ce = x0_t is not None and ce_t is not None
