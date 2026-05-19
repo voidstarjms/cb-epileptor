@@ -1,88 +1,140 @@
 #!/usr/bin/env python3
+"""One sim job in the parameter sweep — Condor runs one process per YAML in params/.
+
+Each job's full configuration (including sweep dimensions and seed) lives in the
+YAML pointed to by --params. Outputs go under cwd/data and cwd/figures, so this
+should be run with cwd = src/sweep/ (Condor's Initialdir handles that).
+"""
 
 import argparse
 import os
 import pickle
+import tempfile
 import numpy as np
 
-# Give each job a unique Brian2 cache directory to avoid C++ compilation
-# conflicts between parallel Condor jobs, while keeping the fast C++ backend.
-import tempfile
-from brian2 import prefs
-from brian2 import *
+# Headless backend. Must be set before any pyplot import, direct or transitive.
+# import matplotlib
+# matplotlib.use('Agg')
 
-import config
-import params
+from brian2 import prefs, seed
+from brian2.units import *
+
+import sys
+sys.path.append("..")
 import data_processing
 import synch as syn
 import plotting.population_plots as ph
-from simulation.core import run_sim
+from model import run_sim
+from param_loader import load_params
+from run import FilePaths
+
+
+def _to_uS_float(v):
+    """Convert a Brian2 conductance quantity (or plain number) to a float in uS.
+
+    Args:
+        v: Brian2 conductance quantity (e.g. 0.5 * uS) or a plain number.
+
+    Returns:
+        float: The value expressed in microsiemens.
+    """
+    try:
+        return float(v / uS)
+    except (TypeError, ValueError):
+        return float(v)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Run one simulation for a given CE and X0.')
-    parser.add_argument('--ce', type=float, required=True, help='Coupling strength CE')
-    parser.add_argument('--x0', type=float, required=True, help='Epileptogenicity X0')
-    parser.add_argument('--realization', type=int, default=1, help='Realization number (sets random seed)')
+    """Run one sim from a YAML, write its chi summary plus a debug plot.
+
+    Reads the YAML pointed to by --params, runs the simulation via model.run_sim,
+    computes synchrony chi over the HR population, and writes:
+
+      - data/jobs/<job_id>/output.pkl: full sim output.
+      - data/results/<job_id>.pkl: compact summary {ce, x0, Gintra, Ginter,
+        realization, chi} consumed by aggregate.py.
+      - figures/sweep_debug/<job_id>/standard_plot.png: per-job debug plot.
+    """
+    parser = argparse.ArgumentParser(description='Run one simulation from a YAML param file.')
+    parser.add_argument('--params', type=str, required=True,
+                        help='Path to a YAML param file (e.g. params/param_1.yaml).')
     args = parser.parse_args()
 
-    params.COUPLING_STRENGTH = args.ce
-    params.HR_X_NAUGHT = args.x0
+    params_dict = load_params(args.params)
+    # Collapse the sweep dimensions to one value each for this job.
+    params_dict['COUPLING_VALS'] = [args.ce]
+    params_dict['X_NAUGHT_VALS'] = [args.x0]
+    params_dict['G_INTRA_VALS'] = [args.Gintra] * usiemens
+    params_dict['G_INTER_VALS'] = [args.Ginter] * usiemens
+    
+    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_inter_{args.Ginter}_intra_{args.Gintra}_r{args.realization}'
 
-    params_dict = {
-        k: v for k, v in vars(params).items()
-        if k.isupper() and isinstance(v, (int, float, str, bool, list, np.ndarray, Quantity))
-    }
-
-    job_id = f'CE_{args.ce:.3f}_X0_{args.x0:.3f}_r{args.realization}'
-
-    # Unique cache dir per job prevents parallel Condor jobs from colliding on C++ compilation
+    # Unique cache dir so parallel jobs don't collide on C++ compilation.
     cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
     prefs.codegen.runtime.cython.cache_dir = cache_dir
 
-    # Set random seed for reproducibility across realizations
-    seed(args.realization)
+    realization = int(params_dict.get('SEED', 1))
+    seed(realization)
 
     print(f"Starting job: {job_id}")
 
-    # Give this job its own data subdirectory to avoid file conflicts with parallel jobs
-    job_data_dir = os.path.join('data', 'jobs', job_id)
-    os.makedirs(job_data_dir, exist_ok=True)
+    # Per-job dirs so parallel jobs don't overwrite each other's output.
+    filepaths = FilePaths(
+        data_dir=os.path.join('data', 'jobs', job_id),
+        figures_dir=os.path.join('figures', 'sweep_debug', job_id),
+    )
+    os.makedirs(filepaths.data_dir, exist_ok=True)
+    os.makedirs(filepaths.figures_dir, exist_ok=True)
 
-    # Run simulation — save_data writes to job_data_dir/output_data.pkl
-    run_sim(params_dict, job_data_dir)
+    run_sim(filepaths, params_dict, cb_on=True)
 
-    # Load results
-    data = data_processing.load_sim_data(job_data_dir)
+    data = data_processing.load_sim_data(filepaths)
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
     t  = res['t']
+    spikes_1 = res['spikes_n1']
 
     # Compute synchrony
     chi, _, _ = syn.autocorrelate(x1)
+    _, r, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
+    r = np.mean(r)
     print(f"  chi = {chi:.4f}")
+    print(f"  r = {r:.4f}")
+
+    # Pull the sweep dims back out of the YAML so aggregate.py can reconstruct
+    # the grid without re-parsing filenames.
+    ce     = float(params_dict['COUPLING_STRENGTH'])
+    x0     = float(params_dict['HR_X_NAUGHT'])
+    Gintra = _to_uS_float(params_dict['G_INTRA'])
+    Ginter = _to_uS_float(params_dict['G_INTER'])
 
     # Save per-job result to data/results/
     results_dir = os.path.join('data', 'results')
     os.makedirs(results_dir, exist_ok=True)
     job_result = {
-        'ce':          args.ce,
-        'x0':          args.x0,
-        'realization': args.realization,
+        'ce':          ce,
+        'x0':          x0,
+        'Gintra':      Gintra,
+        'Ginter':      Ginter,
+        'realization': realization,
         'chi':         float(chi),
+        'r':           float(r),
     }
     with open(os.path.join(results_dir, f'{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)
 
-    # Save debug plot
-    debug_dir = os.path.join('figures', 'sweep_debug')
-    os.makedirs(debug_dir, exist_ok=True)
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], params_dict['NUM_CELLS'])
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], params_dict['NUM_CELLS'])
-    ph.standard_plot(params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                     params_dict['NUM_CELLS'], params_dict['SIM_DURATION'] / second,
-                     save_path=os.path.join(debug_dir, f'{job_id}.png'),
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n1'], params_dict['NUM_CELLS'])
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n2'], params_dict['NUM_CELLS'])
+    ph.standard_plot(filepaths, params_dict, t, x1, x2,
+                     spike_matrix_1, spike_matrix_2,
+                     params_dict['NUM_CELLS'],
+                     params_dict['SIM_DURATION'] / second,
+                     g_inter_vals=params_dict['G_INTER_VALS'],
+                     g_intra_vals=params_dict['G_INTRA_VALS'],
+                     x0_t=res.get('x0_t'), ce_t=res.get('ce_t'),
                      show=False)
 
     print(f"Done: {job_id}")

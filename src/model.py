@@ -1,16 +1,32 @@
+"""Brian2 simulation of the two-population seizure model (Naze et al. 2015).
+
+Builds two coupled populations (Hindmarsh-Rose excitatory + Morris-Lecar
+inhibitory), wires up intra/inter-population chemical synapses with calcium
+control plasticity, and runs the simulation. Saves output via data_processing.
+"""
 from brian2 import *
-from brian2tools import *
 import numpy as np
 import data_processing
 from typing import Dict, Any
 
 def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> None:
-    """
-    Runs the full simulation with given parameters, saves results to data_dir.
+    """Build both populations and their synapses, run the sim, save the output.
+
+    If cb_on is False, Wpre is dropped from the synaptic current (plasticity
+    still evolves but has no effect on the dynamics).
+
+    Args:
+        filepaths (Any): FilePaths. save_data writes to filepaths.data_dir/output.pkl.
+        params_dict (Dict[str, Any]): Flat dict from param_loader. Expected keys
+            listed in run.REQUIRED_PARAMS.
+        cb_on (bool): If False, Wpre is held at 1 in the synaptic current.
     """
     # Setup Simulation
     defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']
     print("defaultclock.dt is: ", defaultclock.dt)
+
+    print("============================================In model=============================================")
+    print(params_dict)
 
     # Simulation-control namespace hyper-params (used throughout)
     sim_namespace = {
@@ -20,11 +36,11 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'ml_e_l':       params_dict['ML_E_L'],
     }
 
-    # Build timed arrays from current params at call time
-    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['X_NAUGHT_VALS']))
-    timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['COUPLING_VALS']))
-    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTER_VALS']))
-    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=sim_namespace['sim_duration'] // len(params_dict['G_INTRA_VALS']))
+    # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
+    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=params_dict['X_NAUGHT_DT'])
+    timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=params_dict['COUPLING_DT'])
+    timed_G_inter = TimedArray(params_dict['G_INTER_VALS'], dt=params_dict['G_INTER_DT'])
+    timed_G_intra = TimedArray(params_dict['G_INTRA_VALS'], dt=params_dict['G_INTRA_DT'])
 
     # --- Population 1: Hindmarsh-Rose ---
     pop1_namespace = {
@@ -32,34 +48,36 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'd': params_dict['HR_D'], 's': params_dict['HR_S'], 'I_app_1': params_dict['HR_I_APP'],
         'x_naught': params_dict['HR_X_NAUGHT'], 'r': params_dict['HR_R'],
         'sigma_1': params_dict['HR_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
-        'ISOLATE': params_dict['ISOLATE'],
+        'ISOLATE': params_dict['ISOLATE'], 'NOISE_INIT_OFFSET': params_dict['NOISE_INIT_OFFSET'],
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
-        'timed_x0': timed_x_naught, 'timed_CE': timed_coupling_strength,
+        'ce': params_dict['COUPLING_STRENGTH'],
     }
 
     pop1_eqs = '''
     dx/dt = (y - a * x ** 3 + b * x ** 2 - z + I_app_1
-        + ISOLATE * (timed_CE(t) * (x_bar - x)
+        + ISOLATE * (timed_coupling_strength(t) * (x_bar - x)
         + Wmax * xi * sqrt(second)
         + sigma_1 * (I_syn_intra + I_syn_inter) / I_scale)) / tau : 1
     dy/dt = (c - d * x ** 2 - y) / tau : 1
-    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x0(t)) - z_bar) : 1
+    dz/dt = r * (s * (x + ISOLATE * x2_bar - timed_x_naught(t)) - z_bar) : 1
 
     x_bar : 1
     z_bar : 1
     x2_bar : 1
     I_syn_intra : amp
     I_syn_inter : amp
+    x0_t = timed_x_naught(t) : 1
+    ce_t = timed_coupling_strength(t) : 1
     '''
 
     N1 = NeuronGroup(sim_namespace['num_cells'], pop1_eqs, method='euler',
                      threshold=params_dict['HR_THRESHOLD'], reset='',
                      namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
 
-    N1.x = np.ones(sim_namespace['num_cells']) * (params_dict['X_NAUGHT_VALS'][0]+1.5) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
+    N1.x = np.ones(sim_namespace['num_cells']) * (timed_x_naught(0 * second)+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
-    N1.z = '(s*(x - x_naught))'
+    N1.z = '(s*(x - timed_x_naught(0 * second)))'
 
     # Population 1 Averaging
     exc_averaging_eqs ='''
@@ -79,7 +97,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
         'Wmax': params_dict['W_MAX'],
         'ISOLATE': params_dict['ISOLATE'],
-        'timed_CE': timed_coupling_strength,
+        'ce': params_dict['COUPLING_STRENGTH'], 
         'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
         'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
     }
@@ -87,7 +105,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     pop2_eqs = '''
     dv/dt = (I_app_2 - gL*(v-E_L) - gK*n*(v-E_K) - gCa*m_inf*(v-E_Ca)
         + ISOLATE * (sigma_2 * (Wmax * xi * sqrt(second)
-        + timed_CE(t) * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
+        + timed_coupling_strength(t) * (x_bar - x) - ml_z_bar_scale * (z_bar - ml_z_bar_offset))
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
@@ -131,6 +149,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'theta_ltp_start': params_dict['THETA_LTP_START'],
         'A_ltp': params_dict['A_LTP'],
         'A_ltd': params_dict['A_LTD'],
+        'G_intra': params_dict['G_INTRA'],
+        'G_inter': params_dict['G_INTER'],
         'timed_G_intra': timed_G_intra,
         'timed_G_inter': timed_G_inter,
         'ca_sigmoid_shift': params_dict['CA_SIGMOID_SHIFT'],
@@ -141,6 +161,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'E_inh': params_dict['SYN_E_INH'],
         'alpha_inh': params_dict['SYN_ALPHA_INH'],
         'beta_inh': params_dict['SYN_BETA_INH'],
+        'cbd': params_dict['CBD_AMOUNT'],
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
@@ -150,8 +171,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
         plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
+        beta_CBD = 1 / (1 + cbd) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-        dCa/dt = (sigma_Ca - Ca) / tau_ca : 1 (clock-driven)
+        dCa/dt = (sigma_Ca - beta_CBD * Ca) / tau_ca : 1 (clock-driven)
         sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1
 
         E : volt
@@ -179,6 +201,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect()
+    # Pass HR's z_bar into ML so pop2's eqs can read it.
     S1_to_2.run_regularly('z_bar_post = z_bar_pre', dt=defaultclock.dt)
     S1_to_2.E = syn_namespace['E_exc']
     S1_to_2.alpha = syn_namespace['alpha_exc']
@@ -192,16 +215,19 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect()
+    # Pass ML's x_bar into HR as x2_bar so pop1's dz/dt can read it.
     S2_to_1.run_regularly('x2_bar_post = x_bar_pre', dt=defaultclock.dt)
     S2_to_1.E = syn_namespace['E_inh']
     S2_to_1.alpha = syn_namespace['alpha_inh']
     S2_to_1.beta = syn_namespace['beta_inh']
 
-    # Don't record transient period
+    # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
+    print(sim_namespace['transient'])
 
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
+    M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0)
 
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
@@ -210,4 +236,4 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # Run
     run(sim_namespace['sim_duration'])
-    data_processing.save_data(filepaths, params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on)
+    data_processing.save_data(filepaths, params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, cb_on=cb_on, M_param=M_PARAM)

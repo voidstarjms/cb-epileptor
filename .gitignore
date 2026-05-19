@@ -8,8 +8,16 @@
 **/*.pyc
 src/data
 src/figures
+src/output
+src/parameters/*
 src/current_run.txt
+src/sweep/data
+src/sweep/figures
+src/sweep/params
+src/sweep/params_list.txt
+src/sweep/current_run.txt
 condor/condor.sub
 condor/logs/*
 !condor/logs/.gitkeep
 *cc.md
+**/.DS_Store

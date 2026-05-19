@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import numpy as np
 from brian2 import *
 from dataclasses import dataclass
@@ -8,18 +9,32 @@ import synch as syn
 import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
-from simulation.core import run_sim
+from model import run_sim
+from param_loader import load_params
+from config import ZoomConfig
 from typing import Dict
 
 
 @dataclass
 class FilePaths:
-    """Groups output paths; instantiated from CLI args in main() and injected throughout."""
+    """Groups output paths; instantiated from CLI args in main() and injected throughout.
+
+    Attributes:
+        data_dir (str): Directory for sim output (output.pkl, spike dumps).
+        figures_dir (str): Directory for generated plots.
+    """
     data_dir: str
     figures_dir: str
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Load sim data and make the default plots (LFP + both rasters).
+
+    Args:
+        filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        cb_on (bool): If True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -37,12 +52,19 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                              num_cells, params_dict['SIM_DURATION'] / second,
-                              g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                              coupling_vals=params_dict['COUPLING_VALS'], x_naught_vals=params_dict['X_NAUGHT_VALS'])
+                              num_cells, params_dict['SIM_DURATION'] / second,)
+                            #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
+                            #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+
+    Args:
+        filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        cb_on (bool): If True, also plot the plasticity (Wpre, u, Ca) traces.
+    """
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     data = data_processing.load_sim_data(filepaths)
     res = data['results']
@@ -65,12 +87,13 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
 
-    pop_plotter.plot_hr_single(filepaths, t, x1, y1, z1, I_syn_inter)
-    pop_plotter.plot_ml_single(filepaths, t, x2, n)
+    zoom = ZoomConfig(start=60, end=60.2)
+    pop_plotter.plot_hr_single(filepaths, t, x1, y1, z1, I_syn_inter, zoom=zoom)
+    pop_plotter.plot_ml_single(filepaths, t, x2, n, zoom=zoom)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                              num_cells, params_dict['SIM_DURATION'] / second,
-                              g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                              coupling_vals=params_dict['COUPLING_VALS'], x_naught_vals=params_dict['X_NAUGHT_VALS'])
+                              num_cells, params_dict['SIM_DURATION'] / second, zoom=zoom)
+                            #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
+                            #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
     print("I_syn_inter max (raw amps):", np.max((I_syn_inter[0] / amp)))
     print("I_syn_intra max (raw amps):", np.max((I_syn_intra[0] / amp)))
@@ -79,6 +102,13 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
 
 
 def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> None:
+    """Print chi and mean KOP r for both pops. Writes autocorr/KOP plots and a spike dump.
+
+    Args:
+        filepaths (FilePaths): Spike dump goes to data_dir, plots to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        data (Dict): Dict returned by data_processing.load_sim_data.
+    """
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
@@ -107,9 +137,19 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print(f'r: {np.mean(r)}')
 
 
+def _save_params(params_file: str, run_dir: str) -> None:
+    """Copy the params YAML into run_dir so each run is reproducible from its output.
+
+    Args:
+        params_file (str): Source YAML path.
+        run_dir (str): Destination directory.
+    """
+    shutil.copy2(params_file, os.path.join(run_dir, os.path.basename(params_file)))
+
+
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
-    'ISOLATE', 'W_MAX', 'I_SCALE',
+    'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
     'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
     'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
     'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
@@ -122,30 +162,22 @@ REQUIRED_PARAMS = {
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
     'A_LTD', 'A_LTP', 'TAU_WPRE', 'TAU_CA',
     'CA_SIGMOID_SHIFT', 'CA_SIGMOID_SLOPE',
-    'X_NAUGHT_VALS', 'COUPLING_VALS', 'G_INTER_VALS', 'G_INTRA_VALS',
+    'X_NAUGHT_VALS', 'X_NAUGHT_DT',
+    'COUPLING_VALS', 'COUPLING_DT',
+    'G_INTER_VALS', 'G_INTER_DT',
+    'G_INTRA_VALS', 'G_INTRA_DT',
 }
 
 
-def load_params(params_file: str) -> Dict:
-    """Dynamically load a params .py file, validate all required keys are present,
-    and return module-level names as a plain dict."""
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("_params", params_file)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    params_dict = {
-        k: v for k, v in vars(mod).items()
-        if k.isupper() and isinstance(v, (int, float, str, bool, list, np.ndarray, Quantity))
-    }
-    missing = REQUIRED_PARAMS - params_dict.keys()
-    if missing:
-        raise ValueError(f"Missing required params in {params_file}: {sorted(missing)}")
-    return params_dict
-
-
 def main() -> None:
+    """Parse CLI args and run the phases selected by --mode.
+
+    Mode flags ('r', 'p', 'a', 'f') are independent and stackable: e.g.
+    'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
+    an already-saved output.
+    """
     DEFAULT_OUT_DIR = 'output/'
-    DEFAULT_PARAMS = 'parameters/default_params.py'
+    DEFAULT_PARAMS = '../params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
@@ -163,6 +195,9 @@ def main() -> None:
     cb_on = args.cb
     params = args.params
     params_dict = load_params(params)
+    missing = REQUIRED_PARAMS - params_dict.keys()
+    if missing:
+        raise ValueError(f"Missing required params in {params}: {sorted(missing)}")
 
     out_dir = args.out_dir
     filepaths = FilePaths(
@@ -171,12 +206,12 @@ def main() -> None:
     )
 
     if 'r' in run_mode:
+        os.makedirs(filepaths.data_dir)
+        os.makedirs(filepaths.figures_dir)
+        _save_params(params, out_dir)
         print("Running simulation...")
-        os.makedirs(filepaths.data_dir, exist_ok=True)
-        with open(os.path.join(filepaths.data_dir, 'params_file.txt'), 'w') as f:
-            f.write(os.path.abspath(params) + '\n')
         run_sim(filepaths, params_dict, cb_on)
-        print("Simulation complete.")
+        print(f"Simulation complete. Results saved to {out_dir}")
 
     if 'p' in run_mode:
         print("Generating plots...")
