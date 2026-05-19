@@ -103,8 +103,7 @@ def main():
                      params_dict['SIM_DURATION'] / second,
                      g_inter_vals=params_dict['G_INTER_VALS'],
                      g_intra_vals=params_dict['G_INTRA_VALS'],
-                     coupling_vals=params_dict['COUPLING_VALS'],
-                     x_naught_vals=params_dict['X_NAUGHT_VALS'],
+                     x0_t=res.get('x0_t'), ce_t=res.get('ce_t'),
                      show=False)
 
     print(f"Done: {job_id}")

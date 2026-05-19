@@ -37,8 +37,9 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
 
 
 def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
-              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None, 
-              M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True) -> None:
+              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None,
+              M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True,
+              M_param: Any = None) -> None:
     os.makedirs(filepaths.data_dir, exist_ok=True)
     sim_data = {
         'metadata': {
@@ -93,6 +94,12 @@ def save_data(filepaths: Any, params_dict: Dict, M_N1: Any, M_N2: Any,
         #         'S2_2_u':    np.asarray(M_S2_2.u),
         #         'S2_2_Ca':   np.asarray(M_S2_2.Ca),
         #     })
+
+    if M_param is not None:
+        sim_data['results'].update({
+            'x0_t':  np.asarray(M_param.x0_t[0]),
+            'ce_t':  np.asarray(M_param.ce_t[0]),
+        })
 
     filepath = os.path.join(filepaths.data_dir, _OUTPUT_DATA_FILE)
     with open(filepath, 'wb') as f:
