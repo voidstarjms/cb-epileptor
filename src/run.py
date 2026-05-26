@@ -11,7 +11,7 @@ import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from model import run_sim
 from param_loader import load_params
-from config import ZoomConfig
+from config_structs import ZoomConfig
 from typing import Dict
 
 
@@ -58,7 +58,7 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
-    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+    """Same as plot_output but also plots EPOP (x, y, z, I_syn_inter) and IPOP (x, n) traces.
 
     Args:
         filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
@@ -150,19 +150,19 @@ def _save_params(params_file: str, run_dir: str) -> None:
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
     'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
-    'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
-    'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
-    'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
-    'ML_GCA', 'ML_E_CA', 'ML_V1', 'ML_V2', 'ML_V3', 'ML_V4',
-    'ML_PHI', 'ML_SIGMA', 'ML_Z_BAR_SCALE', 'ML_Z_BAR_OFFSET',
-    'ML_THRESHOLD', 'ML_REFRACTORY_CONDITION',
+    'EPOP_A', 'EPOP_B', 'EPOP_C', 'EPOP_D', 'EPOP_S', 'EPOP_I_APP',
+    'EPOP_BASE_EXCITE', 'EPOP_R', 'EPOP_SIGMA', 'EPOP_THRESHOLD', 'EPOP_REFRACTORY_CONDITION',
+    'IPOP_CM', 'IPOP_I_APP', 'IPOP_GL', 'IPOP_E_L', 'IPOP_GK', 'IPOP_E_K',
+    'IPOP_GCA', 'IPOP_E_CA', 'IPOP_H_CA', 'IPOP_LAMBDA_CA', 'IPOP_H_K', 'IPOP_LAMBDA_K',
+    'IPOP_PHI', 'IPOP_SIGMA', 'IPOP_Z_BAR_SCALE', 'IPOP_Z_BAR_OFFSET',
+    'IPOP_THRESHOLD', 'IPOP_REFRACTORY_CONDITION',
     'SYN_TMAX', 'SYN_VT', 'SYN_KP', 'PCT_CONNECT',
     'SYN_ALPHA_EXC', 'SYN_BETA_EXC', 'SYN_E_EXC',
     'SYN_ALPHA_INH', 'SYN_BETA_INH', 'SYN_E_INH',
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
     'A_LTD', 'A_LTP', 'TAU_WPRE', 'TAU_CA',
     'CA_SIGMOID_SHIFT', 'CA_SIGMOID_SLOPE',
-    'X_NAUGHT_VALS', 'X_NAUGHT_DT',
+    'BASE_EXCITE_VALS', 'BASE_EXCITE_DT',
     'COUPLING_VALS', 'COUPLING_DT',
     'G_INTER_VALS', 'G_INTER_DT',
     'G_INTRA_VALS', 'G_INTRA_DT',

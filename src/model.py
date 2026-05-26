@@ -36,7 +36,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     }
 
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
-    timed_x_naught = TimedArray(params_dict['X_NAUGHT_VALS'], dt=params_dict['X_NAUGHT_DT'])
+    timed_x_naught = TimedArray(params_dict['BASE_EXCITE_VALS'], dt=params_dict['BASE_EXCITE_DT'])
     timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=params_dict['COUPLING_DT'])
 
     # compute effective synapse strength when factoring network connection percentage
@@ -48,14 +48,14 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     
     # --- Population 1: Hindmarsh-Rose ---
     pop1_namespace = {
-        'a': params_dict['HR_A'], 'b': params_dict['HR_B'], 'c': params_dict['HR_C'],
-        'd': params_dict['HR_D'], 's': params_dict['HR_S'], 'I_app_1': params_dict['HR_I_APP'],
-        'x_naught': params_dict['HR_X_NAUGHT'], 'r': params_dict['HR_R'],
-        'sigma_1': params_dict['HR_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
+        'a': params_dict['EPOP_A'], 'b': params_dict['EPOP_B'], 'c': params_dict['EPOP_C'],
+        'd': params_dict['EPOP_D'], 's': params_dict['EPOP_S'], 'I_app_1': params_dict['EPOP_I_APP'],
+        'x_naught': params_dict['EPOP_BASE_EXCITE'], 'r': params_dict['EPOP_R'],
+        'sigma_1': params_dict['EPOP_SIGMA'], 'tau': params_dict['TAU_CLOCK'],
         'ISOLATE': params_dict['ISOLATE'], 'NOISE_INIT_OFFSET': params_dict['NOISE_INIT_OFFSET'],
         'Wmax': params_dict['W_MAX'],
         'I_scale': params_dict['I_SCALE'],
-        'ce': params_dict['COUPLING_STRENGTH'],
+        'J': params_dict['COUPLING_STRENGTH'],
     }
 
     pop1_eqs = '''
@@ -76,8 +76,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     '''
 
     N1 = NeuronGroup(sim_namespace['num_cells'], pop1_eqs, method='euler',
-                     threshold=params_dict['HR_THRESHOLD'], reset='',
-                     namespace=pop1_namespace, refractory=params_dict['HR_REFRACTORY_CONDITION'])
+                     threshold=params_dict['EPOP_THRESHOLD'], reset='',
+                     namespace=pop1_namespace, refractory=params_dict['EPOP_REFRACTORY_CONDITION'])
 
     N1.x = np.ones(sim_namespace['num_cells']) * (timed_x_naught(0 * second)+ pop1_namespace['NOISE_INIT_OFFSET']) + randn(sim_namespace['num_cells']) * pop1_namespace['Wmax']
     N1.y = 'c - d*x**2'
@@ -94,16 +94,16 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
 
     # --- Population 2: Morris-Lecar ---
     pop2_namespace = {
-        'Cm': params_dict['ML_CM'], 'I_app_2': params_dict['ML_I_APP'], 'gL': params_dict['ML_GL'],
-        'E_L': params_dict['ML_E_L'], 'gK': params_dict['ML_GK'], 'E_K': params_dict['ML_E_K'],
-        'gCa': params_dict['ML_GCA'], 'E_Ca': params_dict['ML_E_CA'],
-        'v1': params_dict['ML_V1'], 'v2': params_dict['ML_V2'], 'v3': params_dict['ML_V3'], 'v4': params_dict['ML_V4'],
-        'phi': params_dict['ML_PHI'], 'sigma_2': params_dict['ML_SIGMA'],
+        'Cm': params_dict['IPOP_CM'], 'I_app_2': params_dict['IPOP_I_APP'], 'gL': params_dict['IPOP_GL'],
+        'E_L': params_dict['IPOP_E_L'], 'gK': params_dict['IPOP_GK'], 'E_K': params_dict['IPOP_E_K'],
+        'gCa': params_dict['IPOP_GCA'], 'E_Ca': params_dict['IPOP_E_CA'],
+        'h_Ca': params_dict['IPOP_H_CA'], 'lambda_Ca': params_dict['IPOP_LAMBDA_CA'], 'h_K': params_dict['IPOP_H_K'], 'lambda_K': params_dict['IPOP_LAMBDA_K'],
+        'phi': params_dict['IPOP_PHI'], 'sigma_2': params_dict['IPOP_SIGMA'],
         'Wmax': params_dict['W_MAX'],
         'ISOLATE': params_dict['ISOLATE'],
-        'ce': params_dict['COUPLING_STRENGTH'], 
-        'ml_z_bar_scale': params_dict['ML_Z_BAR_SCALE'],
-        'ml_z_bar_offset': params_dict['ML_Z_BAR_OFFSET'],
+        'J': params_dict['COUPLING_STRENGTH'], 
+        'ml_z_bar_scale': params_dict['IPOP_Z_BAR_SCALE'],
+        'ml_z_bar_offset': params_dict['IPOP_Z_BAR_OFFSET'],
     }
 
     pop2_eqs = '''
@@ -113,9 +113,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         + (I_syn_intra + I_syn_inter))) / Cm : volt
     dn/dt = phi * (n_inf - n) / tau_n : 1
 
-    m_inf = 0.5 * (1 + tanh((v - v1) / v2)) : 1
-    n_inf = 0.5 * (1 + tanh((v - v3) / v4)) : 1
-    tau_n = 1 / cosh((v - v3) / (2 * v4)) : 1
+    m_inf = 0.5 * (1 + tanh((v - h_Ca) / lambda_Ca)) : 1
+    n_inf = 0.5 * (1 + tanh((v - h_K) / lambda_K)) : 1
+    tau_n = 1 / cosh((v - h_K) / (2 * lambda_K)) : 1
 
     x = v/(20 * mV) : 1
 
@@ -126,8 +126,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
     '''
 
     N2 = NeuronGroup(sim_namespace['num_cells'], pop2_eqs, method='euler',
-                     threshold=params_dict['ML_THRESHOLD'], reset='',
-                     namespace=pop2_namespace, refractory=params_dict['ML_REFRACTORY_CONDITION'])
+                     threshold=params_dict['IPOP_THRESHOLD'], reset='',
+                     namespace=pop2_namespace, refractory=params_dict['IPOP_REFRACTORY_CONDITION'])
 
     N2.v = pop2_namespace['E_L'] * np.ones(sim_namespace['num_cells']) + \
            randn(sim_namespace['num_cells']) * pop2_namespace['Wmax'] * volt
@@ -164,6 +164,9 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         'E_inh': params_dict['SYN_E_INH'],
         'alpha_inh': params_dict['SYN_ALPHA_INH'],
         'beta_inh': params_dict['SYN_BETA_INH'],
+        'alpha_w': params_dict['ALPHA_W'],
+        'beta_ca': params_dict['BETA_CA'],
+        'gamma_ca': params_dict['GAMMA_CA'],
         'cbd': params_dict['CBD_AMOUNT'],
     }
 
@@ -173,10 +176,10 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True) -> 
         du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
         T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
-        plasticity = 1 - A_ltd * int(Ca > theta_ltd_start) * int(Ca < theta_ltd_end) + A_ltp * int(Ca > theta_ltp_start) : 1
-        beta_CBD = 1 / (1 + cbd) : 1
+        effCa = (1 - alpha_w * cbd) * Ca : 1
+        plasticity = 1 - A_ltd * int(effCa > theta_ltd_start) * int(effCa < theta_ltd_end) + A_ltp * int(effCa > theta_ltp_start) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-        dCa/dt = (sigma_Ca - beta_CBD * Ca) / tau_ca : 1 (clock-driven)
+        dCa/dt = (sigma_Ca - (beta_ca - gamma_ca * cbd) * Ca) / tau_ca : 1 (clock-driven)
         sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1
 
         E : volt

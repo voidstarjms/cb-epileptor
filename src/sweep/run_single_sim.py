@@ -55,14 +55,21 @@ def main():
       - figures/sweep_debug/<job_id>/standard_plot.png: per-job debug plot.
     """
     parser = argparse.ArgumentParser(description='Run one simulation from a YAML param file.')
-    parser.add_argument('--params', type=str, required=True,
+    parser.add_argument('--params', type=str, default='../../params.yaml',
                         help='Path to a YAML param file (e.g. params/param_1.yaml).')
+    parser.add_argument('--ce', type=float, required=True, help='Coupling strength CE')
+    parser.add_argument('--Gintra', type=float, required=True, help='Intrapopulation synapse strength')
+    parser.add_argument('--Ginter', type=float, required=True, help='Interpopulation synapse strength')
+    parser.add_argument('--x0', type=float, required=True, help='Epileptogenicity X0')
+    parser.add_argument('--realization', type=int, default=1,
+                        help='Realization number (sets random seed)')
     args = parser.parse_args()
 
     params_dict = load_params(args.params)
+    print("Argument dict is: ", args)
     # Collapse the sweep dimensions to one value each for this job.
     params_dict['COUPLING_VALS'] = [args.ce]
-    params_dict['X_NAUGHT_VALS'] = [args.x0]
+    params_dict['BASE_EXCITE_VALS'] = [args.x0]
     params_dict['G_INTRA_VALS'] = [args.Gintra] * usiemens
     params_dict['G_INTER_VALS'] = [args.Ginter] * usiemens
     
@@ -105,8 +112,8 @@ def main():
 
     # Pull the sweep dims back out of the YAML so aggregate.py can reconstruct
     # the grid without re-parsing filenames.
-    ce     = float(params_dict['COUPLING_STRENGTH'])
-    x0     = float(params_dict['HR_X_NAUGHT'])
+    coupling_J = float(params_dict['COUPLING_STRENGTH'])
+    epop_excite = float(params_dict['EPOP_BASE_EXCITE'])
     Gintra = _to_uS_float(params_dict['G_INTRA'])
     Ginter = _to_uS_float(params_dict['G_INTER'])
 
@@ -114,8 +121,8 @@ def main():
     results_dir = os.path.join('data', 'results')
     os.makedirs(results_dir, exist_ok=True)
     job_result = {
-        'ce':          ce,
-        'x0':          x0,
+        'J':           coupling_J,
+        'epop_excite': epop_excite,
         'Gintra':      Gintra,
         'Ginter':      Ginter,
         'realization': realization,

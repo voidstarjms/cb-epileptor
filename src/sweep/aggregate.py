@@ -47,12 +47,12 @@ parser.add_argument('--full', default=False, action='store_true', help='Plot mul
 args = parser.parse_args()
 
 # Reconstruct param axes from results
-ce_values = sorted(set(round(r['ce'], 6) for r in all_results))
-x0_values = sorted(set(round(r['x0'], 6) for r in all_results))
+J_values = sorted(set(round(r['J'], 6) for r in all_results))
+excite_values = sorted(set(round(r['epop_excite'], 6) for r in all_results))
 Gintra_values = sorted(set(round(r['Gintra'], 6) for r in all_results))
 Ginter_values = sorted(set(round(r['Ginter'], 6) for r in all_results))
-print(f"CE values  ({len(ce_values)}): {[round(v,3) for v in ce_values]}")
-print(f"X0 values ({len(x0_values)}): {[round(v,3) for v in x0_values]}")
+print(f"J values  ({len(J_values)}): {[round(v,3) for v in J_values]}")
+print(f"Epop excite values ({len(excite_values)}): {[round(v,3) for v in excite_values]}")
 print(f"Gintra values ({len(Gintra_values)}): {[round(v,3) for v in Gintra_values]}")
 print(f"Ginter values ({len(Ginter_values)}): {[round(v,3) for v in Ginter_values]}")
 
@@ -63,7 +63,7 @@ p2_label = r'Innate Excitability ($x_0$)'
 chi_by_point = defaultdict(list)
 for r in all_results:
     print(r)
-    key = (round(r['ce'], 6), round(r['x0'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
+    key = (round(r['J'], 6), round(r['epop_excite'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
     chi_by_point[key].append(r['r'])
 
 figures_dir = 'figures'
@@ -76,16 +76,16 @@ filepaths = FilePaths(
 # 2-axis plot
 if args.full == False:
     # Build mean and SD grids — shape: (len(x0), len(ce))
-    chi_grid = np.full((len(x0_values), len(ce_values)), np.nan)
-    chi_sd   = np.full((len(x0_values), len(ce_values)), np.nan)
+    chi_grid = np.full((len(excite_values), len(J_values)), np.nan)
+    chi_sd   = np.full((len(excite_values), len(J_values)), np.nan)
     Gintra_min = min(Gintra_values)
     Ginter_min = min(Ginter_values)
-    for (ce, x0, Gintra, Ginter), chis in chi_by_point.items():
+    for (J, excite, Gintra, Ginter), chis in chi_by_point.items():
         # Only generate chi_grid elements for min G values for the simple graph
         if Gintra != Gintra_min or Ginter != Ginter_min:
             continue
-        i = ce_values.index(ce)
-        j = x0_values.index(x0)
+        i = excite_values.index(J)
+        j = J_values.index(excite)
         chi_grid[j, i] = np.mean(chis)
         chi_sd[j, i]   = np.std(chis)
 
@@ -107,7 +107,7 @@ if args.full == False:
 
 
     ps.plot_synchrony(filepaths, chi_grid, chi_sd,
-                  np.array(ce_values), np.array(x0_values),
+                  np.array(J_values), np.array(excite_values),
                   p1_label, p2_label,
                   run_num=run_num)
 
@@ -118,11 +118,11 @@ else:
     p4_label = r'$G_{intra}$'
 
     # Build mean and SD grids — shape: (len(x0), len(ce), len(Gintra), len(Ginter))
-    chi_grid = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
-    chi_sd   = np.full((len(x0_values), len(ce_values), len(Gintra_values), len(Ginter_values)), np.nan)
-    for (ce, x0, Gintra, Ginter), chis in chi_by_point.items():
-        i = x0_values.index(x0)
-        j = ce_values.index(ce)
+    chi_grid = np.full((len(excite_values), len(J_values), len(Gintra_values), len(Ginter_values)), np.nan)
+    chi_sd   = np.full((len(excite_values), len(J_values), len(Gintra_values), len(Ginter_values)), np.nan)
+    for (J, excite, Gintra, Ginter), chis in chi_by_point.items():
+        i = excite_values.index(excite)
+        j = J_values.index(J)
         l = Gintra_values.index(Gintra)
         k = Ginter_values.index(Ginter)
         chi_grid[i, j, k, l] = np.mean(chis)
@@ -146,7 +146,7 @@ else:
             run_num += 1
 
     ps.plot_synchrony_multifaceted(filepaths, chi_grid, chi_sd,
-                  np.array(x0_values), np.array(ce_values), np.array(Ginter_values),
+                  np.array(excite_values), np.array(J_values), np.array(Ginter_values),
                   np.array(Gintra_values), p2_label, p1_label, p3_label, p4_label)
     
     print(f"Saved: {run_num}_synchrony_chi_mean_full.png and {run_num}_synchrony_chi_sd_full.png")
