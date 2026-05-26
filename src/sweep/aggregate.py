@@ -84,8 +84,8 @@ if args.full == False:
         # Only generate chi_grid elements for min G values for the simple graph
         if Gintra != Gintra_min or Ginter != Ginter_min:
             continue
-        i = excite_values.index(J)
-        j = J_values.index(excite)
+        i = excite_values.index(excite)
+        j = J_values.index(J)
         chi_grid[j, i] = np.mean(chis)
         chi_sd[j, i]   = np.std(chis)
 
