@@ -172,3 +172,6 @@ $$\frac{du}{dt} = \alpha_u T(x_\mathrm{pre}) (1 - u) - \beta_u u$$
 
 ### Current from Neuron i (pre) to Neuron j (post)
 $$I_{\mathrm{syn}}(i,j) = -G^{i,j}\_sW_{\mathrm{pre}}u(x_\mathrm{post}-E_{\mathrm{syn}})$$
+
+### Total Current into Neuron j
+$$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
