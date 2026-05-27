@@ -1,12 +1,13 @@
 # cb-epileptor
 
-Brian2 simulation of seizure dynamics in two coupled neuronal populations.
+Two-population neuron model simulating epileptic behavior and endocannabinoid dynamics using Brian2.
 
-The model couples an excitatory Hindmarsh-Rose population (HR) with an
-inhibitory Morris-Lecar population (ML) through chemical synapses with a
-calcium-controlled plasticity gate (Wpre). It reproduces seizure-like
-dynamics — bursting, post-ictal depression, and the slow drift of the HR
-slow-variable z that drives epileptogenicity.
+The model couples an excitatory population (Hindmarsh-Rose model) with an
+inhibitory population (Morris-Lecar model) through first-order chemical synapses.
+The synapses incorporates voltage-gated bidirectional plasticity simulating
+endocannabinoid retrograde signaling. The neural network reproduces seizure
+dynamics, including preictal activity increase, ictal synchronization, and
+subtle status epilepticus in post-ictal stage.
 
 ## Setup
 
@@ -124,3 +125,14 @@ src/sweep/
 ## Git
 
 See [branching.md](branching.md) for the team's branch-and-merge conventions.
+
+# Equations
+
+## Neuron Populations
+
+### Excitatory (Hindmarsh-Rose)
+
+\begin{multline}
+    {x}' = y_1 - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x)
+    + \sigma_1 I_\text{syn,tot} + W(t)
+\end{multline}
