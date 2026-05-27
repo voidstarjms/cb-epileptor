@@ -132,6 +132,8 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 
 ### Excitatory (Hindmarsh-Rose)
 
-$${x}' = y_1 - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x)
+$$
+\begin{multiline}
+{x}' = y_1 - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x)
     + \sigma_1 I_\text{syn,tot} + W(t)
 \end{multline}$$
