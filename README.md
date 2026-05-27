@@ -139,9 +139,18 @@ $$z' = r(s(x + V^* - \eta) - \bar{z})$$
 ### Inhibitory (Morris-Lecar)
 
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
-    + \sigma_2(\bar{V^\*} - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
+    + \sigma_2(\bar{V}^\* - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
 $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
 $$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
 $$\tau_\infty(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
 $$n_\infty(V) = \frac{1}{2}[1+ \tanh((V-h_\text{K})/\lambda_\text{K})]$$
 $$V^{*} = \frac{V}{20}$$
+
+## Synapse Dynamics
+
+### Presynaptic Plasticity
+$$\Omega(\mathrm{[Ca]}) = \begin{cases}
+    A_{\mathrm{LTP}} & [\mathrm{Ca}] > \theta_{\mathrm{LTP, start}} \\
+    A_{\mathrm{LTD}} & \theta_{\mathrm{LTD, start}} < [\mathrm{Ca}] < \theta_{\mathrm{LTD, end}} \\
+    1 & \mathrm{otherwise}
+\end{cases}$$
