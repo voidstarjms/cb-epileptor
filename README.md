@@ -144,4 +144,4 @@ $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
 $$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
 $$\tau_\infty(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
 $$n_\infty(V) = \frac{1}{2}[1+ \tanh((V-h_\text{K})/\lambda_\text{K})]$$
-$$V^* = \frac{V}{20}$$
+$$V^{*} = \frac{V}{20}$$
