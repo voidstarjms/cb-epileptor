@@ -132,4 +132,16 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 
 ### Excitatory (Hindmarsh-Rose)
 
-$${x}' = y_1 - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
+$${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
+$$y' = c - d x^2 - y$$
+$$z' = r(s(x + V^* - \eta) - \bar{z})$$
+
+### Inhibitory (Morris-Lecar)
+
+$$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
+    + \sigma_2( J(\bar{V}^* - V^*) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
+$$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
+$$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
+$$\tau_\infty(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
+$$n_\infty(V) = \frac{1}{2}[1+ \tanh((V-h_\text{K})/\lambda_\text{K})]$$
+$$V^* = \frac{V}{20}$$
