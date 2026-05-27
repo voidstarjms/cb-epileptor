@@ -148,9 +148,27 @@ $$V^{*} = \frac{V}{20}$$
 
 ## Synapse Dynamics
 
-### Presynaptic Plasticity
+### Presynaptic Plasticity Fixed Point
 $$\Omega(\mathrm{[Ca]}) = \begin{cases}
     A_{\mathrm{LTP}} & [\mathrm{Ca}] > \theta_{\mathrm{LTP, start}} \\
     A_{\mathrm{LTD}} & \theta_{\mathrm{LTD, start}} < [\mathrm{Ca}] < \theta_{\mathrm{LTD, end}} \\
     1 & \mathrm{otherwise}
 \end{cases}$$
+
+### Presynaptic Synapse Weight
+$$\frac{dW_{\mathrm{pre}}}{dt} = \frac{\Omega((1-\alpha_Wq_\text{CBD})[\mathrm{Ca}]) - W_{\mathrm{pre}}}{\tau_{W_{\mathrm{pre}}}}$$
+
+### Postsynaptic Calcium Concentration
+$$\frac{d[\mathrm{Ca}]}{dt} = \frac{\sigma(x_\mathrm{post}) - (\beta_\text{Ca}-\gamma_{Ca}q_\text{CBD})[\mathrm{Ca}]}{\tau_{\mathrm{Ca}}}$$
+
+### Postsynaptic Voltage-to-Calcium Mapping
+$$\sigma_\text{Ca}(x_\mathrm{post}) = \frac{1}{1 + e^{-(x_\mathrm{post} + 0.8) / 0.2}}$$
+
+### Synaptic Channel Opening Rate
+$$T(x_\mathrm{pre} ) = \frac{T_{\mathrm{max}}}{1 + e^{-\frac{x_\mathrm{pre} - V_t}{K_p}}}$$
+
+### Fraction of Open Synaptic Channels
+$$\frac{du}{dt} = \alpha_u T(x_\mathrm{pre}) (1 - u) - \beta_u u$$
+
+### Current from Neuron i (pre) to Neuron j (post)
+$$I_{\mathrm{syn}}(i,j) = -G^{i,j}\_sW_{\mathrm{pre}}u(x_\mathrm{post}-E_{\mathrm{syn}})$$
