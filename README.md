@@ -141,19 +141,28 @@ Spiking variable. Models ion transport by voltage-gated sodium and potassium ion
 
 $$z' = r(s(x + \bar{V}^\* - \eta) - \bar{z})$$
 
-Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.\\
+Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.
 
 ### Inhibitory (Morris-Lecar)
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
     + \sigma_2(\bar{V}^\* - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
+
 Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model.
+
 $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
+
 Fraction of open potassium channels.
+
 $$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
+
 Fraction of open calcium channels.
+
 $$\tau_n(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
+
 Potassium channel opening time scale.
+
 $$V^{*} = \frac{V}{20}$$
+
 Scaled unitless voltage. For use in the synapses and excitatory population.
 
 ## Synapse Dynamics
@@ -164,18 +173,22 @@ $$\Omega(\mathrm{[Ca]}) = \begin{cases}
     A_{\mathrm{LTD}} & \theta_{\mathrm{LTD, start}} < [\mathrm{Ca}] < \theta_{\mathrm{LTD, end}} \\
     1 & \mathrm{otherwise}
 \end{cases}$$
+
 Piecewise function to model bidirectional plasticity.
 
 ### Presynaptic Synapse Weight
 $$\frac{dW_{\mathrm{pre}}}{dt} = \frac{\Omega((1-\alpha_Wq_\text{CBD})[\mathrm{Ca}]) - W_{\mathrm{pre}}}{\tau_{W_{\mathrm{pre}}}}$$
+
 Scaling factor on strength of synapse as determined by endocannabinoid binding.
 
 ### Postsynaptic Calcium Concentration
 $$\frac{d[\mathrm{Ca}]}{dt} = \frac{\sigma(x_\mathrm{post}) - (\beta_\text{Ca}-\gamma_{Ca}q_\text{CBD})[\mathrm{Ca}]}{\tau_{\mathrm{Ca}}}$$
+
 Used as a direct proxy for endocannabinoid release amount.
 
 ### Postsynaptic Voltage-to-Calcium Mapping
 $$\sigma_\text{Ca}(x_\mathrm{post}) = \frac{1}{1 + e^{-(x_\mathrm{post} + 0.8) / 0.2}}$$
+
 Maps postsynaptic voltage to a unitless concentration of calcium between 0 and 1.
 
 ### Synaptic Channel Opening Rate
