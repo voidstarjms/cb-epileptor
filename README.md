@@ -133,7 +133,7 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 ### Excitatory (Hindmarsh-Rose)
 $${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
 
-Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.
+Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents. Intrapopulation gap junction coupling simulated by partially coupling neuron potential to population mean.
 
 $$y' = c - d x^2 - y$$
 
@@ -147,7 +147,7 @@ Slow adaptation variable. Introduces chaotic dynamics influenced by individual e
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
     + \sigma_2(\bar{V}^\* - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
 
-Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model.
+Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model. Intrapopulation gap junction coupling simulated by partially coupling neuron potential to population mean. Input from excitatory population slow variable drives slow dynamics.
 
 $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
 
