@@ -131,37 +131,42 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 ## Neuron Populations
 
 ### Excitatory (Hindmarsh-Rose)
-
+$$x$$ - Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.
 $${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
+$$y$$ - Spiking variable. Models ion transport by voltage-gated sodium and potassium ion channels.
 $$y' = c - d x^2 - y$$
-$$z' = r(s(x + V^* - \eta) - \bar{z})$$
+$$z$$ - Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.
+$$z' = r(s(x + \bar{V}^\* - \eta) - \bar{z})$$
 
 ### Inhibitory (Morris-Lecar)
-
+$$V$$ - Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model.
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
     + \sigma_2(\bar{V}^\* - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
+$$n$$ - Fraction of open potassium channels.
 $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
+$$m_\infty(V)$$ - Fraction of open calcium channels.
 $$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
-$$\tau_\infty(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
-$$n_\infty(V) = \frac{1}{2}[1+ \tanh((V-h_\text{K})/\lambda_\text{K})]$$
+$$\tau_n(V)$$ - Potassium channel opening time scale.
+$$\tau_n(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
+$$V^\*$$ - Scaled unitless voltage. For use in the synapses and excitatory population.
 $$V^{*} = \frac{V}{20}$$
 
 ## Synapse Dynamics
 
-### Presynaptic Plasticity Fixed Point
+### Presynaptic Plasticity Fixed Point - Piecewise function to model bidirectional plasticity
 $$\Omega(\mathrm{[Ca]}) = \begin{cases}
     A_{\mathrm{LTP}} & [\mathrm{Ca}] > \theta_{\mathrm{LTP, start}} \\
     A_{\mathrm{LTD}} & \theta_{\mathrm{LTD, start}} < [\mathrm{Ca}] < \theta_{\mathrm{LTD, end}} \\
     1 & \mathrm{otherwise}
 \end{cases}$$
 
-### Presynaptic Synapse Weight
+### Presynaptic Synapse Weight - Scaling factor on strength of synapse as determined by endocannabinoid binding
 $$\frac{dW_{\mathrm{pre}}}{dt} = \frac{\Omega((1-\alpha_Wq_\text{CBD})[\mathrm{Ca}]) - W_{\mathrm{pre}}}{\tau_{W_{\mathrm{pre}}}}$$
 
-### Postsynaptic Calcium Concentration
+### Postsynaptic Calcium Concentration - Used as a direct proxy for endocannabinoid release amount
 $$\frac{d[\mathrm{Ca}]}{dt} = \frac{\sigma(x_\mathrm{post}) - (\beta_\text{Ca}-\gamma_{Ca}q_\text{CBD})[\mathrm{Ca}]}{\tau_{\mathrm{Ca}}}$$
 
-### Postsynaptic Voltage-to-Calcium Mapping
+### Postsynaptic Voltage-to-Calcium Mapping - Maps postsynaptic voltage to a unitless concentration of calcium between 0 and 1
 $$\sigma_\text{Ca}(x_\mathrm{post}) = \frac{1}{1 + e^{-(x_\mathrm{post} + 0.8) / 0.2}}$$
 
 ### Synaptic Channel Opening Rate
