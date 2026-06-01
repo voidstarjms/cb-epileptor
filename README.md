@@ -131,24 +131,24 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 ## Neuron Populations
 
 ### Excitatory (Hindmarsh-Rose)
-$$x$$ - Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.
+$$x \text{- Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.}$$
 $${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
-$$y$$ - Spiking variable. Models ion transport by voltage-gated sodium and potassium ion channels.
+$$y \text{- Spiking variable. Models ion transport by voltage-gated sodium and potassium ion channels.}$$
 $$y' = c - d x^2 - y$$
-$$z$$ - Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.
+$$z \text{- Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.}$$
 $$z' = r(s(x + \bar{V}^\* - \eta) - \bar{z})$$
 
 ### Inhibitory (Morris-Lecar)
-$$V$$ - Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model.
+$$V \text{- Membrane voltage. Evolves according to ion channel currents similar to the Hodgkin-Huxley model.}$$
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
     + \sigma_2(\bar{V}^\* - V^{\*}) + I_\text{syn,tot} - 0.15(\bar{z} - 6) + W(t))$$
-$$n$$ - Fraction of open potassium channels.
+$$n \text{- Fraction of open potassium channels.}$$
 $$n = \phi(n_\infty(V) - n)/\tau_n(V)$$
-$$m_\infty(V)$$ - Fraction of open calcium channels.
+$$m_\infty(V) \text{- Fraction of open calcium channels.}$$
 $$m_\infty(V) = \frac{1}{2}[1 + \tanh((V-h_\text{Ca})/\lambda_\text{Ca})]$$
-$$\tau_n(V)$$ - Potassium channel opening time scale.
+$$\tau_n(V) \text{- Potassium channel opening time scale.}$$
 $$\tau_n(V) = \frac{1}{\cosh((V-h_\text{K})/ (2 \lambda_\text{K}))}$$
-$$V^\*$$ - Scaled unitless voltage. For use in the synapses and excitatory population.
+$$V^\* \text{- Scaled unitless voltage. For use in the synapses and excitatory population.}$$
 $$V^{*} = \frac{V}{20}$$
 
 ## Synapse Dynamics
