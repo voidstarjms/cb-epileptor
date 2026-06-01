@@ -131,11 +131,16 @@ See [branching.md](branching.md) for the team's branch-and-merge conventions.
 ## Neuron Populations
 
 ### Excitatory (Hindmarsh-Rose)
-$${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$\\
-Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.\\
-$$y' = c - d x^2 - y$$\\
-Spiking variable. Models ion transport by voltage-gated sodium and potassium ion channels.\\
-$$z' = r(s(x + \bar{V}^\* - \eta) - \bar{z})$$\\
+$${x}' = y - a x^3 + b x^2 - z + I_{\text{app,1}} + J (\bar{x} - x) + \sigma_1 I_\text{syn,tot} + W(t)$$
+
+Unitless membrane potential. Evolves according to cubic derivative modulated by y and z variables. Stimulus comes from a constant current, a stochastic current, and synaptic currents.
+
+$$y' = c - d x^2 - y$$
+
+Spiking variable. Models ion transport by voltage-gated sodium and potassium ion channels.
+
+$$z' = r(s(x + \bar{V}^\* - \eta) - \bar{z})$$
+
 Slow adaptation variable. Introduces chaotic dynamics influenced by individual excitatory neuron potential and mean inhibitory population potential.\\
 
 ### Inhibitory (Morris-Lecar)
