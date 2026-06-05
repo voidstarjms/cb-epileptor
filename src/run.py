@@ -11,7 +11,7 @@ import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from model import run_sim
 from param_loader import load_params
-from config import ZoomConfig
+from config_structs import ZoomConfig
 from typing import Dict
 
 
