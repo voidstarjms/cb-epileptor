@@ -1,0 +1,95 @@
+# --- Simulation Control ---
+SIM_DURATION: "1*second"
+NUM_CELLS: 10
+TAU_CLOCK: "1*msecond"
+DT_SCALING: 20
+TRANSIENT: 10
+
+# --- Coupling & Global Logic ---
+# ISOLATE = 0 decoupled, 1 coupled
+ISOLATE: 1
+COUPLING_STRENGTH: 0.1
+W_MAX: 0.012
+
+# --- Population 1: Excitatory (Hindmarsh-Rose) ---
+EPOP_A: 1.0
+EPOP_B: 3.0
+EPOP_C: 1.0
+EPOP_D: 5.0
+EPOP_S: 4.0
+EPOP_I_APP: 6
+EPOP_BASE_EXCITE: -3.5
+EPOP_R: "0.00002/msecond"
+EPOP_SIGMA: 0.02  # was 1/50 in params.py; = 0.02 exactly
+EPOP_THRESHOLD: "x > 1.5"
+EPOP_REFRACTORY_CONDITION: "x >= 0"
+I_SCALE: "0.05*uamp"
+
+# --- Population 2: Morris-Lecar ---
+IPOP_CM: "20*ufarad"
+IPOP_I_APP: "37*uamp"
+IPOP_H_CA: "-1.2*mvolt"
+IPOP_LAMBDA_CA: "18*mvolt"
+IPOP_H_K: "12*mvolt"
+IPOP_LAMBDA_K: "17.4*mvolt"
+IPOP_PHI: "0.067/msecond"
+IPOP_E_CA: "120*mvolt"
+IPOP_E_K: "-84*mvolt"
+IPOP_E_L: "-60*mvolt"
+IPOP_GL: "2*msiemens"
+IPOP_GCA: "4.0*msiemens"
+IPOP_GK: "8.0*msiemens"
+IPOP_SIGMA: "50*uamp"  # was `uA` in source; same unit, normalized name
+IPOP_THRESHOLD: "x > 0.95"
+IPOP_REFRACTORY_CONDITION: "x >= 0"
+
+# --- Synaptic Parameters ---
+SYN_VT: "2*mV"
+SYN_KP: "5*mV"
+SYN_TMAX: "1*mmolar"
+G_INTRA: "0.5*uS"
+G_INTER: "1*uS"
+PCT_CONNECT: 1
+
+# Excitatory (Pop 1)
+SYN_ALPHA_EXC: "1.1/(mmolar*msecond)"
+SYN_BETA_EXC: "0.19/msecond"
+SYN_E_EXC: "0*mV"
+
+# Inhibitory (Pop 2)
+SYN_ALPHA_INH: "5/(mmolar*msecond)"
+SYN_BETA_INH: "0.18/msecond"
+SYN_E_INH: "-80*mV"
+
+# --- Plasticity ---
+THETA_LTD_START: 0.25
+THETA_LTD_END: 0.5
+THETA_LTP_START: 0.75
+A_LTD: 0.5
+A_LTP: 2
+TAU_WPRE: "5*second"
+TAU_CA: "200*msecond"
+ALPHA_W: 0.5
+BETA_CA: 1
+GAMMA_CA: 0.5
+CBD_AMOUNT: 0
+
+# --- Timed array schedules ---
+BASE_EXCITE_VALS: [-4.5, -2.5, -2.5, -4.5, -4.5]
+COUPLING_VALS: [0, 0, 0.2, 0.2, 0]
+G_INTER_VALS: "[1] * uS"
+G_INTRA_VALS: "[0.5] * uS"
+
+# --- Timed array time steps ---
+BASE_EXCITE_DT: "30*second"
+COUPLING_DT: "30*second"
+G_INTER_DT: "30*second"
+G_INTRA_DT: "30*second"
+
+# --- Z-bar, Ca sigmoid ---
+IPOP_Z_BAR_SCALE: 0.15
+IPOP_Z_BAR_OFFSET: 6
+CA_SIGMOID_SHIFT: 0.8
+CA_SIGMOID_SLOPE: 0.2
+
+NOISE_INIT_OFFSET: 1.5
