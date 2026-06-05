@@ -9,7 +9,7 @@ import os
 import numpy as np
 from brian2 import *
 from typing import Dict, Any
-from config import ZoomConfig
+from config_structs import ZoomConfig
 
 import plotting.style  # noqa: F401
 
