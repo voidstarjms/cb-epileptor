@@ -41,11 +41,11 @@ Slow adaptation variable. Introduces chaotic dynamics influenced by individual e
 | $s$ | $4.0$ | z excitability scalar |
 | $I_{\text{app,1}}$ | $6$ | Applied current |
 | $\eta$ | $-3.5$ | Resting potential |
-| $r$ | $2\times10^{-5}\,(\mathrm{ms})^{-1}$ | Slow adaptation rate |
+| $r$ | $2\times10^{-5}(\mathrm{ms})^{-1}$ | Slow adaptation rate |
 | $\sigma_1$ | $0.02$ | Noise amplitude |
 | Threshold | $x > 1.5$ | Spike condition |
 | Refractory | $x \geq 0$ | Reset condition |
-| $\psi$ | $0.05\,\mu\mathrm{A}$ | Current scaling |
+| $\psi$ | $0.05\mu\mathrm{A}$ | Current scaling |
 
 ### Inhibitory (Morris-Lecar)
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
@@ -78,7 +78,7 @@ Scaled unitless voltage. For use in the synapses and excitatory population.
 | $\lambda_{\text{Ca}}$ | $18\mathrm{mV}$ | Ca activation slope |
 | $h_{\text{K}}$ | $12\mathrm{mV}$ | K activation midpoint |
 | $\lambda_{\text{K}}$ | $17.4\mathrm{mV}$ | K activation slope |
-| $\phi$ | $0.067\,(\mathrm{ms})^{-1}$ | K rate constant |
+| $\phi$ | $0.067(\mathrm{ms})^{-1}$ | K rate constant |
 | $E_{\text{Ca}}$ | $120\mathrm{mV}$ | Ca reversal potential |
 | $E_{\text{K}}$ | $-84\mathrm{mV}$ | K reversal potential |
 | $E_{\text{L}}$ | $-60\mathrm{mV}$ | Leak reversal potential |
