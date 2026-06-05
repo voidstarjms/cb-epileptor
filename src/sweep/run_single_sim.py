@@ -134,8 +134,6 @@ def main():
         'r_inh':            float(r_inh),
         'exc_spike_mat':    spike_matrix_1.astype(np.uint8),
         'inh_spike_mat':    spike_matrix_2.astype(np.uint8)
-
-
     }
     with open(os.path.join(results_dir, f'metrics_{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)
