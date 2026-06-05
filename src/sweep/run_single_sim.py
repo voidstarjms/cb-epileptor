@@ -22,7 +22,7 @@ from brian2.units import *
 import sys
 sys.path.append("..")
 import data_processing
-import synch as syn
+import synch_metrics as syn
 import plotting.population_plots as ph
 from model import run_sim
 from param_loader import load_params
@@ -100,14 +100,22 @@ def main():
     x2 = res['x2']
     t  = res['t']
     spikes_1 = res['spikes_n1']
+    spikes_2 = res['spikes_n2']
+
+    num_cells = params_dict['NUM_CELLS']
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
 
     data_processing.delete_sim_data(filepaths)
 
     # Compute synchrony
-    chi, _, _ = syn.autocorrelate(x1)
-    _, r, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
-    r = np.mean(r)
-    print(f"  chi = {chi:.4f}")
+    chi_exc, _, _ = syn.autocorrelate(x1)
+    chi_inh, _, _ = syn.autocorrelate(x2)
+
+    _, r_exc, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
+    _, r_inh, _ = syn.KOP(spikes_2['i'], spikes_2['t'], params_dict['SIM_DURATION'] / second)
+    r = np.mean(r_exc) + np.mean(r_inh)
+    
     print(f"  r = {r:.4f}")
 
     # Pull the sweep dims back out of the YAML so aggregate.py can reconstruct
@@ -126,9 +134,14 @@ def main():
         'Gintra':      Gintra,
         'Ginter':      Ginter,
         'realization': realization,
-        'chi':         float(chi),
-        'r':           float(r),
+        'chi_exc':          float(chi_exc),
+        'chi_inh':          float(chi_inh),
+        'r_exc':            float(r_exc),
+        'r_inh':            float(r_inh),
+        'exc_spike_mat':    spike_matrix_1.astype(np.uint8),
+        'inh_spike_mat':    spike_matrix_2.astype(np.uint8),
     }
+    
     with open(os.path.join(results_dir, f'metrics_{job_id}.pkl'), 'wb') as f:
         pickle.dump(job_result, f)
 
