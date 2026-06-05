@@ -1,6 +1,7 @@
 """Save and load sim output, plus a few post-processing helpers."""
 import os
 import numpy as np
+import numpy.typing as npt
 import datetime
 import pickle
 from brian2 import *
@@ -149,3 +150,33 @@ def dump_array_to_file(filename: str, arr: np.ndarray) -> None:
     np.savetxt(filename, arr, fmt='%f', delimiter=' ')
 
 
+
+def save_raw_spikes(filepaths: Any, spike_data: Dict, filename: str = "sparse_spike_data.pkl") -> None:
+    """Test function to benchmark data save sizes. This function is less memory efficient and not used"""
+    os.makedirs(filepaths.data_dir, exist_ok=True)
+    print(f"+++TYPE t: {spike_data['t'].dtype}, i: {spike_data['i'].dtype}+++")
+    save_spike_data = {
+        "t": spike_data["t"],
+        "i": spike_data["i"]
+    }
+
+    filepath = os.path.join(filepaths.data_dir, filename)
+    with open(filepath, 'wb') as f:
+        pickle.dump(save_spike_data, f)
+
+    print(f"Simulation data and parameters saved to: {filepath}")
+
+def save_spike_histo(filepaths: Any, spike_matrix: npt.NDArray[np.float64], filename: str = "spike_matrix_data.pkl") -> None:
+    """Test function to benchmark data save sizes. This function is the better method. Still not used, but run_single_sim does a similar thing as this"""
+    os.makedirs(filepaths.data_dir, exist_ok=True)
+    spike_matrix = spike_matrix.astype(np.uint8)
+    print(f"+++TYPE: {spike_matrix.dtype}+++")
+    save_spike_data = {
+        "spikes": spike_matrix
+    }
+    
+    filepath = os.path.join(filepaths.data_dir, filename)
+    with open(filepath, 'wb') as f:
+        pickle.dump(save_spike_data, f)
+
+    print(f"Simulation data and parameters saved to: {filepath}")

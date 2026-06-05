@@ -5,7 +5,7 @@ import numpy as np
 from brian2 import *
 from dataclasses import dataclass
 import data_processing
-import synch as syn
+import synch_metrics as syn
 import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
@@ -52,13 +52,13 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
-                              num_cells, params_dict['SIM_DURATION'] / second,)
-                            #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                            #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
+                              num_cells, params_dict['SIM_DURATION'] / second,
+                              g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
+                              x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
 
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
-    """Same as plot_output but also plots HR (x, y, z, I_syn_inter) and ML (x, n) traces.
+    """Same as plot_output but also plots EPOP (x, y, z, I_syn_inter) and IPOP (x, n) traces.
 
     Args:
         filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
@@ -115,11 +115,23 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     pop1_spike_times, pop1_neuron_idx = res['spikes_n1']['t'], res['spikes_n1']['i']
     pop2_spike_times, pop2_neuron_idx = res['spikes_n2']['t'], res['spikes_n2']['i']
 
-    data_processing.dump_spikes_to_file(
-        os.path.join(filepaths.data_dir, 'spikes_n1.txt'),
-        np.asarray(pop1_neuron_idx),
-        np.asarray(pop1_spike_times),
-    )
+    # data_processing.dump_spikes_to_file(
+    #     os.path.join(filepaths.data_dir, 'spikes_n1.txt'),
+    #     np.asarray(pop1_neuron_idx),
+    #     np.asarray(pop1_spike_times),
+    # )
+
+    # print("===========spike train formats===============")
+    # print(pop1_neuron_idx, f"neuron array len is {len(pop1_neuron_idx)}")
+    # print(pop1_spike_times, f"spike array len is {len(pop1_spike_times)}")
+
+    num_cells = params_dict['NUM_CELLS']
+    data_processing.save_raw_spikes(filepaths, res['spikes_n1'], filename="sparse_spikes_n1.pkl")
+    data_processing.save_raw_spikes(filepaths, res['spikes_n2'], filename="sparse_spikes_n2.pkl")
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
+    data_processing.save_spike_histo(filepaths, spike_matrix_1, filename="spike_histo_n1.pkl")
+    data_processing.save_spike_histo(filepaths, spike_matrix_2, filename="spike_histo_n2.pkl")
 
     print("============HINDMARSH ROSE STATS============")
     chi, autocorr, lag = syn.autocorrelate(x1)
@@ -136,6 +148,51 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params_dict['SIM_DURATION'] / second)
     print(f'r: {np.mean(r)}')
 
+    analysis_plotter.plot_power_spec(filepaths, params_dict, x1, x2)
+    analysis_plotter.plot_spectrogram(filepaths, params_dict, x1, x2,
+                                      t=res['t'],
+                                      x0_t=res.get('x0_t'),
+                                      ce_t=res.get('ce_t'))
+
+
+def report_metrics(params_dict: Dict, data: Dict) -> None:
+    """Print a comparison table of chi, KOP r, mean firing rate, median frequency, and ISI CV.
+
+    Args:
+        params_dict: Parameter dict loaded from YAML.
+        data: Dict returned by data_processing.load_sim_data.
+    """
+    res = data['results']
+    duration = params_dict['SIM_DURATION'] / second
+    num_cells = params_dict['NUM_CELLS']
+    fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
+
+    chi1, _, _ = syn.autocorrelate(res['x1'])
+    chi2, _, _ = syn.autocorrelate(res['x2'])
+
+    _, r1, _ = syn.KOP(res['spikes_n1']['i'], res['spikes_n1']['t'], duration)
+    _, r2, _ = syn.KOP(res['spikes_n2']['i'], res['spikes_n2']['t'], duration)
+    r1, r2 = float(np.mean(r1)), float(np.mean(r2))
+
+    fr1 = syn.mean_firing_rate(res['spikes_n1']['i'], res['spikes_n1']['t'], num_cells, duration)
+    fr2 = syn.mean_firing_rate(res['spikes_n2']['i'], res['spikes_n2']['t'], num_cells, duration)
+
+    df1 = syn.median_frequency(res['x1'], fs)
+    df2 = syn.median_frequency(res['x2'], fs)
+
+    cv1 = syn.isi_cv(res['spikes_n1']['i'], res['spikes_n1']['t'])
+    cv2 = syn.isi_cv(res['spikes_n2']['i'], res['spikes_n2']['t'])
+
+    W = 28
+    print("\n============ METRIC REPORT ============")
+    print(f"\n{'Metric':<{W}} {'HR':>10} {'ML':>10}")
+    print("-" * (W + 22))
+    print(f"{'Chi (autocorr)':<{W}} {chi1:>10.4f} {chi2:>10.4f}")
+    print(f"{'KOP r':<{W}} {r1:>10.4f} {r2:>10.4f}")
+    print(f"{'Mean firing rate (Hz)':<{W}} {fr1:>10.4f} {fr2:>10.4f}")
+    print(f"{'Median frequency (Hz)':<{W}} {df1:>10.4f} {df2:>10.4f}")
+    print(f"{'ISI CV':<{W}} {cv1:>10.4f} {cv2:>10.4f}")
+
 
 def _save_params(params_file: str, run_dir: str) -> None:
     """Copy the params YAML into run_dir so each run is reproducible from its output.
@@ -150,19 +207,19 @@ def _save_params(params_file: str, run_dir: str) -> None:
 REQUIRED_PARAMS = {
     'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
     'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
-    'HR_A', 'HR_B', 'HR_C', 'HR_D', 'HR_S', 'HR_I_APP',
-    'HR_X_NAUGHT', 'HR_R', 'HR_SIGMA', 'HR_THRESHOLD', 'HR_REFRACTORY_CONDITION',
-    'ML_CM', 'ML_I_APP', 'ML_GL', 'ML_E_L', 'ML_GK', 'ML_E_K',
-    'ML_GCA', 'ML_E_CA', 'ML_V1', 'ML_V2', 'ML_V3', 'ML_V4',
-    'ML_PHI', 'ML_SIGMA', 'ML_Z_BAR_SCALE', 'ML_Z_BAR_OFFSET',
-    'ML_THRESHOLD', 'ML_REFRACTORY_CONDITION',
+    'EPOP_A', 'EPOP_B', 'EPOP_C', 'EPOP_D', 'EPOP_S', 'EPOP_I_APP',
+    'EPOP_BASE_EXCITE', 'EPOP_R', 'EPOP_SIGMA', 'EPOP_THRESHOLD', 'EPOP_REFRACTORY_CONDITION',
+    'IPOP_CM', 'IPOP_I_APP', 'IPOP_GL', 'IPOP_E_L', 'IPOP_GK', 'IPOP_E_K',
+    'IPOP_GCA', 'IPOP_E_CA', 'IPOP_H_CA', 'IPOP_LAMBDA_CA', 'IPOP_H_K', 'IPOP_LAMBDA_K',
+    'IPOP_PHI', 'IPOP_SIGMA', 'IPOP_Z_BAR_SCALE', 'IPOP_Z_BAR_OFFSET',
+    'IPOP_THRESHOLD', 'IPOP_REFRACTORY_CONDITION',
     'SYN_TMAX', 'SYN_VT', 'SYN_KP', 'PCT_CONNECT',
     'SYN_ALPHA_EXC', 'SYN_BETA_EXC', 'SYN_E_EXC',
     'SYN_ALPHA_INH', 'SYN_BETA_INH', 'SYN_E_INH',
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
     'A_LTD', 'A_LTP', 'TAU_WPRE', 'TAU_CA',
     'CA_SIGMOID_SHIFT', 'CA_SIGMOID_SLOPE',
-    'X_NAUGHT_VALS', 'X_NAUGHT_DT',
+    'BASE_EXCITE_VALS', 'BASE_EXCITE_DT',
     'COUPLING_VALS', 'COUPLING_DT',
     'G_INTER_VALS', 'G_INTER_DT',
     'G_INTRA_VALS', 'G_INTRA_DT',
@@ -224,6 +281,10 @@ def main() -> None:
     if 'a' in run_mode:
         data = data_processing.load_sim_data(filepaths)
         analyze_populations(filepaths, data['params'], data)
+
+    if 't' in run_mode:
+        data = data_processing.load_sim_data(filepaths)
+        report_metrics(data['params'], data)
 
 
 if __name__ == "__main__":
