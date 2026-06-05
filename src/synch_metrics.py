@@ -73,75 +73,66 @@ def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tup
     return Z, r, psi
 
     
-def _norm_firing_rate(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tuple[float, float]:
-    """Min-max normalised mean firing rate.
+def mean_firing_rate(neuron_idx: np.ndarray, spike_times: np.ndarray,
+                     num_cells: int, duration: float) -> float:
+    """Mean firing rate across all neurons in Hz.
 
-    Min is anchored at 0 (silence); max is the observed peak single-neuron rate.
+    Args:
+        neuron_idx: Per-spike neuron index (unused, kept for consistent signature).
+        spike_times: Per-spike times in seconds.
+        num_cells: Total number of neurons in the population.
+        duration: Recording duration in seconds.
 
     Returns:
-        Tuple[float, float]: (norm_FR in [0, 1], mean_FR in Hz).
+        float: Mean firing rate in Hz (total spikes / num_cells / duration).
     """
-    unique, counts = np.unique(neuron_idx, return_counts=True)
-    n_neurons = len(unique)
-    mean_FR = len(spike_times) / (n_neurons * duration)
-    max_FR = counts.max() / duration
-    norm_FR = mean_FR / max_FR if max_FR > 0 else 0.0
-    return norm_FR, mean_FR
+    return len(spike_times) / (num_cells * duration)
 
 
-def seizure_kop(
-    neuron_idx: np.ndarray,
-    spike_times: np.ndarray,
-    duration: float,
-) -> Tuple[float, float, float]:
-    """Seizure score: rate-weighted Kuramoto order parameter.
+def median_frequency(x: np.ndarray, fs: float) -> float:
+    """Median of per-window peak frequencies from the spectrogram.
 
-    Multiplies mean KOP magnitude by min-max normalised firing rate so that
-    periods of dense continuous firing (seizure) score high and sparse-but-
-    synchronised periods (post-ictal) score low.
+    Computes a spectrogram of the population mean signal, finds the peak
+    frequency in each time window, and returns the median
+    across all windows.
+
+    Args:
+        x: (num_cells, time) array for one population.
+        fs: Sampling rate in Hz (1 / simulation dt).
+
+    Returns:
+        float: Median peak frequency in Hz.
+    """
+    x_mean = np.mean(x, axis=0)
+    f, _, Sxx = scipy.signal.spectrogram(x_mean, fs=fs, nperseg=int(fs), noverlap=int(fs) // 2)
+    peak_freqs = f[1:][np.argmax(Sxx[1:], axis=0)] 
+    return float(np.median(peak_freqs))
+
+
+def isi_cv(neuron_idx: np.ndarray, spike_times: np.ndarray) -> float:
+    """Mean coefficient of variation of inter-spike intervals across neurons.
+
+    CV = std(ISI) / mean(ISI) per neuron, then averaged. Neurons with fewer
+    than 2 spikes dont have interspike interval and are skipped. Returns NaN if no neuron has enough spikes.
 
     Args:
         neuron_idx: Per-spike neuron index.
-        spike_times: Per-spike times (seconds).
-        duration: Recording duration in seconds (after transient).
+        spike_times: Per-spike times in seconds.
 
     Returns:
-        Tuple[float, float, float]: (score in [0, 1], mean KOP r, norm_FR).
+        float: Mean ISI CV across neurons. 0 = perfectly regular, >1 = bursty.
     """
-    _, r_ts, _ = KOP(neuron_idx, spike_times, duration)
-    r = float(np.mean(r_ts))
-    norm_FR, _ = _norm_firing_rate(neuron_idx, spike_times, duration)
-    score = r * norm_FR
-    return score, r, norm_FR
+    cvs = []
+    for idx in np.unique(neuron_idx):
+        times = np.sort(spike_times[neuron_idx == idx])
+        if len(times) < 2:
+            continue
+        intervals = np.diff(times)
+        mu = np.mean(intervals)
+        if mu > 0:
+            cvs.append(np.std(intervals) / mu)
+    return float(np.mean(cvs)) if cvs else float('nan')
 
-
-def seizure_kop_combined(
-    neuron_idx: np.ndarray,
-    spike_times: np.ndarray,
-    duration: float,
-    alpha: float = 0.5,
-    beta: float = 0.5,
-) -> Tuple[float, float, float]:
-    """Seizure score: linear combination of KOP and normalised firing rate.
-
-    Score is in [0, 1] when alpha + beta == 1. Increasing alpha weights
-    synchrony more; increasing beta weights firing density more.
-
-    Args:
-        neuron_idx: Per-spike neuron index.
-        spike_times: Per-spike times (seconds).
-        duration: Recording duration in seconds (after transient).
-        alpha: Weight for mean KOP r. Defaults to 0.5.
-        beta: Weight for normalised firing rate. Defaults to 0.5.
-
-    Returns:
-        Tuple[float, float, float]: (score, mean KOP r, norm_FR).
-    """
-    _, r_ts, _ = KOP(neuron_idx, spike_times, duration)
-    r = float(np.mean(r_ts))
-    norm_FR, _ = _norm_firing_rate(neuron_idx, spike_times, duration)
-    score = alpha * r + beta * norm_FR
-    return score, r, norm_FR
 
 
 def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> np.ndarray:
