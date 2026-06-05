@@ -3,11 +3,11 @@
 ## Global Simulation Control
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `SIM_DURATION` | $120\,\mathrm{s}$ | Total simulated time |
+| `SIM_DURATION` | $120\mathrm{s}$ | Total simulated time |
 | `NUM_CELLS` | $10$ | Cells per population |
-| `TAU_CLOCK` | $1\,\mathrm{msec}$ | Base clock step |
+| `TAU_CLOCK` | $1\mathrm{msec}$ | Base clock step |
 | `DT_SCALING` | $20$ | Integration step multiplier |
-| `TRANSIENT` | $10\,\mathrm{s}$ | Discarded transient |
+| `TRANSIENT` | $10\mathrm{s}$ | Discarded transient |
 
 ## Coupling and Global Logic
 | Parameter | Value | Description |
@@ -72,20 +72,20 @@ Scaled unitless voltage. For use in the synapses and excitatory population.
 ### Inhibitory Neuron Parameters
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| $C_m$ | $20\,\mu\mathrm{F}$ | Membrane capacitance |
-| $I_{\text{app,2}}$ | $37\,\mu\mathrm{A}$ | Applied current |
-| $h_{\text{Ca}}$ | $-1.2\,\mathrm{mV}$ | Ca activation midpoint |
-| $\lambda_{\text{Ca}}$ | $18\,\mathrm{mV}$ | Ca activation slope |
-| $h_{\text{K}}$ | $12\,\mathrm{mV}$ | K activation midpoint |
-| $\lambda_{\text{K}}$ | $17.4\,\mathrm{mV}$ | K activation slope |
+| $C_m$ | $20\mu\mathrm{F}$ | Membrane capacitance |
+| $I_{\text{app,2}}$ | $37\mu\mathrm{A}$ | Applied current |
+| $h_{\text{Ca}}$ | $-1.2\mathrm{mV}$ | Ca activation midpoint |
+| $\lambda_{\text{Ca}}$ | $18\mathrm{mV}$ | Ca activation slope |
+| $h_{\text{K}}$ | $12\mathrm{mV}$ | K activation midpoint |
+| $\lambda_{\text{K}}$ | $17.4\mathrm{mV}$ | K activation slope |
 | $\phi$ | $0.067\,(\mathrm{ms})^{-1}$ | K rate constant |
-| $E_{\text{Ca}}$ | $120\,\mathrm{mV}$ | Ca reversal potential |
-| $E_{\text{K}}$ | $-84\,\mathrm{mV}$ | K reversal potential |
-| $E_{\text{L}}$ | $-60\,\mathrm{mV}$ | Leak reversal potential |
-| $g_{\text{L}}$ | $2\,\mathrm{mS}$ | Leak conductance |
-| $g_{\text{Ca}}$ | $4.0\,\mathrm{mS}$ | Ca conductance |
-| $g_{\text{K}}$ | $8.0\,\mathrm{mS}$ | K conductance |
-| $\sigma_2$ | $50\,\mu\mathrm{A}$ | Noise amplitude |
+| $E_{\text{Ca}}$ | $120\mathrm{mV}$ | Ca reversal potential |
+| $E_{\text{K}}$ | $-84\mathrm{mV}$ | K reversal potential |
+| $E_{\text{L}}$ | $-60\mathrm{mV}$ | Leak reversal potential |
+| $g_{\text{L}}$ | $2\mathrm{mS}$ | Leak conductance |
+| $g_{\text{Ca}}$ | $4.0\mathrm{mS}$ | Ca conductance |
+| $g_{\text{K}}$ | $8.0\mathrm{mS}$ | K conductance |
+| $\sigma_2$ | $50\mu\mathrm{A}$ | Noise amplitude |
 | Threshold | $x > 0.95$ | Spike condition |
 | Refractory | $x \geq 0$ | Reset condition |
 
@@ -130,17 +130,17 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 ## Synaptic Parameters
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| $V_T$ | $2\,\mathrm{mV}$ | Synaptic cleft opening rate half-activation |
-| $K_p$ | $5\,\mathrm{mV}$ | Synaptic cleft opening rate slope |
-| $T_{\max}$ | $1\,\mathrm{mM}$ | Max transmitter conc. |
+| $V_T$ | $2\mathrm{mV}$ | Synaptic cleft opening rate half-activation |
+| $K_p$ | $5\mathrm{mV}$ | Synaptic cleft opening rate slope |
+| $T_{\max}$ | $1\mathrm{mM}$ | Max transmitter conc. |
 | | | |
-| $\alpha_{\text{exc}}$ | $1.1\,(\mathrm{mM\cdot ms})^{-1}$ | Exc. rise rate |
-| $\beta_{\text{exc}}$ | $0.19\,(\mathrm{ms})^{-1}$ | Exc. decay rate |
-| $E_{\text{exc}}$ | $0\,\mathrm{mV}$ | Exc. reversal potential |
+| $\alpha_{\text{exc}}$ | $1.1(\mathrm{mM\cdot ms})^{-1}$ | Exc. rise rate |
+| $\beta_{\text{exc}}$ | $0.19(\mathrm{ms})^{-1}$ | Exc. decay rate |
+| $E_{\text{exc}}$ | $0\mathrm{mV}$ | Exc. reversal potential |
 | | | |
-| $\alpha_{\text{inh}}$ | $5\,(\mathrm{mM\cdot ms})^{-1}$ | Inh. rise rate |
-| $\beta_{\text{inh}}$ | $0.18\,(\mathrm{ms})^{-1}$ | Inh. decay rate |
-| $E_{\text{inh}}$ | $-80\,\mathrm{mV}$ | Inh. reversal potential |
+| $\alpha_{\text{inh}}$ | $5(\mathrm{mM\cdot ms})^{-1}$ | Inh. rise rate |
+| $\beta_{\text{inh}}$ | $0.18(\mathrm{ms})^{-1}$ | Inh. decay rate |
+| $E_{\text{inh}}$ | $-80\mathrm{mV}$ | Inh. reversal potential |
 
 ## Plasticity Parameters
 | Parameter | Value | Description |
@@ -150,8 +150,8 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 | $\theta_{\text{LTP,start}}$ | $0.75$ | LTP threshold |
 | $A_{\text{LTD}}$ | $0.5$ | LTD amplitude |
 | $A_{\text{LTP}}$ | $2$ | LTP amplitude |
-| $\tau_W$ | $5\,\mathrm{s}$ | Presynaptic weight time constant |
-| $\tau_{\text{Ca}}$ | $200\,\mathrm{ms}$ | Postsynaptic calcium time constant |
+| $\tau_W$ | $5\mathrm{s}$ | Presynaptic weight time constant |
+| $\tau_{\text{Ca}}$ | $200\mathrm{ms}$ | Postsynaptic calcium time constant |
 | $\alpha_W$ | $0.5$ | Maximum effective CB receptor activation reduction |
 | $\beta_\text{Ca}$ | $1$ | Base dendritic calcium loss rate |
 | $\gamma_\text{Ca}$ | $0.5$ | Maximum dendritic calcium loss reduction $^1$ |
