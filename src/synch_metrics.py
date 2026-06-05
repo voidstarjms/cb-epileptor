@@ -73,6 +73,68 @@ def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tup
     return Z, r, psi
 
     
+def mean_firing_rate(neuron_idx: np.ndarray, spike_times: np.ndarray,
+                     num_cells: int, duration: float) -> float:
+    """Mean firing rate across all neurons in Hz.
+
+    Args:
+        neuron_idx: Per-spike neuron index (unused, kept for consistent signature).
+        spike_times: Per-spike times in seconds.
+        num_cells: Total number of neurons in the population.
+        duration: Recording duration in seconds.
+
+    Returns:
+        float: Mean firing rate in Hz (total spikes / num_cells / duration).
+    """
+    return len(spike_times) / (num_cells * duration)
+
+
+def median_frequency(x: np.ndarray, fs: float) -> float:
+    """Median of per-window peak frequencies from the spectrogram.
+
+    Computes a spectrogram of the population mean signal, finds the peak
+    frequency in each time window, and returns the median
+    across all windows.
+
+    Args:
+        x: (num_cells, time) array for one population.
+        fs: Sampling rate in Hz (1 / simulation dt).
+
+    Returns:
+        float: Median peak frequency in Hz.
+    """
+    x_mean = np.mean(x, axis=0)
+    f, _, Sxx = scipy.signal.spectrogram(x_mean, fs=fs, nperseg=int(fs), noverlap=int(fs) // 2)
+    peak_freqs = f[1:][np.argmax(Sxx[1:], axis=0)] 
+    return float(np.median(peak_freqs))
+
+
+def isi_cv(neuron_idx: np.ndarray, spike_times: np.ndarray) -> float:
+    """Mean coefficient of variation of inter-spike intervals across neurons.
+
+    CV = std(ISI) / mean(ISI) per neuron, then averaged. Neurons with fewer
+    than 2 spikes dont have interspike interval and are skipped. Returns NaN if no neuron has enough spikes.
+
+    Args:
+        neuron_idx: Per-spike neuron index.
+        spike_times: Per-spike times in seconds.
+
+    Returns:
+        float: Mean ISI CV across neurons. 0 = perfectly regular, >1 = bursty.
+    """
+    cvs = []
+    for idx in np.unique(neuron_idx):
+        times = np.sort(spike_times[neuron_idx == idx])
+        if len(times) < 2:
+            continue
+        intervals = np.diff(times)
+        mu = np.mean(intervals)
+        if mu > 0:
+            cvs.append(np.std(intervals) / mu)
+    return float(np.mean(cvs)) if cvs else float('nan')
+
+
+
 def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> np.ndarray:
     """Interpolate phase on a 1 ms grid: the k-th spike gets phase 2*pi*k.
 
