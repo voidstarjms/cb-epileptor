@@ -5,13 +5,13 @@ import numpy as np
 from brian2 import *
 from dataclasses import dataclass
 import data_processing
-import synch as syn
+import synch_metrics as syn
 import plotting.population_plots as pop_plotter
 import plotting.plasticity_plots as plast_plotter
 import plotting.analysis_plots as analysis_plotter
 from model import run_sim
 from param_loader import load_params
-from config import ZoomConfig
+from config_structs import ZoomConfig
 from typing import Dict
 
 
@@ -121,6 +121,21 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
         np.asarray(pop1_spike_times),
     )
 
+    # print("===========spike train formats===============")
+    # print(pop1_neuron_idx, f"neuron array len is {len(pop1_neuron_idx)}")
+    # print(pop1_spike_times, f"spike array len is {len(pop1_spike_times)}")
+
+    num_cells = params_dict['NUM_CELLS']
+    data_processing.save_raw_spikes(filepaths, res['spikes_n1'], filename="sparse_spikes_n1.pkl")
+    data_processing.save_raw_spikes(filepaths, res['spikes_n2'], filename="sparse_spikes_n2.pkl")
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
+    data_processing.save_spike_histo(filepaths, spike_matrix_1, filename="spike_histo_n1.pkl")
+    data_processing.save_spike_histo(filepaths, spike_matrix_2, filename="spike_histo_n2.pkl")
+
+    print(spike_matrix_1)
+    print(np.max(spike_matrix_1))
+
     print("============HINDMARSH ROSE STATS============")
     chi, autocorr, lag = syn.autocorrelate(x1)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
@@ -135,6 +150,44 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
     z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params_dict['SIM_DURATION'] / second)
     print(f'r: {np.mean(r)}')
+
+
+def report_metrics(params_dict: Dict, data: Dict) -> None:
+    """Print a comparison table of all four synchrony/seizure metrics, split by population.
+
+    Args:
+        params_dict: Parameter dict loaded from YAML.
+        data: Dict returned by data_processing.load_sim_data.
+    """
+    res = data['results']
+    duration = params_dict['SIM_DURATION'] / second
+
+    chi1, _, _ = syn.autocorrelate(res['x1'])
+    chi2, _, _ = syn.autocorrelate(res['x2'])
+
+    skop1, r1, nfr1 = syn.seizure_kop(
+        res['spikes_n1']['i'], res['spikes_n1']['t'], duration
+    )
+    skop2, r2, nfr2 = syn.seizure_kop(
+        res['spikes_n2']['i'], res['spikes_n2']['t'], duration
+    )
+
+    skop_c1, _, _ = syn.seizure_kop_combined(
+        res['spikes_n1']['i'], res['spikes_n1']['t'], duration
+    )
+    skop_c2, _, _ = syn.seizure_kop_combined(
+        res['spikes_n2']['i'], res['spikes_n2']['t'], duration
+    )
+
+    W = 32
+    print("\n============ METRIC REPORT ============")
+    print(f"\n{'Metric':<{W}} {'HR':>8} {'ML':>8} {'Combined':>10}")
+    print("-" * (W + 28))
+    print(f"{'Chi':<{W}} {chi1:>8.4f} {chi2:>8.4f} {(chi1 + chi2)}")
+    print(f"{'KOP r':<{W}} {r1:>8.4f} {r2:>8.4f} {(r1 + r2)}")
+    print(f"{'Seizure KOP  (r x norm_FR)':<{W}} {skop1:>8.4f} {skop2:>8.4f} {(skop1 + skop2)}")
+    print(f"{'Seizure KOP Combined':<{W}} {skop_c1:>8.4f} {skop_c2:>8.4f} {(skop_c1 + skop_c2)}")
+    print(f"\n  norm_FR components — HR: r={r1:.4f}, norm_FR={nfr1:.4f} | ML: r={r2:.4f}, norm_FR={nfr2:.4f}")
 
 
 def _save_params(params_file: str, run_dir: str) -> None:
@@ -224,6 +277,10 @@ def main() -> None:
     if 'a' in run_mode:
         data = data_processing.load_sim_data(filepaths)
         analyze_populations(filepaths, data['params'], data)
+
+    if 't' in run_mode:
+        data = data_processing.load_sim_data(filepaths)
+        report_metrics(data['params'], data)
 
 
 if __name__ == "__main__":
