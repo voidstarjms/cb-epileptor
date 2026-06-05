@@ -17,6 +17,7 @@ src/sweep/params
 src/sweep/params_list.txt
 src/sweep/current_run.txt
 condor/condor.sub
+condor/cn_venv.tar.gz
 condor/logs/*
 !condor/logs/.gitkeep
 *cc.md

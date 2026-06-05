@@ -11,6 +11,7 @@ done
 
 LOG_DIR="$CONDOR_DIR/logs/${RUN_NUM}_synchrony"
 mkdir -p "$LOG_DIR"
+mkdir -p "$SWEEP_DIR/data/results"   # where transferred-back metrics pkls land
 echo "$RUN_NUM" > "$SWEEP_DIR/current_run.txt"
 
 echo "Run number: $RUN_NUM"
@@ -23,6 +24,12 @@ Executable = $CONDOR_DIR/wrapper.sh
 Arguments  = run_single_sim.py --params \$(params_file)
 
 Initialdir = $PROJ_DIR/src/sweep
+
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+transfer_input_files    = $PROJ_DIR/src, $CONDOR_DIR/cn_venv.tar.gz
+transfer_output_files   = metrics_\$Fn(params_file).pkl
+transfer_output_remaps  = "metrics_\$Fn(params_file).pkl = data/results/metrics_\$Fn(params_file).pkl"
 
 Output = $LOG_DIR/out_\$(Process).log
 Error  = $LOG_DIR/err_\$(Process).log
