@@ -74,3 +74,9 @@ $$I_{\mathrm{syn}}(i,j) = -G^{i,j}\_sW_{\mathrm{pre}}u(x_\mathrm{post}-E_{\mathr
 
 ### Total Current into Neuron j
 $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
+
+## Sources
+- Computational Modeling of Seizure Dynamics Using Coupled Neuronal Networks: Factors Shaping Epileptiform Activity
+    - Naze et al, 2015
+- Endocannabinoid dynamics gate spike-timing dependent depression and potentiation
+    - Cui et al, 2016
