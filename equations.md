@@ -7,14 +7,14 @@
 | `NUM_CELLS` | $10$ | Cells per population |
 | `TAU_CLOCK` | $1\mathrm{msec}$ | Base clock step |
 | `DT_SCALING` | $20$ | Integration step multiplier |
-| `TRANSIENT` | $10\mathrm{s}$ | Discarded transient |
+| `TRANSIENT` | $20\mathrm{s}$ | Discarded transient |
 
 ## Coupling and Global Logic
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | `ISOLATE` | $1$ | $0$: decoupled, $1$: coupled |
-| $J$ | $0.1$ | Intrapopulation coupling gain |
-| $W_\text{max}$ | $0.006$ | Maximum noise amplitude |
+| $J$ | $[0\,0.2]$ | Intrapopulation coupling gain |
+| $W_\text{max}$ | $0.012$ | Maximum noise amplitude |
 
 ## Neuron Populations
 
@@ -40,7 +40,7 @@ Slow adaptation variable. Introduces chaotic dynamics influenced by individual e
 | $d$ | $5.0$ | y nullcline quadratic scalar |
 | $s$ | $4.0$ | z excitability scalar |
 | $I_{\text{app,1}}$ | $6$ | Applied current |
-| $\eta$ | $-3.5$ | Resting potential |
+| $\eta$ | $[-4.5\,-2.5]$ | Resting potential |
 | $r$ | $2\times10^{-5}(\mathrm{ms})^{-1}$ | Slow adaptation rate |
 | $\sigma_1$ | $0.02$ | Noise amplitude |
 | Threshold | $x > 1.5$ | Spike condition |
@@ -105,24 +105,26 @@ $$\frac{dW_{\mathrm{pre}}}{dt} = \frac{\Omega((1-\alpha_Wq_\text{CBD})[\mathrm{C
 
 Scaling factor on strength of synapse as determined by endocannabinoid binding.
 
-### Postsynaptic Calcium Concentration
+### Postsynaptic Calcium Concentration $^1$
 $$\frac{d[\mathrm{Ca}]}{dt} = \frac{\sigma(x_\mathrm{post}) - (\beta_\text{Ca}-\gamma_{Ca}q_\text{CBD})[\mathrm{Ca}]}{\tau_{\mathrm{Ca}}}$$
 
 Used as a direct proxy for endocannabinoid release amount.
 
-### Postsynaptic Voltage-to-Calcium Mapping
+### Postsynaptic Voltage-to-Calcium Mapping $^1$
 $$\sigma_\text{Ca}(x_\mathrm{post}) = \frac{1}{1 + e^{-(x_\mathrm{post} + 0.8) / 0.2}}$$
 
 Maps postsynaptic voltage to a unitless concentration of calcium between 0 and 1.
 
-### Synaptic Channel Opening Rate
+### Synaptic Channel Opening Rate $^1$
 $$T(x_\mathrm{pre} ) = \frac{T_{\mathrm{max}}}{1 + e^{-\frac{x_\mathrm{pre} - V_t}{K_p}}}$$
 
-### Fraction of Open Synaptic Channels
+### Fraction of Open Synaptic Channels $^1$
 $$\frac{du}{dt} = \alpha_u T(x_\mathrm{pre}) (1 - u) - \beta_u u$$
 
-### Current from Neuron i (pre) to Neuron j (post)
+### Current from Neuron i (pre) to Neuron j (post) $^1$
 $$I_{\mathrm{syn}}(i,j) = -G^{i,j}\_sW_{\mathrm{pre}}u(x_\mathrm{post}-E_{\mathrm{syn}})$$
+
+$^1$ In these equations, $x$ refers to $V^\*$ if the neuron in question is inhibitory
 
 ### Total Current into Neuron j
 $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
@@ -141,6 +143,11 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 | $\alpha_{\text{inh}}$ | $5(\mathrm{mM\cdot ms})^{-1}$ | Inh. rise rate |
 | $\beta_{\text{inh}}$ | $0.18(\mathrm{ms})^{-1}$ | Inh. decay rate |
 | $E_{\text{inh}}$ | $-80\mathrm{mV}$ | Inh. reversal potential |
+| | | |
+| $G_{\text{intra}}$ | $[0.5\,2]\mathrm{uS}$ | Intrapopulation synapse strength |
+| $G_{\text{inter}}$ | $[1\,4]\mathrm{uS}$ | Interpopulation synapse strength |
+
+## Plast
 
 ## Plasticity Parameters
 | Parameter | Value | Description |
@@ -154,10 +161,10 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 | $\tau_{\text{Ca}}$ | $200\mathrm{ms}$ | Postsynaptic calcium time constant |
 | $\alpha_W$ | $0.5$ | Maximum effective CB receptor activation reduction |
 | $\beta_\text{Ca}$ | $1$ | Base dendritic calcium loss rate |
-| $\gamma_\text{Ca}$ | $0.5$ | Maximum dendritic calcium loss reduction $^1$ |
+| $\gamma_\text{Ca}$ | $0.5$ | Maximum dendritic calcium loss reduction $^2$ |
 | $q_\text{CBD}$ | $0$ | CBD concentration |
 
-$^1$ In our model, dendritic calcium loss is a direct proxy for degradation of eCB by FAAH
+$^2$ In our model, dendritic calcium loss is a direct proxy for degradation of eCB by FAAH
 
 ## Sources
 - Cui, Y., Ilya Prokin, Xu, H., Delord, B., Genet, S., Laurent Venance, & Berry, H. (2016). Endocannabinoid dynamics gate spike-timing dependent depression and potentiation. ELife, 5. https://doi.org/10.7554/elife.13185
