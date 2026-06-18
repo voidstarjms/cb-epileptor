@@ -9,9 +9,8 @@ import numpy as np
 import data_processing
 from typing import Dict, Any
 
-def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
-            save_to_disk: bool = True) -> Dict[str, Any]:
-    """Build both populations and their synapses, run the sim, return the output dict.
+def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, save: bool = True) -> None:
+    """Build both populations and their synapses, run the sim, save the output.
 
     If cb_on is False, Wpre is dropped from the synaptic current (plasticity
     still evolves but has no effect on the dynamics).
@@ -207,12 +206,14 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
     I_syn_inter_post = (-timed_G_inter(t) * u * (x_post * syn_input_scale * mvolt - E)) * {wpre_term} : amp (summed)
     ''' + syn_eqs_pre
 
+    # Exc-to-Exc synapses
     S1_to_1 = Synapses(N1, N1, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_1.connect(p=syn_namespace['pct_connect'])
     S1_to_1.E = syn_namespace['E_exc']
     S1_to_1.alpha = syn_namespace['alpha_exc']
     S1_to_1.beta = syn_namespace['beta_exc']
 
+    # Exc-to-Inh synapses
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S1_to_2.connect(p=syn_namespace['pct_connect'])
     # Pass HR's z_bar into ML so pop2's eqs can read it.
@@ -221,12 +222,14 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
     S1_to_2.alpha = syn_namespace['alpha_exc']
     S1_to_2.beta = syn_namespace['beta_exc']
 
+    # Inh-to-Inh synapses
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_2.connect(p=syn_namespace['pct_connect'])
     S2_to_2.E = syn_namespace['E_inh']
     S2_to_2.alpha = syn_namespace['alpha_inh']
     S2_to_2.beta = syn_namespace['beta_inh']
 
+    # Inh-to-Exc
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
     S2_to_1.connect(p=syn_namespace['pct_connect'])
     # Pass ML's x_bar into HR as x2_bar so pop1's dz/dt can read it.
@@ -239,22 +242,23 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
     run(sim_namespace['transient']*second)
     print(sim_namespace['transient'])
 
+    # Population state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
     M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
+    # Parameter state monitor
     M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0)
-
+    # Population spike monitors
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
-
+    # Synaptic plasticity state monitors
     M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca', 'u'], record=True)
-
+    M_S1_2 = StateMonitor(S1_to_2, ['Wpre', 'Ca', 'u'], record=True)
+    M_S2_2 = StateMonitor(S2_to_2, ['Wpre', 'Ca', 'u'], record=True)
+    M_S2_1 = StateMonitor(S2_to_1, ['Wpre', 'Ca', 'u'], record=True)
+    
     # Run
     run(sim_namespace['sim_duration'])
-
-    sim_data = data_processing.build_sim_dict(
-        params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1,
-        cb_on=cb_on, M_param=M_PARAM,
-    )
-    if save_to_disk:
-        data_processing.save_sim_dict(filepaths, sim_data)
+    sim_data = data_processing.pack_data(params_dict, M_N1, M_N2, SM_N1, SM_N2, M_S1_1, M_S1_2, M_S2_1, M_S2_2, cb_on=cb_on, M_param=M_PARAM)
+    if save == True:
+        data_processing.save_data(filepaths, sim_data)
     return sim_data

@@ -26,28 +26,59 @@ class FilePaths:
     data_dir: str
     figures_dir: str
 
+def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
+    """Plot mean of synapse parameters Wpre, u, and Ca for each population.
+    
+    Args:
+        filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
+        params_dict (Dict): Parameter dict loaded from YAML.
+        res: Results from the simulation dictionary.
+    """
+    t = res['t']
+    x1 = res['x1']
+    x2 = res['x2']
 
-def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
+    # E->E synapse stats
+    wpre = res['S1_1_wpre']
+    u = res['S1_1_u']
+    Ca = res['S1_1_Ca']
+    plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png", params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca)
+    # E->I synapse stats
+    wpre = res['S1_2_wpre']
+    u = res['S1_2_u']
+    Ca = res['S1_2_Ca']
+    plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats", t, x1, wpre, u, Ca)
+    # I->I synapse stats
+    wpre = res['S2_2_wpre']
+    u = res['S2_2_u']
+    Ca = res['S2_2_Ca']
+    plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats", t, x2, wpre, u, Ca)
+    # I->E synapse stats
+    wpre = res['S2_1_wpre']
+    u = res['S2_1_u']
+    Ca = res['S2_1_Ca']
+    plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats", t, x2, wpre, u, Ca)
+
+
+def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None) -> None:
     """Load sim data and make the default plots (LFP + both rasters).
 
     Args:
         filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
         params_dict (Dict): Parameter dict loaded from YAML.
         cb_on (bool): If True, also plot the plasticity (Wpre, u, Ca) traces.
+        results_dict (Dict): Run result dictionary, used if not None.
     """
+    
     os.makedirs(filepaths.figures_dir, exist_ok=True)
-    data = data_processing.load_sim_data(filepaths)
-    res = data['results']
+    res = results_dict['results']
     t = res['t']
     x1 = res['x1']
     x2 = res['x2']
 
     if cb_on:
-        wpre = res['syn_wpre'][0]
-        u = res['u'][0]
-        Ca = res['Ca'][0]
-        plast_plotter.plot_wpre(filepaths, params_dict, t, x1, wpre, u, Ca)
-
+        plot_synapse_dynamics(filepaths, params_dict, res)
+    
     num_cells = params_dict['NUM_CELLS']
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
@@ -56,7 +87,7 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> 
                               g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
                               x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
 
-
+# TODO This is presently deprecated because we're not saving y, z, etc. Figure out what to do with it
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:
     """Same as plot_output but also plots EPOP (x, y, z, I_syn_inter) and IPOP (x, n) traces.
 
@@ -78,10 +109,7 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     # n = res['n2']
 
     if cb_on:
-        wpre = res['syn_wpre'][0]
-        u = res['u'][0]
-        Ca = res['Ca'][0]
-        plast_plotter.plot_wpre(filepaths, params_dict, t, x1, wpre, u, Ca)
+        plot_synapse_dynamics(filepaths, params_dict, res)
 
     num_cells = params_dict['NUM_CELLS']
     spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
@@ -229,9 +257,9 @@ REQUIRED_PARAMS = {
 def main() -> None:
     """Parse CLI args and run the phases selected by --mode.
 
-    Mode flags ('r', 'p', 'a', 'f') are independent and stackable: e.g.
+    Mode flags ('r', 'p', 'a', 'f', 's') are independent and stackable: e.g.
     'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
-    an already-saved output.
+    output.
     """
     DEFAULT_OUT_DIR = 'output/run1'
     DEFAULT_PARAMS = 'parameters/params.yaml'   # run.py runs from src/; YAML at repo root
@@ -261,29 +289,39 @@ def main() -> None:
         data_dir=os.path.join(out_dir, 'data'),
         figures_dir=os.path.join(out_dir, 'figures'),
     )
-
+    
+    data = None
+    save = 's' in run_mode
     if 'r' in run_mode:
+        # Run simulation, save parameters always and results if specified
         os.makedirs(filepaths.data_dir, exist_ok=True)
         os.makedirs(filepaths.figures_dir, exist_ok=True)
         _save_params(params, out_dir)
         print("Running simulation...")
-        run_sim(filepaths, params_dict, cb_on)
-        print(f"Simulation complete. Results saved to {out_dir}")
+        data = run_sim(filepaths, params_dict, cb_on, save)
+        if save:
+            print(f"Simulation complete. Results saved to {out_dir}")
+    else:
+        # Load data from filepaths if simulation wasn't run
+        print(f"Loading data from {filepaths.data_dir}")
+        data = data_processing.load_sim_data(filepaths)
 
+    # Plot model results
     if 'p' in run_mode:
         print("Generating plots...")
         if 'f' in run_mode:
-            plot_output_full(filepaths, params_dict, cb_on)
+            print("WARNING: RUN FLAG f IS CURRENTLY DISABLED. SKIPPING PLOTS.")
+            #plot_output_full(filepaths, params_dict, cb_on)
         else:
-            plot_output(filepaths, params_dict, cb_on)
+            plot_output(filepaths, params_dict, cb_on, data)
         print(f"Plots saved to {filepaths.figures_dir}.")
 
+    # Analyze model synchrony
     if 'a' in run_mode:
-        data = data_processing.load_sim_data(filepaths)
         analyze_populations(filepaths, data['params'], data)
 
+    # Print population behavior metrics
     if 't' in run_mode:
-        data = data_processing.load_sim_data(filepaths)
         report_metrics(data['params'], data)
 
 

@@ -38,11 +38,11 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
 
     return spike_matrix
 
-
-def build_sim_dict(params_dict: Dict, M_N1: Any, M_N2: Any,
-                   SM_N1: Any, SM_N2: Any, M_S1_1: Any = None,
-                   cb_on: bool = True, M_param: Any = None) -> Dict:
-    """Build the sim_data dict from monitors (no I/O).
+def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
+              SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None,
+              M_S2_1: Any = None, M_S2_2: Any = None, cb_on: bool = True,
+              M_param: Any = None) -> None:
+    """Pickle the sim's monitors and parameters to filepaths.data_dir/output.pkl.
 
     Args:
         params_dict (Dict): Parameter dict from param_loader; embedded in output.
@@ -73,12 +73,35 @@ def build_sim_dict(params_dict: Dict, M_N1: Any, M_N2: Any,
         }
     }
 
-    if cb_on and M_S1_1 is not None:
-        sim_data['results'].update({
-            'syn_wpre': np.asarray(M_S1_1.Wpre),
-            'u':        np.asarray(M_S1_1.u),
-            'Ca':       np.asarray(M_S1_1.Ca),
-        })
+    if cb_on:
+        # e->e (HR->HR)
+        if M_S1_1 is not None:
+            sim_data['results'].update({
+                'S1_1_wpre': np.asarray(M_S1_1.Wpre),
+                'S1_1_u':        np.asarray(M_S1_1.u),
+                'S1_1_Ca':       np.asarray(M_S1_1.Ca),
+            })
+        # e->i (HR->ML)
+        if M_S1_2 is not None:
+            sim_data['results'].update({
+                'S1_2_wpre': np.asarray(M_S1_2.Wpre),
+                'S1_2_u':    np.asarray(M_S1_2.u),
+                'S1_2_Ca':   np.asarray(M_S1_2.Ca),
+            })
+        # i->e (ML->HR)
+        if M_S2_1 is not None:
+            sim_data['results'].update({
+                'S2_1_wpre': np.asarray(M_S2_1.Wpre),
+                'S2_1_u':    np.asarray(M_S2_1.u),
+                'S2_1_Ca':   np.asarray(M_S2_1.Ca),
+            })
+        # i->i (ML->ML)
+        if M_S2_2 is not None:
+            sim_data['results'].update({
+                'S2_2_wpre': np.asarray(M_S2_2.Wpre),
+                'S2_2_u':    np.asarray(M_S2_2.u),
+                'S2_2_Ca':   np.asarray(M_S2_2.Ca),
+            })
 
     if M_param is not None:
         sim_data['results'].update({
@@ -88,21 +111,12 @@ def build_sim_dict(params_dict: Dict, M_N1: Any, M_N2: Any,
 
     return sim_data
 
-
-def save_sim_dict(filepaths: Any, sim_data: Dict) -> None:
-    """Pickle a sim_data dict to filepaths.data_dir/output.pkl.
-
-    Args:
-        filepaths (Any): FilePaths with data_dir.
-        sim_data (Dict): Dict from build_sim_dict.
-    """
+def save_data(filepaths: Any, data_dict: Dict):
     os.makedirs(filepaths.data_dir, exist_ok=True)
     filepath = os.path.join(filepaths.data_dir, _OUTPUT_DATA_FILE)
     with open(filepath, 'wb') as f:
-        pickle.dump(sim_data, f)
-
+        pickle.dump(data_dict, f)
     print(f"Simulation data and parameters saved to: {filepath}")
-
 
 def load_sim_data(filepaths: Any) -> Dict:
     """Return the dict written by save_sim_dict.

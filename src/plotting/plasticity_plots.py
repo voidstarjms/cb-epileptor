@@ -11,48 +11,49 @@ from typing import Dict, Any
 
 import plotting.style  # noqa: F401
 
-def plot_wpre(filepaths: Any, params_dict: Dict, t, x, wpre, u, Ca) -> None:
-    """Seven panels: x of two neurons, Wpre, u, Ca, plasticity, and sigma_Ca.
+def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str, t, x, wpre, u, Ca) -> None:
+    """Five panels: x, Wpre, u, Ca, and plasticity
 
     Plasticity and sigma_Ca are recomputed here so thresholds can be tweaked
     without re-running the sim.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
+        fname (str): File name.
         params_dict (Dict): Needs A_LTD, A_LTP, THETA_LTD_START, THETA_LTD_END,
             THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
+        title (str): Title of the plot.
         t: Time vector.
-        x: (num_neurons, time) HR x. Uses x[0] and x[1].
-        wpre: Wpre trace for one synapse.
-        u: u (neurotransmitter) trace for one synapse.
-        Ca: Ca trace for one synapse.
+        x: (num_neurons, time) x
+        wpre: (num_neurons, time) Wpre trace.
+        u: (num_neurons, time) u (fraction of open channels) trace.
+        Ca: (num_neurons, time) Ca trace.
     """
-    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 1, figsize=(10, 8), sharex=True)
+    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(10, 8), sharex=True)
     Ca = np.asarray(Ca)
-    x_post = np.asarray(x[1])
+    #x_post = np.asarray(x[1])
 
     plasticity = (1
-        - params_dict['A_LTD'] * (Ca > params_dict['THETA_LTD_START']).astype(float) * (Ca < params_dict['THETA_LTD_END']).astype(float)
-        + params_dict['A_LTP'] * (Ca > params_dict['THETA_LTP_START']).astype(float))
-    sigma_Ca = 1 / (1 + exp(-(x_post + params_dict['CA_SIGMOID_SHIFT']) / params_dict['CA_SIGMOID_SLOPE']))
+        - params_dict['A_LTD'] * np.where(Ca > params_dict['THETA_LTD_START'], 1, 0)
+        * np.where(Ca < params_dict['THETA_LTD_END'], 1, 0)
+        + params_dict['A_LTP'] * (Ca > params_dict['THETA_LTP_START']))
+    #sigma_Ca = 1 / (1 + exp(-(x_post + params_dict['CA_SIGMOID_SHIFT']) / params_dict['CA_SIGMOID_SLOPE']))
 
 
-    fig.suptitle("Wpre Within Excitatory Population")
-    ax1.plot(t, x[0])
-    ax1.set_ylabel("Neuron 1 x ")
-    ax2.plot(t, x[1])
-    ax2.set_ylabel("Neuron 2 x ")
-    ax3.plot(t, wpre)
-    ax3.set_ylabel("Wpre")
-    ax4.plot(t, u)
-    ax4.set_ylabel("u")
-    ax5.plot(t, Ca)
-    ax5.set_ylabel("Ca")
-    ax6.plot(t, plasticity)
-    ax6.set_ylabel("plasticity")
-    ax7.plot(t, sigma_Ca)
-    ax7.set_ylabel("ca_signal")
-    ax7.set_xlabel("time (s)")
+    fig.suptitle(title)
+    ax1.plot(t, np.mean(x))
+    ax1.set_ylabel("Presynaptic LFP (A.U.)")
+    ax2.plot(t, np.mean(wpre))
+    ax2.set_ylabel("Wpre")
+    ax3.plot(t, np.mean(u))
+    ax3.set_ylabel("u")
+    ax4.plot(t, np.mean(Ca))
+    ax4.set_ylabel("Ca")
+    ax5.plot(t, np.mean(plasticity))
+    ax5.set_ylabel("Plasticity")
+    #ax6.plot(t, sigma_Ca)
+    #ax6.set_ylabel("ca_signal")
+    ax5.set_xlabel("time (s)")
 
-    plt.savefig(os.path.join(filepaths.figures_dir, "N1_to_1_wpre.png"), format="png")
+    plt.savefig(os.path.join(filepaths.figures_dir, fname), format="png")
     plt.show()
