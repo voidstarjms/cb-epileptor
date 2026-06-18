@@ -3,18 +3,18 @@
 ## Global Simulation Control
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| `SIM_DURATION` | $120\,\mathrm{s}$ | Total simulated time |
+| `SIM_DURATION` | $120\mathrm{s}$ | Total simulated time |
 | `NUM_CELLS` | $10$ | Cells per population |
-| `TAU_CLOCK` | $1\,\mathrm{msec}$ | Base clock step |
+| `TAU_CLOCK` | $1\mathrm{msec}$ | Base clock step |
 | `DT_SCALING` | $20$ | Integration step multiplier |
-| `TRANSIENT` | $10\,\mathrm{s}$ | Discarded transient |
+| `TRANSIENT` | $20\mathrm{s}$ | Discarded transient |
 
 ## Coupling and Global Logic
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | `ISOLATE` | $1$ | $0$: decoupled, $1$: coupled |
-| $J$ | $0.1$ | Intrapopulation coupling gain |
-| $W_\text{max}$ | $0.006$ | Maximum noise amplitude |
+| $J$ | $[0\,0.2]$ | Intrapopulation coupling gain |
+| $W_\text{max}$ | $0.012$ | Maximum noise amplitude |
 
 ## Neuron Populations
 
@@ -40,12 +40,12 @@ Slow adaptation variable. Introduces chaotic dynamics influenced by individual e
 | $d$ | $5.0$ | y nullcline quadratic scalar |
 | $s$ | $4.0$ | z excitability scalar |
 | $I_{\text{app,1}}$ | $6$ | Applied current |
-| $\eta$ | $-3.5$ | Resting potential |
-| $r$ | $2\times10^{-5}\,(\mathrm{ms})^{-1}$ | Slow adaptation rate |
+| $\eta$ | $[-4.5\,-2.5]$ | Resting potential |
+| $r$ | $2\times10^{-5}(\mathrm{ms})^{-1}$ | Slow adaptation rate |
 | $\sigma_1$ | $0.02$ | Noise amplitude |
 | Threshold | $x > 1.5$ | Spike condition |
 | Refractory | $x \geq 0$ | Reset condition |
-| $\psi$ | $0.05\,\mu\mathrm{A}$ | Current scaling |
+| $\psi$ | $0.05\mu\mathrm{A}$ | Current scaling |
 
 ### Inhibitory (Morris-Lecar)
 $$C_mV' = I_{\text{app,2}} - g_L(V - E_L) - g_K n(V - E_K) - g_{Ca} m_\infty(V)(V - E_{Ca})
@@ -72,20 +72,20 @@ Scaled unitless voltage. For use in the synapses and excitatory population.
 ### Inhibitory Neuron Parameters
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| $C_m$ | $20\,\mu\mathrm{F}$ | Membrane capacitance |
-| $I_{\text{app,2}}$ | $37\,\mu\mathrm{A}$ | Applied current |
-| $h_{\text{Ca}}$ | $-1.2\,\mathrm{mV}$ | Ca activation midpoint |
-| $\lambda_{\text{Ca}}$ | $18\,\mathrm{mV}$ | Ca activation slope |
-| $h_{\text{K}}$ | $12\,\mathrm{mV}$ | K activation midpoint |
-| $\lambda_{\text{K}}$ | $17.4\,\mathrm{mV}$ | K activation slope |
-| $\phi$ | $0.067\,(\mathrm{ms})^{-1}$ | K rate constant |
-| $E_{\text{Ca}}$ | $120\,\mathrm{mV}$ | Ca reversal potential |
-| $E_{\text{K}}$ | $-84\,\mathrm{mV}$ | K reversal potential |
-| $E_{\text{L}}$ | $-60\,\mathrm{mV}$ | Leak reversal potential |
-| $g_{\text{L}}$ | $2\,\mathrm{mS}$ | Leak conductance |
-| $g_{\text{Ca}}$ | $4.0\,\mathrm{mS}$ | Ca conductance |
-| $g_{\text{K}}$ | $8.0\,\mathrm{mS}$ | K conductance |
-| $\sigma_2$ | $50\,\mu\mathrm{A}$ | Noise amplitude |
+| $C_m$ | $20\mu\mathrm{F}$ | Membrane capacitance |
+| $I_{\text{app,2}}$ | $37\mu\mathrm{A}$ | Applied current |
+| $h_{\text{Ca}}$ | $-1.2\mathrm{mV}$ | Ca activation midpoint |
+| $\lambda_{\text{Ca}}$ | $18\mathrm{mV}$ | Ca activation slope |
+| $h_{\text{K}}$ | $12\mathrm{mV}$ | K activation midpoint |
+| $\lambda_{\text{K}}$ | $17.4\mathrm{mV}$ | K activation slope |
+| $\phi$ | $0.067(\mathrm{ms})^{-1}$ | K rate constant |
+| $E_{\text{Ca}}$ | $120\mathrm{mV}$ | Ca reversal potential |
+| $E_{\text{K}}$ | $-84\mathrm{mV}$ | K reversal potential |
+| $E_{\text{L}}$ | $-60\mathrm{mV}$ | Leak reversal potential |
+| $g_{\text{L}}$ | $2\mathrm{mS}$ | Leak conductance |
+| $g_{\text{Ca}}$ | $4.0\mathrm{mS}$ | Ca conductance |
+| $g_{\text{K}}$ | $8.0\mathrm{mS}$ | K conductance |
+| $\sigma_2$ | $50\mu\mathrm{A}$ | Noise amplitude |
 | Threshold | $x > 0.95$ | Spike condition |
 | Refractory | $x \geq 0$ | Reset condition |
 
@@ -105,24 +105,26 @@ $$\frac{dW_{\mathrm{pre}}}{dt} = \frac{\Omega((1-\alpha_Wq_\text{CBD})[\mathrm{C
 
 Scaling factor on strength of synapse as determined by endocannabinoid binding.
 
-### Postsynaptic Calcium Concentration
+### Postsynaptic Calcium Concentration $^1$
 $$\frac{d[\mathrm{Ca}]}{dt} = \frac{\sigma(x_\mathrm{post}) - (\beta_\text{Ca}-\gamma_{Ca}q_\text{CBD})[\mathrm{Ca}]}{\tau_{\mathrm{Ca}}}$$
 
 Used as a direct proxy for endocannabinoid release amount.
 
-### Postsynaptic Voltage-to-Calcium Mapping
+### Postsynaptic Voltage-to-Calcium Mapping $^1$
 $$\sigma_\text{Ca}(x_\mathrm{post}) = \frac{1}{1 + e^{-(x_\mathrm{post} + 0.8) / 0.2}}$$
 
 Maps postsynaptic voltage to a unitless concentration of calcium between 0 and 1.
 
-### Synaptic Channel Opening Rate
+### Synaptic Channel Opening Rate $^1$
 $$T(x_\mathrm{pre} ) = \frac{T_{\mathrm{max}}}{1 + e^{-\frac{x_\mathrm{pre} - V_t}{K_p}}}$$
 
-### Fraction of Open Synaptic Channels
+### Fraction of Open Synaptic Channels $^1$
 $$\frac{du}{dt} = \alpha_u T(x_\mathrm{pre}) (1 - u) - \beta_u u$$
 
-### Current from Neuron i (pre) to Neuron j (post)
+### Current from Neuron i (pre) to Neuron j (post) $^1$
 $$I_{\mathrm{syn}}(i,j) = -G^{i,j}\_sW_{\mathrm{pre}}u(x_\mathrm{post}-E_{\mathrm{syn}})$$
+
+$^1$ In these equations, $x$ refers to $V^\*$ if the neuron in question is inhibitory
 
 ### Total Current into Neuron j
 $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
@@ -130,17 +132,22 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 ## Synaptic Parameters
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| $V_T$ | $2\,\mathrm{mV}$ | Synaptic cleft opening rate half-activation |
-| $K_p$ | $5\,\mathrm{mV}$ | Synaptic cleft opening rate slope |
-| $T_{\max}$ | $1\,\mathrm{mM}$ | Max transmitter conc. |
+| $V_T$ | $2\mathrm{mV}$ | Synaptic cleft opening rate half-activation |
+| $K_p$ | $5\mathrm{mV}$ | Synaptic cleft opening rate slope |
+| $T_{\max}$ | $1\mathrm{mM}$ | Max transmitter conc. |
 | | | |
-| $\alpha_{\text{exc}}$ | $1.1\,(\mathrm{mM\cdot ms})^{-1}$ | Exc. rise rate |
-| $\beta_{\text{exc}}$ | $0.19\,(\mathrm{ms})^{-1}$ | Exc. decay rate |
-| $E_{\text{exc}}$ | $0\,\mathrm{mV}$ | Exc. reversal potential |
+| $\alpha_{\text{exc}}$ | $1.1(\mathrm{mM\cdot ms})^{-1}$ | Exc. rise rate |
+| $\beta_{\text{exc}}$ | $0.19(\mathrm{ms})^{-1}$ | Exc. decay rate |
+| $E_{\text{exc}}$ | $0\mathrm{mV}$ | Exc. reversal potential |
 | | | |
-| $\alpha_{\text{inh}}$ | $5\,(\mathrm{mM\cdot ms})^{-1}$ | Inh. rise rate |
-| $\beta_{\text{inh}}$ | $0.18\,(\mathrm{ms})^{-1}$ | Inh. decay rate |
-| $E_{\text{inh}}$ | $-80\,\mathrm{mV}$ | Inh. reversal potential |
+| $\alpha_{\text{inh}}$ | $5(\mathrm{mM\cdot ms})^{-1}$ | Inh. rise rate |
+| $\beta_{\text{inh}}$ | $0.18(\mathrm{ms})^{-1}$ | Inh. decay rate |
+| $E_{\text{inh}}$ | $-80\mathrm{mV}$ | Inh. reversal potential |
+| | | |
+| $G_{\text{intra}}$ | $[0.5\,2]\mathrm{uS}$ | Intrapopulation synapse strength |
+| $G_{\text{inter}}$ | $[1\,4]\mathrm{uS}$ | Interpopulation synapse strength |
+
+## Plast
 
 ## Plasticity Parameters
 | Parameter | Value | Description |
@@ -150,14 +157,14 @@ $$I_\mathrm{syn,tot} = \sum_{i \to j} I_\mathrm{syn}(i,j)$$
 | $\theta_{\text{LTP,start}}$ | $0.75$ | LTP threshold |
 | $A_{\text{LTD}}$ | $0.5$ | LTD amplitude |
 | $A_{\text{LTP}}$ | $2$ | LTP amplitude |
-| $\tau_W$ | $5\,\mathrm{s}$ | Presynaptic weight time constant |
-| $\tau_{\text{Ca}}$ | $200\,\mathrm{ms}$ | Postsynaptic calcium time constant |
+| $\tau_W$ | $5\mathrm{s}$ | Presynaptic weight time constant |
+| $\tau_{\text{Ca}}$ | $200\mathrm{ms}$ | Postsynaptic calcium time constant |
 | $\alpha_W$ | $0.5$ | Maximum effective CB receptor activation reduction |
 | $\beta_\text{Ca}$ | $1$ | Base dendritic calcium loss rate |
-| $\gamma_\text{Ca}$ | $0.5$ | Maximum dendritic calcium loss reduction $^1$ |
+| $\gamma_\text{Ca}$ | $0.5$ | Maximum dendritic calcium loss reduction $^2$ |
 | $q_\text{CBD}$ | $0$ | CBD concentration |
 
-$^1$ In our model, dendritic calcium loss is a direct proxy for degradation of eCB by FAAH
+$^2$ In our model, dendritic calcium loss is a direct proxy for degradation of eCB by FAAH
 
 ## Sources
 - Cui, Y., Ilya Prokin, Xu, H., Delord, B., Genet, S., Laurent Venance, & Berry, H. (2016). Endocannabinoid dynamics gate spike-timing dependent depression and potentiation. ELife, 5. https://doi.org/10.7554/elife.13185

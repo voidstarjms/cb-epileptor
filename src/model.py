@@ -16,10 +16,17 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     still evolves but has no effect on the dynamics).
 
     Args:
-        filepaths (Any): FilePaths. save_data writes to filepaths.data_dir/output.pkl.
+        filepaths (Any): FilePaths. Only used when save_to_disk is True; in that
+            case save_sim_dict writes to filepaths.data_dir/output.pkl.
         params_dict (Dict[str, Any]): Flat dict from param_loader. Expected keys
             listed in run.REQUIRED_PARAMS.
         cb_on (bool): If False, Wpre is held at 1 in the synaptic current.
+        save_to_disk (bool): If True (default), also pickle the result. Set False
+            for in-memory consumption (e.g. sweep jobs that compute metrics
+            directly and don't need the full trace on disk).
+
+    Returns:
+        Dict[str, Any]: sim_data dict as built by data_processing.build_sim_dict.
     """
     # Setup Simulation
     defaultclock.dt = params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']

@@ -45,17 +45,17 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
     """Pickle the sim's monitors and parameters to filepaths.data_dir/output.pkl.
 
     Args:
-        filepaths (Any): FilePaths with data_dir.
-        params_dict (Dict): Parameter dict from param_loader; pickled alongside results.
+        params_dict (Dict): Parameter dict from param_loader; embedded in output.
         M_N1 (Any): StateMonitor on the HR population.
         M_N2 (Any): StateMonitor on the ML population.
         SM_N1 (Any): SpikeMonitor on the HR population.
         SM_N2 (Any): SpikeMonitor on the ML population.
         M_S1_1 (Any): Optional StateMonitor on HR->HR synapses (Wpre, u, Ca).
-        M_S1_2 (Any): Optional StateMonitor on HR->ML synapses (currently unused).
-        M_S2_1 (Any): Optional StateMonitor on ML->HR synapses (currently unused).
-        M_S2_2 (Any): Optional StateMonitor on ML->ML synapses (currently unused).
         cb_on (bool): If True, include plasticity traces (Wpre, u, Ca) in the output.
+        M_param (Any): Optional StateMonitor recording the x0/ce schedule traces.
+
+    Returns:
+        Dict: {'metadata', 'params', 'results'} ready to pickle or pass downstream.
     """
     sim_data = {
         'metadata': {
@@ -65,17 +65,9 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
         'params': params_dict,
         'results': {
             't': np.asarray(M_N1.t),
-            # POP 1
             'x1': np.asarray(M_N1.x),
-            # 'y1': np.asarray(M_N1.y),
-            # 'z1': np.asarray(M_N1.z),
-            # 'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
-            # 'I_syn_intra_1': np.asarray(M_N1.I_syn_intra),
-            # POP 2
             'x2': np.asarray(M_N2.x),
-            # 'n2': np.asarray(M_N2.n),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
-            # SPIKES
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
             'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)},
         }
@@ -127,7 +119,7 @@ def save_data(filepaths: Any, data_dict: Dict):
     print(f"Simulation data and parameters saved to: {filepath}")
 
 def load_sim_data(filepaths: Any) -> Dict:
-    """Return the dict written by save_data.
+    """Return the dict written by save_sim_dict.
 
     Args:
         filepaths (Any): FilePaths with data_dir.
@@ -141,7 +133,7 @@ def load_sim_data(filepaths: Any) -> Dict:
     return data
 
 def delete_sim_data(filepaths: Any) -> None:
-    """Delete the dict written by save_data.
+    """Delete the dict written by save_sim_dict.
 
     Args:
         filepaths (Any): FilePaths dataclass with data_dir.
