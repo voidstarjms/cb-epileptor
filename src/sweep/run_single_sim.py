@@ -47,7 +47,7 @@ def _to_uS_float(v):
 def main():
     """Run one sim from a YAML, write its chi summary; optional per-job debug plot.
 
-    Reads the YAML pointed to by --params, runs the simulation via model.run_sim
+    Reads the YAML pointed to by --params and , runs the simulation via model.run_sim
     in memory (no intermediate output.pkl on NFS), computes synchrony chi and
     KOP r over the HR population, and writes:
 
@@ -57,14 +57,35 @@ def main():
         written only when --debug-plot is passed.
     """
     parser = argparse.ArgumentParser(description='Run one simulation from a YAML param file.')
-    parser.add_argument('--params', type=str, default='../../params.yaml',
+    parser.add_argument('--params', type=str, default='../../params.yaml', required=False,
                         help='Path to a YAML param file (e.g. params/param_1.yaml).')
+    parser.add_argument('--excite', type=float, default=None, required=False,
+                        help='Manually assigns epop excitability')
+    parser.add_argument('--J', type=float, default=None, required=False,
+                        help='Manually assigns gap junction strength')
+    parser.add_argument('--Gintra', type=float, default=None, required=False,
+                        help='Manually assigns intrapopulation synapse strength')
+    parser.add_argument('--Ginter', type=float, default=None, required=False,
+                        help='Manually assigns interpopulation synapse strength')
+    parser.add_argument('--realization', type=int, default=None, required=False,
+                        help='The random seed for the experiment')
     parser.add_argument('--debug-plot', action='store_true', default=False,
                         help='Write a per-job standard_plot debug image. Off by default '
                              'for sweeps to avoid per-job NFS plot writes.')
     args = parser.parse_args()
-
+    
     params_dict = load_params(args.params)
+    # Load scientific parameters from command line if supplied
+    if args.excite != None:
+        params_dict['EPOP_BASE_EXCITE'] = args.excite
+    if args.J != None:
+        params_dict['COUPLING_STRENGTH'] = args.J
+    if args.Gintra != None:
+        params_dict['G_INTRA'] = args.Gintra
+    if args.Ginter != None:
+        params_dict['G_INTER'] = args.Ginter
+    if args.realization != None:
+        params_dict['SEED'] = args.realization
 
     # Job ID is the YAML basename (e.g. 'param_37'). Matches what condor/README.md documents.
     job_id = os.path.splitext(os.path.basename(args.params))[0]
@@ -73,7 +94,7 @@ def main():
     cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
     prefs.codegen.runtime.cython.cache_dir = cache_dir
 
-    realization = int(params_dict.get('SEED', 1))
+    realization = int(params_dict.get('SEED', args.realization))
     seed(realization)
 
     print(f"Starting job: {job_id}")

@@ -186,7 +186,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         effCa = (1 - alpha_w * cbd) * Ca : 1
         plasticity = 1 - A_ltd * int(effCa > theta_ltd_start) * int(effCa < theta_ltd_end) + A_ltp * int(effCa > theta_ltp_start) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
-        dCa/dt = (sigma_Ca - (beta_ca - gamma_ca * cbd) * Ca) / tau_ca : 1 (clock-driven)
+        dCa/dt = (1 - Ca) * (sigma_Ca - (beta_ca - gamma_ca * cbd) * Ca) / tau_ca : 1 (clock-driven)
         sigma_Ca = 1 / (1 + exp(-(x_post + ca_sigmoid_shift) / ca_sigmoid_slope)) : 1
 
         E : volt
@@ -240,7 +240,6 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
 
     # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
-    print(sim_namespace['transient'])
 
     # Population state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)

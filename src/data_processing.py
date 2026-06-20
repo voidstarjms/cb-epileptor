@@ -72,36 +72,42 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
             'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)},
         }
     }
+    M_N1.__del__()
+    M_N2.__del__()
 
     if cb_on:
         # e->e (HR->HR)
         if M_S1_1 is not None:
             sim_data['results'].update({
-                'S1_1_wpre': np.asarray(M_S1_1.Wpre),
-                'S1_1_u':        np.asarray(M_S1_1.u),
-                'S1_1_Ca':       np.asarray(M_S1_1.Ca),
+                'S1_1_wpre': np.mean(np.asarray(M_S1_1.Wpre), axis=0),
+                'S1_1_u':    np.mean(np.asarray(M_S1_1.u), axis=0),
+                'S1_1_Ca':   np.mean(np.asarray(M_S1_1.Ca), axis=0),
             })
+            M_S1_1.__del__()
         # e->i (HR->ML)
         if M_S1_2 is not None:
             sim_data['results'].update({
-                'S1_2_wpre': np.asarray(M_S1_2.Wpre),
-                'S1_2_u':    np.asarray(M_S1_2.u),
-                'S1_2_Ca':   np.asarray(M_S1_2.Ca),
+                'S1_2_wpre': np.mean(np.asarray(M_S1_2.Wpre), axis=0),
+                'S1_2_u':    np.mean(np.asarray(M_S1_2.u), axis=0),
+                'S1_2_Ca':   np.mean(np.asarray(M_S1_2.Ca), axis=0),
             })
+            M_S1_2.__del__()
         # i->e (ML->HR)
         if M_S2_1 is not None:
             sim_data['results'].update({
-                'S2_1_wpre': np.asarray(M_S2_1.Wpre),
-                'S2_1_u':    np.asarray(M_S2_1.u),
-                'S2_1_Ca':   np.asarray(M_S2_1.Ca),
+                'S2_1_wpre': np.mean(np.asarray(M_S2_1.Wpre), axis=0),
+                'S2_1_u':    np.mean(np.asarray(M_S2_1.u), axis=0),
+                'S2_1_Ca':   np.mean(np.asarray(M_S2_1.Ca), axis=0),
             })
+            M_S2_1.__del__()
         # i->i (ML->ML)
         if M_S2_2 is not None:
             sim_data['results'].update({
-                'S2_2_wpre': np.asarray(M_S2_2.Wpre),
-                'S2_2_u':    np.asarray(M_S2_2.u),
-                'S2_2_Ca':   np.asarray(M_S2_2.Ca),
+                'S2_2_wpre': np.mean(np.asarray(M_S2_2.Wpre), axis=0),
+                'S2_2_u':    np.mean(np.asarray(M_S2_2.u), axis=0),
+                'S2_2_Ca':   np.mean(np.asarray(M_S2_2.Ca), axis=0),
             })
+            M_S2_2.__del__()
 
     if M_param is not None:
         sim_data['results'].update({

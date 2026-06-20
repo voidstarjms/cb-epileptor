@@ -213,7 +213,7 @@ def report_metrics(params_dict: Dict, data: Dict) -> None:
 
     W = 28
     print("\n============ METRIC REPORT ============")
-    print(f"\n{'Metric':<{W}} {'HR':>10} {'ML':>10}")
+    print(f"\n{'Metric':<{W}} {'EPOP':>10} {'IPOP':>10}")
     print("-" * (W + 22))
     print(f"{'Chi (autocorr)':<{W}} {chi1:>10.4f} {chi2:>10.4f}")
     print(f"{'KOP r':<{W}} {r1:>10.4f} {r2:>10.4f}")
@@ -261,7 +261,7 @@ def main() -> None:
     'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
     output.
     """
-    DEFAULT_OUT_DIR = 'output/run1'
+    DEFAULT_OUT_DIR = 'output/run3'
     DEFAULT_PARAMS = 'parameters/params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")

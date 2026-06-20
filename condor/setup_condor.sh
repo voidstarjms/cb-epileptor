@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CONDOR_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJ_DIR="$(cd "$CONDOR_DIR/.." && pwd)"
+CONDOR_DIR="$(realpath .)"
+PROJ_DIR="$(realpath ..)"
 SWEEP_DIR="$PROJ_DIR/src/sweep"
 
 RUN_NUM=1
@@ -21,7 +21,7 @@ echo "Wrote $SWEEP_DIR/current_run.txt"
 cat > "$CONDOR_DIR/condor.sub" << EOF
 Universe   = vanilla
 Executable = $CONDOR_DIR/wrapper.sh
-Arguments  = run_single_sim.py --params \$(params_file)
+Arguments  = run_single_sim.py --excite \$(excite) --J \$(J) --Gintra \$(G_intra) --Ginter \$(G_inter) --realization \$(realization)
 
 Initialdir = $PROJ_DIR/src/sweep
 
@@ -36,9 +36,9 @@ Error  = $LOG_DIR/err_\$(Process).log
 Log    = $LOG_DIR/condor.log
 
 Request_Cpus   = 1
-Request_Memory = 16GB
+Request_Memory = 32GB
 
 +CSCI_GrpDesktop = True
 
-Queue params_file from $SWEEP_DIR/params_list.txt
+Queue excite, J, G_intra, G_inter, realization from $SWEEP_DIR/params_list.txt
 EOF
