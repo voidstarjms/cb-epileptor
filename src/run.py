@@ -42,22 +42,26 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     wpre = res['S1_1_wpre']
     u = res['S1_1_u']
     Ca = res['S1_1_Ca']
-    plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png", params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca)
+    p = res['S1_1_plasticity']
+    plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png", params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca, p)
     # E->I synapse stats
     wpre = res['S1_2_wpre']
     u = res['S1_2_u']
     Ca = res['S1_2_Ca']
-    plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats", t, x1, wpre, u, Ca)
+    p = res['S1_2_plasticity']
+    plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats", t, x1, wpre, u, Ca, p)
     # I->I synapse stats
     wpre = res['S2_2_wpre']
     u = res['S2_2_u']
     Ca = res['S2_2_Ca']
-    plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats", t, x2, wpre, u, Ca)
+    p = res['S2_2_plasticity']
+    plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats", t, x2, wpre, u, Ca, p)
     # I->E synapse stats
     wpre = res['S2_1_wpre']
     u = res['S2_1_u']
     Ca = res['S2_1_Ca']
-    plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats", t, x2, wpre, u, Ca)
+    p = res['S2_1_plasticity']
+    plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats", t, x2, wpre, u, Ca, p)
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None) -> None:
@@ -261,7 +265,7 @@ def main() -> None:
     'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
     output.
     """
-    DEFAULT_OUT_DIR = 'output/run3'
+    DEFAULT_OUT_DIR = 'output/run1'
     DEFAULT_PARAMS = 'parameters/params.yaml'   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
@@ -269,8 +273,6 @@ def main() -> None:
                         help="Run mode: 'r' run, 'p' plot, 'a' analyze, 't' test.")
     parser.add_argument('--cb', action='store_true', default=False,
                         help="Enable CB synapses (default: disabled)")
-    parser.add_argument('--no-cb', dest='cb', action='store_false',
-                        help="Disable CB synapses")
     parser.add_argument('--params', type=str, default=DEFAULT_PARAMS,
                         help="Parameter set to use (default: 'default')")
     parser.add_argument('--out-dir', type=str, default=DEFAULT_OUT_DIR,

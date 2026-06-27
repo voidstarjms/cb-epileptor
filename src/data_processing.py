@@ -67,6 +67,9 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
             't': np.asarray(M_N1.t),
             'x1': np.asarray(M_N1.x),
             'x2': np.asarray(M_N2.x),
+            'I_syn_intra_1': np.asarray(M_N1.I_syn_intra),
+            'I_syn_inter_1': np.asarray(M_N1.I_syn_inter),
+            'I_syn_intra_2': np.asarray(M_N2.I_syn_intra),
             'I_syn_inter_2': np.asarray(M_N2.I_syn_inter),
             'spikes_n1': {'t': np.asarray(SM_N1.t), 'i': np.asarray(SM_N1.i)},
             'spikes_n2': {'t': np.asarray(SM_N2.t), 'i': np.asarray(SM_N2.i)},
@@ -75,6 +78,12 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
     M_N1.__del__()
     M_N2.__del__()
 
+    eff_Ca = lambda Ca : ((1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT']) if cb_on else 1) * Ca
+    p = lambda Ca : (1
+        - params_dict['A_LTD'] * np.where(Ca > params_dict['THETA_LTD_START'], 1, 0)
+        * np.where(Ca < params_dict['THETA_LTD_END'], 1, 0)
+        + params_dict['A_LTP'] * (Ca > params_dict['THETA_LTP_START']))
+
     if cb_on:
         # e->e (HR->HR)
         if M_S1_1 is not None:
@@ -82,6 +91,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S1_1_wpre': np.mean(np.asarray(M_S1_1.Wpre), axis=0),
                 'S1_1_u':    np.mean(np.asarray(M_S1_1.u), axis=0),
                 'S1_1_Ca':   np.mean(np.asarray(M_S1_1.Ca), axis=0),
+                'S1_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_1.Ca))), axis=0)
             })
             M_S1_1.__del__()
         # e->i (HR->ML)
@@ -90,6 +100,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S1_2_wpre': np.mean(np.asarray(M_S1_2.Wpre), axis=0),
                 'S1_2_u':    np.mean(np.asarray(M_S1_2.u), axis=0),
                 'S1_2_Ca':   np.mean(np.asarray(M_S1_2.Ca), axis=0),
+                'S1_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_2.Ca))), axis=0)
             })
             M_S1_2.__del__()
         # i->e (ML->HR)
@@ -98,6 +109,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S2_1_wpre': np.mean(np.asarray(M_S2_1.Wpre), axis=0),
                 'S2_1_u':    np.mean(np.asarray(M_S2_1.u), axis=0),
                 'S2_1_Ca':   np.mean(np.asarray(M_S2_1.Ca), axis=0),
+                'S2_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_1.Ca))), axis=0)
             })
             M_S2_1.__del__()
         # i->i (ML->ML)
@@ -106,6 +118,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S2_2_wpre': np.mean(np.asarray(M_S2_2.Wpre), axis=0),
                 'S2_2_u':    np.mean(np.asarray(M_S2_2.u), axis=0),
                 'S2_2_Ca':   np.mean(np.asarray(M_S2_2.Ca), axis=0),
+                'S2_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_2.Ca))), axis=0)
             })
             M_S2_2.__del__()
 

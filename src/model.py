@@ -212,6 +212,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S1_to_1.E = syn_namespace['E_exc']
     S1_to_1.alpha = syn_namespace['alpha_exc']
     S1_to_1.beta = syn_namespace['beta_exc']
+    S1_to_1.Wpre = 1
+    S1_to_1.Ca = (np.ones(S1_to_1.N[:]) + randn(S1_to_1.N[:])) * params_dict['THETA_LTD_START'] / 2
 
     # Exc-to-Inh synapses
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
@@ -221,6 +223,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S1_to_2.E = syn_namespace['E_exc']
     S1_to_2.alpha = syn_namespace['alpha_exc']
     S1_to_2.beta = syn_namespace['beta_exc']
+    S1_to_2.Wpre = 1
+    S1_to_2.Ca = (np.ones(S1_to_2.N[:]) + randn(S1_to_2.N[:])) * params_dict['THETA_LTD_START'] / 2
 
     # Inh-to-Inh synapses
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
@@ -228,6 +232,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S2_to_2.E = syn_namespace['E_inh']
     S2_to_2.alpha = syn_namespace['alpha_inh']
     S2_to_2.beta = syn_namespace['beta_inh']
+    S2_to_2.Wpre = 1
+    S2_to_2.Ca = (np.ones(S2_to_2.N[:]) + randn(S2_to_2.N[:])) * params_dict['THETA_LTD_START'] / 2
 
     # Inh-to-Exc
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
@@ -237,13 +243,15 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S2_to_1.E = syn_namespace['E_inh']
     S2_to_1.alpha = syn_namespace['alpha_inh']
     S2_to_1.beta = syn_namespace['beta_inh']
+    S2_to_1.Wpre = 1
+    S2_to_1.Ca = (np.ones(S2_to_1.N[:]) + randn(S2_to_1.N[:])) * params_dict['THETA_LTD_START'] / 2
 
     # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
 
     # Population state monitors
     M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
-    M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_inter'], record=True)
+    M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_intra', 'I_syn_inter'], record=True)
     # Parameter state monitor
     M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0)
     # Population spike monitors
