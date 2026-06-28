@@ -21,9 +21,9 @@ echo "Wrote $SWEEP_DIR/current_run.txt"
 cat > "$CONDOR_DIR/condor.sub" << EOF
 Universe   = vanilla
 Executable = $CONDOR_DIR/wrapper.sh
-Arguments  = run_single_sim.py --excite \$(excite) --J \$(J) --Gintra \$(G_intra) --Ginter \$(G_inter) --realization \$(realization)
+Arguments  = run_single_sim.py --params \$(params_file)
 
-Initialdir = $PROJ_DIR/src/sweep
+Initialdir = $SWEEP_DIR
 
 should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
@@ -40,5 +40,5 @@ Request_Memory = 32GB
 
 +CSCI_GrpDesktop = True
 
-Queue excite, J, G_intra, G_inter, realization from $SWEEP_DIR/params_list.txt
+Queue params_file from $SWEEP_DIR/params_list.txt
 EOF
