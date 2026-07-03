@@ -100,7 +100,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     x2_mean = np.mean(x2, axis=0)
     x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
     ax1.plot(t, x_mean)
-    ax1.set_ylabel("LFP (a.u.)")
+    ax1.set_ylabel("LFP (a.u.)", fontsize=10)
     ax1.set_title("LFP signal (80/20 weight excitatory/inhibitory)")
 
     # raster 1
@@ -108,7 +108,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, HR_CLIM))
 
-    ax2.set_ylabel('Neuron index')
+    ax2.set_ylabel('Neuron index', fontsize=10)
     ax2.set_title('Excitatory Population Spike Raster (Spike Count)')
 
     # config colorbar
@@ -120,7 +120,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     raster2 = ax3.imshow(spike_matrix_2, interpolation='none', aspect='auto',
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, ML_CLIM))
 
-    ax3.set_ylabel('Neuron index')
+    ax3.set_ylabel('Neuron index', fontsize=10)
     ax3.set_title('Inhibitory Population Spike Raster (Spike Count)')
 
     # config colorbar
@@ -129,10 +129,13 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
 
     if has_x0_ce:
         ax4.plot(t, x0_t, label='x0', color='blue')
-        ax4.plot(t, ce_t, label='Ce', color='orange')
-        ax4.set_ylabel("x0")
-        ax4.set_title("Ce and x0 over time")
-        ax4.legend()
+        ax4b = ax4.twinx()
+        ax4b.plot(t, ce_t, label='Ce', color='orange')
+        ax4.set_ylabel("Epop excite", fontsize=10, c='blue')
+        ax4b.set_ylabel("Coupling (J)", fontsize=10, c='orange')
+        ax4.tick_params(axis='y', labelcolor='blue')
+        ax4b.tick_params(axis='y', labelcolor='orange')
+        ax4.set_title("J and Epop excite over time")
 
     if has_g:
         gintra_t, gintra_v = _vals_to_time_points(g_intra_vals, t)
@@ -140,8 +143,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         ax5.plot(gintra_t, gintra_v, label='g_intra', color='blue')
         ax5.plot(ginter_t, ginter_v, label='g_inter', color='orange')
         ax5.set_title("g variables over time")
-        ax5.set_xlabel("Time (s)")
-        ax5.set_ylabel("Conductance (uS)")
+        ax5.set_xlabel("Time (s)", fontsize=10)
+        ax5.set_ylabel("Conductance (uS)", fontsize=10)
         ax5.legend()
 
     plt.xlim(params_dict['TRANSIENT'], params_dict['SIM_DURATION']/second + params_dict['TRANSIENT'])
@@ -364,4 +367,34 @@ def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         _apply_zoom([ax1, ax2], zoom)
 
     plt.savefig(os.path.join(filepaths.figures_dir, "pop1_and_pop2_single.png"), format="png")
+    plt.show()
+
+def plot_synapse_currents(filepaths: Any, t: np.ndarray, epop_intra: np.ndarray,
+        epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray):
+    epop_intra_mean = np.mean(epop_intra, axis=0)
+    epop_inter_mean = np.mean(epop_inter, axis=0)
+    ipop_intra_mean = np.mean(ipop_intra, axis=0)
+    ipop_inter_mean = np.mean(ipop_inter, axis=0)
+
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
+    fig.suptitle("Mean Synaptic Currents (uS)")
+    ax1.plot(t, epop_intra_mean)
+    ax1.set_ylabel(u"E \u2192 E", fontsize=10)
+    ax1.tick_params(axis='both', which='major', labelsize=10)
+    ax1.yaxis.get_offset_text().set_fontsize(10)
+    ax2.plot(t, epop_inter_mean)
+    ax2.set_ylabel(u"E \u2192 I", fontsize=10)
+    ax2.tick_params(axis='both', which='major', labelsize=10)
+    ax2.yaxis.get_offset_text().set_fontsize(10)
+    ax3.plot(t, ipop_intra_mean)
+    ax3.set_ylabel(u"I \u2192 I", fontsize=10)
+    ax3.tick_params(axis='both', which='major', labelsize=10)
+    ax3.yaxis.get_offset_text().set_fontsize(10)
+    ax4.plot(t, ipop_inter_mean)
+    ax4.set_ylabel(u"I \u2192 E", fontsize=10)
+    ax4.tick_params(axis='both', which='major', labelsize=10)
+    ax4.yaxis.get_offset_text().set_fontsize(10)
+    ax4.set_xlabel("Time (s)", fontsize=10)
+
+    plt.savefig(os.path.join(filepaths.figures_dir, "mean_syn_currents.png"), format="png")
     plt.show()

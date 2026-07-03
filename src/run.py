@@ -79,6 +79,10 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, res
     t = res['t']
     x1 = res['x1']
     x2 = res['x2']
+    epop_intra = res['I_syn_intra_1']
+    epop_inter = res['I_syn_inter_1']
+    ipop_intra = res['I_syn_intra_2']
+    ipop_inter = res['I_syn_inter_2']
 
     if cb_on:
         plot_synapse_dynamics(filepaths, params_dict, res)
@@ -90,6 +94,8 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, res
                               num_cells, params_dict['SIM_DURATION'] / second,
                               g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
                               x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
+    
+    pop_plotter.plot_synapse_currents(filepaths, t, epop_intra, epop_inter, ipop_intra, ipop_inter)
 
 # TODO This is presently deprecated because we're not saving y, z, etc. Figure out what to do with it
 def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True) -> None:

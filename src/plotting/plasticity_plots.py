@@ -21,13 +21,13 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str, t
             THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
         title (str): Title of the plot.
         t: Time vector.
-        x: (num_neurons, time) x
+        x: (num_neurons, time) presynaptic population LFP
         wpre: (num_neurons, time) Wpre trace.
         u: (num_neurons, time) u (fraction of open channels) trace.
         Ca: (num_neurons, time) Ca trace.
         plasticity: (num_neurons, time) plasticity trace
     """
-    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(10, 8), sharex=True)
+    fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(10, 12), sharex=True)
     Ca = np.asarray(Ca)
     #x_post = np.asarray(x[1])
 
