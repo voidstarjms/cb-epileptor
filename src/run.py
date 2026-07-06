@@ -37,34 +37,45 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     t = res['t']
     x1 = res['x1']
     x2 = res['x2']
+    excite_sched = res.get('x0_t')
+    coupling_sched = res.get('ce_t')
 
     # E->E synapse stats
     wpre = res['S1_1_wpre']
     u = res['S1_1_u']
     Ca = res['S1_1_Ca']
     p = res['S1_1_plasticity']
-    plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png", params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca, p)
+    I_syn = res['I_syn_intra_1']
+    plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png",
+                                  params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca, p, I_syn,
+                                  excite=excite_sched, coupling=coupling_sched)
     # E->I synapse stats
     wpre = res['S1_2_wpre']
     u = res['S1_2_u']
     Ca = res['S1_2_Ca']
     p = res['S1_2_plasticity']
-    plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats", t, x1, wpre, u, Ca, p)
+    I_syn = res['I_syn_inter_1']
+    plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats",
+                                  t, x1, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
     # I->I synapse stats
     wpre = res['S2_2_wpre']
     u = res['S2_2_u']
     Ca = res['S2_2_Ca']
     p = res['S2_2_plasticity']
-    plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats", t, x2, wpre, u, Ca, p)
+    I_syn = res['I_syn_intra_2']
+    plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats",
+                                  t, x2, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
     # I->E synapse stats
     wpre = res['S2_1_wpre']
     u = res['S2_1_u']
     Ca = res['S2_1_Ca']
     p = res['S2_1_plasticity']
-    plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats", t, x2, wpre, u, Ca, p)
+    I_syn = res['I_syn_inter_2']
+    plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats",
+                                  t, x2, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
 
 
-def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None) -> None:
+def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None, png = False) -> None:
     """Load sim data and make the default plots (LFP + both rasters).
 
     Args:
@@ -93,7 +104,7 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, res
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
                               num_cells, params_dict['SIM_DURATION'] / second,
                               g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
-                              x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
+                              x0_t=res.get('x0_t'), ce_t=res.get('ce_t'), png=png)
     
     pop_plotter.plot_synapse_currents(filepaths, t, epop_intra, epop_inter, ipop_intra, ipop_inter)
 
@@ -283,9 +294,12 @@ def main() -> None:
                         help="Parameter set to use (default: 'default')")
     parser.add_argument('--out-dir', type=str, default=DEFAULT_OUT_DIR,
                         help="Output directory (default: 'output/')")
+    parser.add_argument('--png', action='store_true', default=False,
+                        help='Pass this flag to save standard plot as png instead of svg')
     args = parser.parse_args()
     run_mode = args.mode
     cb_on = args.cb
+    png = args.png
     params = args.params
     params_dict = load_params(params)
     missing = REQUIRED_PARAMS - params_dict.keys()
@@ -321,7 +335,7 @@ def main() -> None:
             print("WARNING: RUN FLAG f IS CURRENTLY DISABLED. SKIPPING PLOTS.")
             #plot_output_full(filepaths, params_dict, cb_on)
         else:
-            plot_output(filepaths, params_dict, cb_on, data)
+            plot_output(filepaths, params_dict, cb_on, data, png=png)
         print(f"Plots saved to {filepaths.figures_dir}.")
 
     # Analyze model synchrony

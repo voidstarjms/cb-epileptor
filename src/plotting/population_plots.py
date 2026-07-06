@@ -12,7 +12,7 @@ from typing import Dict, Any
 from config_structs import ZoomConfig
 
 import plotting.style  # noqa: F401
-
+from plotting.plotting_utils import *
 
 def _apply_zoom(axes: list, zoom: ZoomConfig) -> None:
     """Set the x-axis limits on all given axes.
@@ -59,7 +59,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         x1: np.ndarray, x2: np.ndarray, spike_matrix_1: np.ndarray, spike_matrix_2: np.ndarray,
         num_cells: int, sim_duration: float, zoom: ZoomConfig = None,
         x0_t=None, ce_t=None,
-        g_intra_vals=None, g_inter_vals=None, show: bool = True) -> None:
+        g_intra_vals=None, g_inter_vals=None, show: bool = True, png = False) -> None:
     """Weighted-mean LFP + both spike rasters. Adds schedule panels if vals are given.
 
     Args:
@@ -78,6 +78,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         g_intra_vals: Optional intra-pop conductance schedule.
         g_inter_vals: Optional inter-pop conductance schedule; pairs with g_intra_vals.
         show (bool): If True, call plt.show() before closing the figure.
+        png (bool): If True, saves as a rasterized png. Otherwise, saves as svg.
     """
 
     has_x0_ce = x0_t is not None and ce_t is not None
@@ -96,23 +97,28 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     fig.set_constrained_layout_pads(w_pad=0.1, h_pad=0.1,
                                      wspace=0.02, hspace=0.02)
 
-    x1_mean = np.mean(x1, axis=0)
-    x2_mean = np.mean(x2, axis=0)
+    x1_mean = bin_data(np.mean(x1, axis=0), 100)
+    x2_mean = bin_data(np.mean(x2, axis=0), 100)
     x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
     ax1.plot(t, x_mean)
     ax1.set_ylabel("LFP (a.u.)", fontsize=10)
-    ax1.set_title("LFP signal (80/20 weight excitatory/inhibitory)")
+    ax1.set_title("LFP signal (80/20 weight excitatory/inhibitory)", fontsize=10)
+    ax1.tick_params(axis='y', labelsize=10)
 
     # raster 1
-    HR_CLIM = find_clim(spike_matrix_1)
+    HR_CLIM = max(5, find_clim(spike_matrix_1))
+    print(spike_matrix_1.shape)
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, HR_CLIM))
 
     ax2.set_ylabel('Neuron index', fontsize=10)
-    ax2.set_title('Excitatory Population Spike Raster (Spike Count)')
-
+    ax2.set_title('Excitatory Population Spike Raster (Spike Count)', fontsize=10)
+    ax2.tick_params(axis='y', labelsize=10)
+    
     # config colorbar
     cbar = fig.colorbar(raster1, ax=ax2, location='right', aspect=25, pad=0.001)
+    cbar.ax.tick_params(labelsize=10)
+    cbar.ax.set_ylim(0, HR_CLIM)
     cbar.minorticks_on()
 
     # raster 2
@@ -121,10 +127,12 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, ML_CLIM))
 
     ax3.set_ylabel('Neuron index', fontsize=10)
-    ax3.set_title('Inhibitory Population Spike Raster (Spike Count)')
+    ax3.set_title('Inhibitory Population Spike Raster (Spike Count)', fontsize=10)
+    ax3.tick_params(axis='y', labelsize=10)
 
     # config colorbar
     cbar = fig.colorbar(raster2, ax=ax3, location='right', aspect=25, pad=0.001)
+    cbar.ax.tick_params(labelsize=10)
     cbar.minorticks_on()
 
     if has_x0_ce:
@@ -133,26 +141,31 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         ax4b.plot(t, ce_t, label='Ce', color='orange')
         ax4.set_ylabel("Epop excite", fontsize=10, c='blue')
         ax4b.set_ylabel("Coupling (J)", fontsize=10, c='orange')
-        ax4.tick_params(axis='y', labelcolor='blue')
-        ax4b.tick_params(axis='y', labelcolor='orange')
-        ax4.set_title("J and Epop excite over time")
+        ax4.tick_params(axis='y', labelcolor='blue', labelsize=10)
+        ax4b.tick_params(axis='y', labelcolor='orange', labelsize=10)
+        ax4.set_title("J and Epop excite over time", fontsize=10)
 
     if has_g:
         gintra_t, gintra_v = _vals_to_time_points(g_intra_vals, t)
         ginter_t, ginter_v = _vals_to_time_points(g_inter_vals, t)
         ax5.plot(gintra_t, gintra_v, label='g_intra', color='blue')
         ax5.plot(ginter_t, ginter_v, label='g_inter', color='orange')
-        ax5.set_title("g variables over time")
-        ax5.set_xlabel("Time (s)", fontsize=10)
+        ax5.set_title("g variables over time", fontsize=10)
         ax5.set_ylabel("Conductance (uS)", fontsize=10)
+        ax5.tick_params(axis='y', labelsize=10)
+        ax5.yaxis.get_offset_text().set_fontsize(10)
         ax5.legend()
+
+    axes[len(axes) - 1].set_xlabel("Time (s)", fontsize=10)
+    axes[len(axes) - 1].tick_params(axis='x', labelsize=10)
 
     plt.xlim(params_dict['TRANSIENT'], params_dict['SIM_DURATION']/second + params_dict['TRANSIENT'])
     if zoom:
         _apply_zoom(axes, zoom)
+    file_extension = "png" if png else "svg"
     fig.get_layout_engine().set(w_pad=0.2, h_pad=0.2, hspace=0.2, wspace=0.2)
-    out_path = os.path.join(filepaths.figures_dir, "standard_plot.svg")
-    plt.savefig(out_path, format='svg', dpi=300)
+    out_path = os.path.join(filepaths.figures_dir, "standard_plot." + file_extension)
+    plt.savefig(out_path, format=file_extension, dpi=300)
 
     if show:
         plt.show()
@@ -370,11 +383,12 @@ def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
     plt.show()
 
 def plot_synapse_currents(filepaths: Any, t: np.ndarray, epop_intra: np.ndarray,
-        epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray):
-    epop_intra_mean = np.mean(epop_intra, axis=0)
-    epop_inter_mean = np.mean(epop_inter, axis=0)
-    ipop_intra_mean = np.mean(ipop_intra, axis=0)
-    ipop_inter_mean = np.mean(ipop_inter, axis=0)
+        epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray,
+        bin_size = 1000):
+    epop_intra_mean = bin_data(np.mean(epop_intra, axis=0), bin_size)
+    epop_inter_mean = bin_data(np.mean(epop_inter, axis=0), bin_size)
+    ipop_intra_mean = bin_data(np.mean(ipop_intra, axis=0), bin_size)
+    ipop_inter_mean = bin_data(np.mean(ipop_inter, axis=0), bin_size)
 
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     fig.suptitle("Mean Synaptic Currents (uS)")
