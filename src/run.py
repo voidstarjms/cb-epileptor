@@ -48,7 +48,7 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     I_syn = res['I_syn_intra_1']
     plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png",
                                   params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca, p, I_syn,
-                                  excite=excite_sched, coupling=coupling_sched)
+                                  False, excite=excite_sched, coupling=coupling_sched)
     # E->I synapse stats
     wpre = res['S1_2_wpre']
     u = res['S1_2_u']
@@ -56,7 +56,8 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     p = res['S1_2_plasticity']
     I_syn = res['I_syn_inter_1']
     plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats",
-                                  t, x1, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
+                                  t, x1, wpre, u, Ca, p, I_syn,
+                                  False, excite=excite_sched, coupling=coupling_sched)
     # I->I synapse stats
     wpre = res['S2_2_wpre']
     u = res['S2_2_u']
@@ -64,7 +65,8 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     p = res['S2_2_plasticity']
     I_syn = res['I_syn_intra_2']
     plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats",
-                                  t, x2, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
+                                  t, x2, wpre, u, Ca, p, I_syn,
+                                  True, excite=excite_sched, coupling=coupling_sched)
     # I->E synapse stats
     wpre = res['S2_1_wpre']
     u = res['S2_1_u']
@@ -72,7 +74,8 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     p = res['S2_1_plasticity']
     I_syn = res['I_syn_inter_2']
     plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats",
-                                  t, x2, wpre, u, Ca, p, I_syn, excite=excite_sched, coupling=coupling_sched)
+                                  t, x2, wpre, u, Ca, p, I_syn,
+                                  True, excite=excite_sched, coupling=coupling_sched)
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None, png = False) -> None:
@@ -267,6 +270,7 @@ REQUIRED_PARAMS = {
     'SYN_ALPHA_INH', 'SYN_BETA_INH', 'SYN_E_INH',
     'THETA_LTD_START', 'THETA_LTD_END', 'THETA_LTP_START',
     'A_LTD', 'A_LTP', 'TAU_WPRE', 'TAU_CA',
+    'EXC_CB_PREVALENCE', 'INH_CB_PREVALENCE',
     'CA_SIGMOID_SHIFT', 'CA_SIGMOID_SLOPE',
     'BASE_EXCITE_VALS', 'BASE_EXCITE_DT',
     'COUPLING_VALS', 'COUPLING_DT',

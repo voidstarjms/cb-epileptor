@@ -14,7 +14,7 @@ from plotting.plotting_utils import *
 
 
 def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
-                    t, x, wpre, u, Ca, plasticity, current, excite = None, coupling = None,
+                    t, x, wpre, u, Ca, plasticity, current, presyn_pop : bool, excite = None, coupling = None,
                     bin_size = 1000) -> None:
     """Five panels: x, Wpre, u, Ca, and plasticity
 
@@ -31,6 +31,7 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
         Ca: (num_neurons, time) Ca trace.
         plasticity: (num_neurons, time) plasticity trace
         current: (num_neurons, time) synaptic current
+        presyn_pop (bool): false is excitatory, true is inhibitory
         binning: bin size in multiples of dt
     """
     has_excite_coupling = int(excite is not None and coupling is not None)
@@ -41,11 +42,11 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
         (ax1, ax2, ax3, ax4, ax5, ax6) = ax_list
     ax_count = len(ax_list)
     Ca = np.asarray(Ca)
+    cb_preval = params_dict['INH_CB_PREVALENCE'] if presyn_pop else params_dict['EXC_CB_PREVALENCE']
     #x_post = np.asarray(x[1])
 
-    effCa = (1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT']) * Ca
+    effCa = cb_preval * (1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT']) * Ca
     #sigma_Ca = 1 / (1 + exp(-(x_post + params_dict['CA_SIGMOID_SHIFT']) / params_dict['CA_SIGMOID_SLOPE']))
-
 
     fig.suptitle(title)
     # Presynaptic LFP

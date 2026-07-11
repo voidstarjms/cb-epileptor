@@ -175,6 +175,8 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         'beta_ca': params_dict['BETA_CA'],
         'gamma_ca': params_dict['GAMMA_CA'],
         'cbd': params_dict['CBD_AMOUNT'],
+        'exc_cb_preval' : params_dict['EXC_CB_PREVALENCE'],
+        'inh_cb_preval' : params_dict['INH_CB_PREVALENCE']
     }
 
     syn_input_scale = 1/pop1_namespace['sigma_1']
@@ -183,7 +185,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         du/dt = (alpha * T * (1 - u) - beta * u) : 1 (clock-driven)
         T = Tmax / (1 + exp(-(x_pre * syn_input_scale * mvolt - Vt) / Kp)) : mM
 
-        effCa = (1 - alpha_w * cbd) * Ca : 1
+        effCa = cb_preval * (1 - alpha_w * cbd) * Ca : 1
         plasticity = 1 - A_ltd * int(effCa > theta_ltd_start) * int(effCa < theta_ltd_end) + A_ltp * int(effCa > theta_ltp_start) : 1
         dWpre/dt = (plasticity - Wpre) / tau_wpre : 1 (clock-driven)
         dCa/dt = (1 - Ca) * (sigma_Ca - (beta_ca - gamma_ca * cbd) * Ca) / tau_ca : 1 (clock-driven)
@@ -192,6 +194,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         E : volt
         alpha : mmolar ** -1 * second ** -1
         beta : second ** -1
+        cb_preval : 1
     '''
 
     wpre_term = 'Wpre' if cb_on else '1'
@@ -214,6 +217,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S1_to_1.beta = syn_namespace['beta_exc']
     S1_to_1.Wpre = 1
     S1_to_1.Ca = (np.ones(S1_to_1.N[:]) + randn(S1_to_1.N[:])) * params_dict['THETA_LTD_START'] / 2
+    S1_to_1.cb_preval = syn_namespace['exc_cb_preval']
 
     # Exc-to-Inh synapses
     S1_to_2 = Synapses(N1, N2, inter_syn_eqs, method='euler', namespace=syn_namespace)
@@ -225,6 +229,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S1_to_2.beta = syn_namespace['beta_exc']
     S1_to_2.Wpre = 1
     S1_to_2.Ca = (np.ones(S1_to_2.N[:]) + randn(S1_to_2.N[:])) * params_dict['THETA_LTD_START'] / 2
+    S1_to_2.cb_preval = syn_namespace['exc_cb_preval']
 
     # Inh-to-Inh synapses
     S2_to_2 = Synapses(N2, N2, intra_syn_eqs, method='euler', namespace=syn_namespace)
@@ -234,6 +239,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S2_to_2.beta = syn_namespace['beta_inh']
     S2_to_2.Wpre = 1
     S2_to_2.Ca = (np.ones(S2_to_2.N[:]) + randn(S2_to_2.N[:])) * params_dict['THETA_LTD_START'] / 2
+    S2_to_2.cb_preval = syn_namespace['inh_cb_preval']
 
     # Inh-to-Exc
     S2_to_1 = Synapses(N2, N1, inter_syn_eqs, method='euler', namespace=syn_namespace)
@@ -245,6 +251,7 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
     S2_to_1.beta = syn_namespace['beta_inh']
     S2_to_1.Wpre = 1
     S2_to_1.Ca = (np.ones(S2_to_1.N[:]) + randn(S2_to_1.N[:])) * params_dict['THETA_LTD_START'] / 2
+    S2_to_1.cb_preval = syn_namespace['inh_cb_preval']
 
     # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
