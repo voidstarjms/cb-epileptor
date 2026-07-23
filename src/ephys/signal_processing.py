@@ -14,11 +14,15 @@ import sheet_parser
 sys.path.append("..")
 from plotting import ephys_plots
 
+# NOTE: The default directory must exist for this to work
+DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
+DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
+DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
 DRIFT_FILT_FREQ = 200
 STD_THRESH = 4.75
 MAX_PRE_PEP_SWEEP = -16
 
-def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verbose=True):
+def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verbose=True, out_dir=None):
     if verbose:
         print(f"Loading binary {Path(fname).stem}")
     
@@ -82,11 +86,11 @@ def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verb
 
     # Plot the LFPs if requested
     if show == True:
-        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep)
+        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep, out_dir=out_dir)
 
     return prepep_transients, postpep_transients
 
-def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False):
+def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=None, show=False):
     sheet_df = sheet_parser.parse_sheet(sheet_path)
 
     subdirs = os.listdir(bin_dir)
@@ -145,59 +149,45 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False):
             i += 1
             if verbose:
                 print()
-    
-    # Compute and print mean and coefficient of variation for each expt type
-    # mean_list = {}
-    # cv_list = {}
-    # for i, (k, v) in enumerate(transients_by_expt_type.items()):
-    #     run_count = len(v)
-    #     transient_arr = np.asarray(v)
-    #     mean = 0
-    #     std = 0
-    #     cv = 0
-    #     # Avoid divide by zero if no runs of given type
-    #     if run_count != 0:
-    #         mean = np.mean(transient_arr)
-    #         std = np.std(transient_arr)
-    #         cv = std / mean if mean != 0 else np.nan
-    #     mean_list[k] = mean
-    #     cv_list[k] = cv
-    #     #print(f"{k:<{label_width}}{mean:>10.3g}{cv:>10.3g}{run_count:>10}")
 
-    ephys_plots.plot_scatter_columns(expt_types, transients_by_expt_type)
+    if show:
+        ephys_plots.plot_scatter_columns(expt_types, transients_by_expt_type, out_dir=out_dir)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fname', type=str, default=None)
-    parser.add_argument('--dirname', type=str, default=None)
-    parser.add_argument('--sweep', default=0, type=int)
-    parser.add_argument('--sheet-path', default=None,
-                        type=str)
-    parser.add_argument('--show', default=False, action='store_true')
+    parser.add_argument('--fname', type=str, default=None,
+                        help='Path to ibw binary file.')
+    parser.add_argument('--dirname', type=str, default=DEFAULT_IN_DIR,
+                        help="""Path to directory of ibw binary files. 
+Subdirectories must have naming scheme m dd yyyy.""")
+    parser.add_argument('--sweep', default=0, type=int,
+                        help='The 1-indexed sweep number to examine. Leave out for all sweeps')
+    parser.add_argument('--sheet-path', default=DEFAULT_SHEET_PATH, type=str,
+                        help="""Path to master spreadsheet file to supply ancillary data for 
+binary analysis.""")
+    parser.add_argument('--show', default=False, action='store_true',
+                        help='Show plots after completion.')
+    parser.add_argument('--out-dir', default=None, type=str,
+                        help='Directory to save figures to.')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        default=False, help='Print binary analyses for each file')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False,
+                        help='Print nothing. Overrides verbose')
 
     args = parser.parse_args()
     fname = args.fname
     dirname = args.dirname
     sheet_path = args.sheet_path
 
-    # Argument sanity checking
-    if fname == None and dirname == None:
-        print("You must specify either a file or directory for input")
-        sys.exit(1)
-    if fname != None and dirname != None:
-        print("You cannot specify both a file and a directory")
-        sys.exit(2)
-    if dirname != None and sheet_path == None:
-        print("You must provide a spreadsheet to compare against a directory's contents. Please pass --sheet-path [path]")
-        sys.exit(3)    
-    
     sweep = args.sweep - 1
     show = args.show
+    quiet = args.quiet
+    verbose = args.verbose if not quiet else False
 
     if fname != None:
-        analyze_single_binary(fname, disp_sweep=sweep, show=show)
+        analyze_single_binary(fname, disp_sweep=sweep, show=show, verbose=not quiet)
     else:
-        analyze_binaries(sheet_path, dirname)
+        analyze_binaries(sheet_path, dirname, show=show, verbose=verbose)
         
 if __name__ == "__main__":
     main()

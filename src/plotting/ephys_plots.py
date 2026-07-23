@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import os
 
 def plot_lfp(x : np.array, y_raw : np.array, y_processed : np.array,
-             fname : str, disp_sweep : int):
+             fname : str, disp_sweep : int, out_dir : str = None):
     # Plot all LFPs overlaid
     if disp_sweep == -1:
         fig = plt.figure()
@@ -35,11 +35,13 @@ def plot_lfp(x : np.array, y_raw : np.array, y_processed : np.array,
 
     #plt.xlabel(w['dimension_units'].decode().strip('\x00'))
     #plt.ylabel(w['data_units'].decode().strip('\x00'))
+    if out_dir != None:
+        plt.savefig(out_dir)
 
     plt.show()
 
 
-def plot_scatter_columns(expt_types : list, transients : dict):
+def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = None):
     # Plot bar chart of means and CVs by experiment type, before and after PEP introduction
     fig, (ax1) = plt.subplots(1, 1, sharex=True)
 
@@ -107,5 +109,8 @@ def plot_scatter_columns(expt_types : list, transients : dict):
     plt.xticks(col_ids, col_labels)
     plt.legend()
     #ax2.bar(transients.keys(), cv_list.values())
+    if out_dir != None:
+        plt.savefig(out_dir)
+
     plt.show()
     #print(f"\nMean coefficient of variation: {np.mean(np.asarray(cv_list))}")

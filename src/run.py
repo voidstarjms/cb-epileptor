@@ -286,8 +286,8 @@ def main() -> None:
     'rp' runs then plots, 'rpf' runs then makes full plots, 'a' analyzes
     output.
     """
-    DEFAULT_OUT_DIR = 'output/run1'
-    DEFAULT_PARAMS = 'parameters/params.yaml'   # run.py runs from src/; YAML at repo root
+    DEFAULT_OUT_DIR = os.path.join('..', 'output', 'run1')
+    DEFAULT_PARAMS = os.path.join('..', 'parameters', 'params.yaml')   # run.py runs from src/; YAML at repo root
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
