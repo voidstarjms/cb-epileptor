@@ -20,20 +20,40 @@ DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
 DRIFT_FILT_FREQ = 200
 STD_THRESH = 4.75
-MAX_PRE_PEP_SWEEP = -16
+MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 
-def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verbose=True, out_dir=None):
+def analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, disp_sweep=-1, show=False, verbose=True, out_dir=None):
+    """Load and count the transients in a single ibw binary file.
+
+    Args:
+        fname (str): The path of the input ibw file to load.
+        df (DataFrame): The DataFrame containing metadata from the master sheet
+        entry_idx (int): The index of the experiment's entry in the DataFrame. Must be set if df is not None.
+        df_start_pos (int): The number of sweeps before PEP introduction. Must be set if df is not None.
+        disp_sweep (int): The zero-indexed sweep from the input file to plot. -1 plots all sweeps together.
+        show (bool): Show the plot.
+        verbose (bool): Print extra output info.
+        out_dir (str): The directory to save figures to. Saves to DEFAULT_OUT_DIR if None.
+    
+    Returns:
+        tuple (prepep_transients, postpep_transients): total number of transients counted before and after PEP
+            introduction. prepep_transients is all transients and postpep_transients is 0 if df is not supplied.
+    """
+    if type(df) is not None and (df_start_pos == None or entry_idx == None):
+        print("analyze_single_binary: You must specify a row and transient starting column to analyze using a spreadsheet")
+        sys.exit(1)
+    scan_for_nan = type(df) is not None
+    # Compute the sweep that PEP is introduced
+    pep_sweep = -df_start_pos if df_start_pos != None else None
+
+    # Load the binary
     if verbose:
         print(f"Loading binary {Path(fname).stem}")
-    
     wave = binarywave.load(fname)
     w = wave['wave']
-
-    # Data
     y = w['wData'] # 1D numpy array of your waveform values
 
     fs = 10000
-
     def butter_highpass_filter(data, cutoff, fs, order=2):
         nyq = 0.5 * fs
         high = cutoff / nyq
@@ -51,6 +71,13 @@ def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verb
     y_processed = np.empty((end_time - start_time, y.shape[1]))
     transients_per_sweep = np.zeros(y.shape[1], dtype=int)
     for i in range(y.shape[1]):
+        # Check for NaN sweep, continue if so
+        if scan_for_nan:
+            df_sweep_name = "transient" + ("+" if df_start_pos >= 0 else "") + str(df_start_pos)
+            df_start_pos += 1
+            if df[df_sweep_name][entry_idx] == np.nan:
+                 continue
+
         y_filtered = butter_highpass_filter(y[:, i], DRIFT_FILT_FREQ, fs)
         y_raw[:, i] = y_filtered
         
@@ -85,18 +112,33 @@ def analyze_single_binary(fname, pep_sweep=None, disp_sweep=-1, show=False, verb
             print("Total transients detected:", prepep_transients)
 
     # Plot the LFPs if requested
-    if show == True:
-        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep, out_dir=out_dir)
+    if show:
+        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep, out_dir=out_dir, show=show)
 
     return prepep_transients, postpep_transients
 
 def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=None, show=False):
+    """Analyze a directory of binary files using a master spreadsheet as metadata.
+        Binaries must be organized into subdirectories by date of experiment, and
+        subdirectories must be named in the format '[m]m dd yyyy'. Binaries must be
+        named starting with 'R[run number]_'.
+
+        Args:
+            sheet_path (str): The path to the master spreadsheet.
+            bin_dir (str): The path to the topmost binary directory.
+            verbose (bool): Print extra output info.
+            out_dir (str): The directory to save to. Saves to DEFAULT_OUT_DIR if None.
+            show (bool): Show the plots.
+        
+        Returns: void
+    """
     sheet_df = sheet_parser.parse_sheet(sheet_path)
 
+    # Load all subdirectories and sort by date
     subdirs = os.listdir(bin_dir)
     subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
-    i = 0
-    # tuple structure is (expt_count, total_transients)
+
+    # Create set of lists to hold transients counts for each experiment type
     expt_types = ["control",
                   "cbd",
                   "picro",
@@ -107,27 +149,35 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
     transients_by_expt_type = {t+"_pre": [] for t in expt_types} |\
         {t+"_post": [] for t in expt_types}
 
+    # Iterate over all subdirectories
+    i = 0 # Entry index in the DataFrame
     for d in subdirs:
         subdir_path = os.path.join(bin_dir, d)
         file_list = os.listdir(subdir_path)
         file_list.sort()
+
+        # Iterate over all files in the subdirectory
         for f in file_list:
+            # Find the starting sweep in the DataFrame
+            start_sweep_count = -1
+            start_sweep = "transient-1"
+            while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
+                if sheet_df[start_sweep][i] == "":
+                    break
+                start_sweep = "transient"+str(start_sweep_count)
+                start_sweep_count -= 1
+
             if sheet_df["data_OK"][i] == True:
                 if verbose:
                     run_id = f"{sheet_df["date"][i]} {sheet_df["run_num"][i]}"
                     print("Skipping confounded experiment " + run_id)
             else:
                 fpath = os.path.join(subdir_path, f)
-                pep_sweep_count = -1
-                pep_sweep = "transient-1"
-                while (pep_sweep_count >= MAX_PRE_PEP_SWEEP-1):
-                    if sheet_df[pep_sweep][i] == "":
-                        break
-                    pep_sweep = "transient"+str(pep_sweep_count)
-                    pep_sweep_count -= 1
-                pre_counted, post_counted = analyze_single_binary(fpath, pep_sweep=pep_sweep_count, verbose=verbose)
+                pre_counted, post_counted = analyze_single_binary(fpath, df=sheet_df, entry_idx=i,
+                                                                    df_start_pos=start_sweep_count,
+                                                                    verbose=verbose, show=False)
                 
-                # Add transient counts to appropriate tuple
+                # Add transient counts to appropriate lists
                 has_cbd = sheet_df["has_cbd"][i]
                 has_picro = sheet_df["has_picro"][i]
                 has_bc = sheet_df["has_bc"][i]
@@ -150,8 +200,8 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
             if verbose:
                 print()
 
-    if show:
-        ephys_plots.plot_scatter_columns(expt_types, transients_by_expt_type, out_dir=out_dir)
+    ephys_plots.plot_scatter_columns(expt_types, transients_by_expt_type,
+                                     out_dir=out_dir, show=show)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -167,7 +217,7 @@ Subdirectories must have naming scheme m dd yyyy.""")
 binary analysis.""")
     parser.add_argument('--show', default=False, action='store_true',
                         help='Show plots after completion.')
-    parser.add_argument('--out-dir', default=None, type=str,
+    parser.add_argument('--out-dir', default=DEFAULT_OUT_DIR, type=str,
                         help='Directory to save figures to.')
     parser.add_argument('-v', '--verbose', action='store_true',
                         default=False, help='Print binary analyses for each file')
@@ -178,6 +228,7 @@ binary analysis.""")
     fname = args.fname
     dirname = args.dirname
     sheet_path = args.sheet_path
+    out_dir = args.out_dir
 
     sweep = args.sweep - 1
     show = args.show
@@ -185,9 +236,9 @@ binary analysis.""")
     verbose = args.verbose if not quiet else False
 
     if fname != None:
-        analyze_single_binary(fname, disp_sweep=sweep, show=show, verbose=not quiet)
+        analyze_single_binary(fname, disp_sweep=sweep, show=show, verbose=not quiet, out_dir=out_dir)
     else:
-        analyze_binaries(sheet_path, dirname, show=show, verbose=verbose)
+        analyze_binaries(sheet_path, dirname, show=show, verbose=verbose, out_dir=out_dir)
         
 if __name__ == "__main__":
     main()

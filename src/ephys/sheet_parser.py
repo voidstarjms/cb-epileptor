@@ -3,15 +3,17 @@ import argparse
 import numpy as np
 
 MASTER_SHEET_ROW_OFFSET = 23
-MAX_PRE_PEP_SWEEP = -16
+MAX_PRE_PEP_SWEEP = -17
 MAX_POST_PEP_SWEEP = 24
 EXPERIMENT_ENTRY_HEIGHT = 3
 
+# Column labels for the input spreadsheet
 raw_col_names = [
-    "date_id_sex", "run_num", "genotype", "vehicle", "total_transients", "unused",
-    "unused"] + [("transient" + ("+" if i >= 0 else "") + str(i)) for i in
+    "date_id_sex", "run_num", "genotype", "vehicle", "total_transients", "unused"]\
+    + [("transient" + ("+" if i >= 0 else "") + str(i)) for i in
                  range(MAX_PRE_PEP_SWEEP, MAX_POST_PEP_SWEEP)]
 
+# Column labels for the output DataFrame
 processed_col_names = [
     "date", "id", "sex", "run_num", "genotype", "has_cbd", "has_picro", "has_bc",
     "data_OK", "total_transients", "resistance", "seizure_sweep", "seizure_freq"] + \
@@ -19,8 +21,18 @@ processed_col_names = [
      range(MAX_PRE_PEP_SWEEP, MAX_POST_PEP_SWEEP)]
 
 def parse_sheet(path : str) -> pd.DataFrame:
+    """Parse the master spreadsheet and arrange the data in a compact formatted DataFrame.
+    
+    Args:
+        path (str): path to the spreadsheet to parse.
+
+    Returns:
+        DataFrame: the results from the master sheet formatted such that one experiment
+            is one row and each column represents one field.
+    """
     # Load the Excel file at the specified path into a DataFrame
-    raw_dataframe = pd.read_excel(path, keep_default_na=False)
+    raw_dataframe = pd.read_excel(path, keep_default_na=False,
+                                  na_values="#N/A")
     # Slice the raw DataFrame to only encompass the experiment data
     raw_df_view = raw_dataframe[:][MASTER_SHEET_ROW_OFFSET:]
     # Name the columns of the raw DataFrame, then reset the index
