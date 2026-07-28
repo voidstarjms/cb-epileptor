@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import os
-from scipy.stats import linregress
+from scipy.stats import linregress, wilcoxon
 
 def plot_lfp(x : np.array, y_raw : np.array, y_processed : np.array,
              infile : str, disp_sweep : int, out_dir : str = None):
@@ -118,12 +118,16 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
                       for _ in transients[k]]
     postpep_y_list = [v for k in postpep_keys for v in transients[k]]
 
-    # Compute and print relative change of each experiment type
+    # Compute Wilcoxon signed-rank test for each column
+    print("Wilcoxon tests")
+    print(f"{"Type":<15}{"Statistic":>15}{"p-value":>15}")
     for pre_k, post_k in zip(prepep_keys, postpep_keys):
-        x = transients[pre_k]
-        y = transients[post_k]
-        mean_rel_change = np.mean(np.array([(b - a) / a for a, b in zip(x, y)]))
-        print(f"Mean relative pre-post change for {pre_k.rsplit("_", 1)[0]}: {mean_rel_change}")
+        x = np.array(transients[pre_k])
+        y = np.array(transients[post_k])
+        wilcoxon_results = wilcoxon(y - x)
+        statistic = wilcoxon_results.statistic
+        pvalue = wilcoxon_results.pvalue
+        print(f"{pre_k.rsplit("_", 1)[0]:<15}{f"{statistic:.4f}":>15}{f"{pvalue:.4f}":>15}")
 
     # Generate column labels
     col_labels = []

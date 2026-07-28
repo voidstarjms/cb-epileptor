@@ -39,10 +39,10 @@ def analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, dis
         tuple (prepep_transients, postpep_transients): total number of transients counted before and after PEP
             introduction. prepep_transients is all transients and postpep_transients is 0 if df is not supplied.
     """
-    if type(df) is not None and (df_start_pos == None or entry_idx == None):
+    if type(df) is not type(None) and (df_start_pos == None or entry_idx == None):
         print("analyze_single_binary: You must specify a row and transient starting column to analyze using a spreadsheet")
         sys.exit(1)
-    scan_for_nan = type(df) is not None
+    scan_for_nan = type(df) is not type(None)
     # Compute the sweep that PEP is introduced
     pep_sweep = -df_start_pos if df_start_pos != None else None
 
@@ -113,7 +113,7 @@ def analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, dis
 
     # Plot the LFPs if requested
     if show:
-        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep, out_dir=out_dir, show=show)
+        ephys_plots.plot_lfp(x, y_raw, y_processed, fname, disp_sweep, out_dir=out_dir)
 
     return prepep_transients, postpep_transients
 
