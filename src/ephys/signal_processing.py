@@ -21,6 +21,7 @@ DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
 DRIFT_FILT_FREQ = 200
 STD_THRESH = 4.75
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
+MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 
 def analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, disp_sweep=-1, show=False, verbose=True, out_dir=None):
     """Load and count the transients in a single ibw binary file.
@@ -117,27 +118,51 @@ def analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, dis
 
     return prepep_transients, postpep_transients
 
-def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=None, show=False):
-    """Analyze a directory of binary files using a master spreadsheet as metadata.
-        Binaries must be organized into subdirectories by date of experiment, and
-        subdirectories must be named in the format '[m]m dd yyyy'. Binaries must be
-        named starting with 'R[run number]_'.
+def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
+    # Find the starting sweep in the DataFrame
+    start_sweep_count = -1
+    while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
+        start_sweep = "transient"+str(start_sweep_count)
+        if sheet_df[start_sweep][idx] == "":
+            start_sweep_count += 1
+            break
+        start_sweep_count -= 1
 
-        Args:
-            sheet_path (str): The path to the master spreadsheet.
-            bin_dir (str): The path to the topmost binary directory.
-            verbose (bool): Print extra output info.
-            out_dir (str): The directory to save to. Saves to DEFAULT_OUT_DIR if None.
-            show (bool): Show the plots.
-        
-        Returns: void
-    """
-    sheet_df = sheet_parser.parse_sheet(sheet_path)
+    return start_sweep_count
 
-    # Load all subdirectories and sort by date
-    subdirs = os.listdir(bin_dir)
-    subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
+def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
+    has_cbd = sheet_df["has_cbd"][idx]
+    has_picro = sheet_df["has_picro"][idx]
+    has_bc = sheet_df["has_bc"][idx]
 
+    key = ""
+    key += "cbd" if has_cbd else ""
+    key += (("_" if key != "" else "") + "picro") if has_picro else ""
+    key += "_bc" if has_bc else ""
+    key = key if key != "" else "control"
+    key = ("btbr_" if sheet_df["genotype"][idx] == "BTBR" else "wt_") + key
+
+    return key
+
+def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
+    expt_type = _derive_experiment_key(df, idx)
+    sweep_idx = _find_first_transient_cell(df, idx)
+    
+    sweep_name = "transient"+("" if sweep_idx < 0 else "+")+str(sweep_idx)
+    prepep_transients = 0
+    postpep_transients = 0
+    while (sweep_idx < MAX_POST_PEP_SWEEP and df[sweep_name][idx] != ""):
+        if not np.isnan(df[sweep_name][idx]):
+            if sweep_idx < 0:
+                prepep_transients += df[sweep_name][idx]
+            else:
+                postpep_transients += df[sweep_name][idx]
+        sweep_idx += 1
+        sweep_name = "transient"+("" if sweep_idx < 0 else "+")+str(sweep_idx)
+
+    return expt_type, prepep_transients, postpep_transients
+
+def _init_transient_dict():
     # Create set of lists to hold transients counts for each experiment type
     expt_types = ["control",
                   "cbd",
@@ -148,7 +173,44 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
         ["btbr_"+t for t in expt_types]
     transients_by_expt_type = {t+"_pre": [] for t in expt_types} |\
         {t+"_post": [] for t in expt_types}
+    
+    return expt_types, transients_by_expt_type
 
+def get_manual_transient_count(df : pd.DataFrame):
+    row_count = len(df)
+    expt_types, transients = _init_transient_dict()
+    for i in range(row_count):
+        if df["data_OK"][i] == True:
+            continue
+        expt, prepep, postpep = _get_manual_transient_count_single(df, i)
+        transients[expt + "_pre"].append(prepep)
+        transients[expt + "_post"].append(postpep)
+
+    return expt_types, transients
+
+def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False):
+    """Analyze a directory of binary files using a master spreadsheet as metadata.
+        Binaries must be organized into subdirectories by date of experiment, and
+        subdirectories must be named in the format '[m]m dd yyyy'. Binaries must be
+        named starting with 'R[run number]_'.
+
+        Args:
+            sheet_df (DataFrame): The processed DataFrame derived from the
+                master spreadsheet.
+            bin_dir (str): The path to the topmost binary directory.
+            verbose (bool): Print extra output info.
+        
+        Returns:
+            tuple (expt_types, transients_by_expt_type):
+                expt_types: list of string keys for each experiment types.
+                transients_by_expt_type: dict of lists of transient counts
+                    in each experiment for each type.
+    """
+    # Load all subdirectories and sort by date
+    subdirs = os.listdir(bin_dir)
+    subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
+
+    expt_types, transients_by_expt_type = _init_transient_dict()
     # Iterate over all subdirectories
     i = 0 # Entry index in the DataFrame
     for d in subdirs:
@@ -158,15 +220,8 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
 
         # Iterate over all files in the subdirectory
         for f in file_list:
-            # Find the starting sweep in the DataFrame
-            start_sweep_count = -1
-            start_sweep = "transient-1"
-            while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
-                if sheet_df[start_sweep][i] == "":
-                    break
-                start_sweep = "transient"+str(start_sweep_count)
-                start_sweep_count -= 1
-
+            start_sweep_count = _find_first_transient_cell(sheet_df, i)
+            
             if sheet_df["data_OK"][i] == True:
                 if verbose:
                     run_id = f"{sheet_df["date"][i]} {sheet_df["run_num"][i]}"
@@ -174,19 +229,11 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
             else:
                 fpath = os.path.join(subdir_path, f)
                 pre_counted, post_counted = analyze_single_binary(fpath, df=sheet_df, entry_idx=i,
-                                                                    df_start_pos=start_sweep_count,
+                                                                    df_start_pos=start_sweep_count-1,
                                                                     verbose=verbose, show=False)
-                
+
                 # Add transient counts to appropriate lists
-                has_cbd = sheet_df["has_cbd"][i]
-                has_picro = sheet_df["has_picro"][i]
-                has_bc = sheet_df["has_bc"][i]
-                key = ""
-                key += "cbd" if has_cbd else ""
-                key += (("_" if key != "" else "") + "picro") if has_picro else ""
-                key += "_bc" if has_bc else ""
-                key = key if key != "" else "control"
-                key = ("btbr_" if sheet_df["genotype"][i] == "BTBR" else "wt_") + key
+                key = _derive_experiment_key(sheet_df, i)
                 transients_by_expt_type[key + "_pre"].append(pre_counted)
                 transients_by_expt_type[key + "_post"].append(post_counted)
 
@@ -200,11 +247,10 @@ def analyze_binaries(sheet_path : str, bin_dir : str, verbose=False, out_dir=Non
             if verbose:
                 print()
 
-    ephys_plots.plot_scatter_columns(expt_types, transients_by_expt_type,
-                                     out_dir=out_dir, show=show)
+    return expt_types, transients_by_expt_type
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--fname', type=str, default=None,
                         help='Path to ibw binary file.')
     parser.add_argument('--dirname', type=str, default=DEFAULT_IN_DIR,
@@ -213,32 +259,58 @@ Subdirectories must have naming scheme m dd yyyy.""")
     parser.add_argument('--sweep', default=0, type=int,
                         help='The 1-indexed sweep number to examine. Leave out for all sweeps')
     parser.add_argument('--sheet-path', default=DEFAULT_SHEET_PATH, type=str,
-                        help="""Path to master spreadsheet file to supply ancillary data for 
-binary analysis.""")
+                        help="""Path to master spreadsheet file to supply ancillary data for binary analysis.""")
     parser.add_argument('--show', default=False, action='store_true',
                         help='Show plots after completion.')
     parser.add_argument('--out-dir', default=DEFAULT_OUT_DIR, type=str,
                         help='Directory to save figures to.')
     parser.add_argument('-v', '--verbose', action='store_true',
-                        default=False, help='Print binary analyses for each file')
+                        default=False, help='Print binary analyses for each file.')
     parser.add_argument('-q', '--quiet', action='store_true', default=False,
-                        help='Print nothing. Overrides verbose')
+                        help='Print nothing. Overrides verbose.')
+    parser.add_argument('--mode', type=str, default='scatter_col_auto',
+                        help="""Mode for multi-binary analysis plots.
+    \nscatter_col_auto: Plot scatter column plot of pre- and post-PEP transient counts by
+    experiment type, using std-threshold signal analysis.
+    \nscatter_col_man: Plot scatter column plot of pre- and post-PEP transient counts by
+    experiment type, using manual transient tallies from master sheet.
+    \nmean_cv: Plot two-row bar graph of mean and CV of transient counts by experiment
+    type, plotting both pre- and post-PEP.
+    \nauto_v_man: Plot a scatter plot of the automatic transient tally against the
+    manual one.""")
 
     args = parser.parse_args()
     fname = args.fname
     dirname = args.dirname
     sheet_path = args.sheet_path
     out_dir = args.out_dir
-
     sweep = args.sweep - 1
     show = args.show
     quiet = args.quiet
     verbose = args.verbose if not quiet else False
+    mode = args.mode
 
     if fname != None:
         analyze_single_binary(fname, disp_sweep=sweep, show=show, verbose=not quiet, out_dir=out_dir)
     else:
-        analyze_binaries(sheet_path, dirname, show=show, verbose=verbose, out_dir=out_dir)
+        sheet_df = sheet_parser.parse_sheet(sheet_path)
+        if "auto" in mode:
+            expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=verbose)
+        if "man" in mode:
+            expt_types, transients_man = get_manual_transient_count(sheet_df)
+        match mode:
+            case 'scatter_col_auto':
+                ephys_plots.plot_scatter_columns(expt_types, transients_auto,
+                                                 show=show, out_dir=DEFAULT_OUT_DIR, out_suffix="_auto",
+                                                 title="Transients by Experiment (Automated Counting)")
+            case 'scatter_col_man':
+                ephys_plots.plot_scatter_columns(expt_types, transients_man,
+                                                 show=show, out_dir=DEFAULT_OUT_DIR, out_suffix="_man",
+                                                 title="Transients by Experiment (Manual Counting)")
+            case 'mean_cv':
+                pass
+            case 'auto_v_man':
+                pass
         
 if __name__ == "__main__":
     main()

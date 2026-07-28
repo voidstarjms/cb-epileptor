@@ -54,26 +54,21 @@ def plot_lfp(x : np.array, y_raw : np.array, y_processed : np.array,
 
     plt.show()
 
-
-def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = None, show : bool = False):
-    """Scatter plot organized by column, with each column representing a class of experiment.
-        Pre-PEP transient counts are to the left of the column, post-PEP to the right, with
-        lines connecting the pre and post values for a given experiment.
+def _filter_entryless_columns(expt_types : list, transients : dict):
+    """Delete experiment types with empty transient count lists.
 
     Args:
         expt_types (list[str]): List of experiment type names, keys to the transients dict.
         transients (dict[list]): Dictionary of lists containing transient counts for each
             experiment of each experiment type.
-        out_dir (str): Directory to save figures to. Pass none to forgo saving.
-        show (bool): Show the plot.
-
-    Returns: void
+        
+    Returns:
+        tuple (prepep_keys, postpep_keys, col_ids, btbr_start_col)
+            prepep_keys: Keys corresponding to pre-PEP transient counts.
+            postpep_keys: Keys corresponding to post-PEP transient counts.
+            col_ids: List of column positions.
+            btbr_start_col: The column at which BTBR experiments start in the column list.
     """
-
-    fig = plt.figure(figsize=(20, 12))
-    fig.add_axes((0.05, 0.1, 0.9, 0.8))
-    ax1 = fig.axes[0]
-
     # Check for columns with no entries
     no_entry_keys = []
     max_col_num = len(expt_types)
@@ -105,6 +100,48 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
     # Construct lists of keys, scatter x positions, and scatter y positions for prepep and postpep
     prepep_keys = list(transients.keys())[:col_num]
     postpep_keys = list(transients.keys())[col_num:]
+
+    return (prepep_keys, postpep_keys, col_ids, btbr_start_col)
+
+# TODO WIP
+def plot_mean_cv_bar(expt_types : list, transients : dict, out_dir : str = None, show : bool = False):
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 12))
+
+    prepep_keys, postpep_keys, col_ids, btbr_start_col = _filter_entryless_columns(
+        expt_types, transients)
+    col_num = len(col_ids)
+
+    offset = 0.25
+    prepep_means = [np.mean(np.array(transients[k])) for k in prepep_keys]
+    ax1.bar(col_ids - offset, prepep_means)
+
+    plt.show()
+
+def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = None, show : bool = False, out_suffix : str = "",
+                         title : str = None):
+    """Scatter plot organized by column, with each column representing a class of experiment.
+        Pre-PEP transient counts are to the left of the column, post-PEP to the right, with
+        lines connecting the pre and post values for a given experiment.
+
+    Args:
+        expt_types (list[str]): List of experiment type names, keys to the transients dict.
+        transients (dict[list]): Dictionary of lists containing transient counts for each
+            experiment of each experiment type.
+        out_dir (str): Directory to save figures to. Pass none to forgo saving.
+        show (bool): Show the plot.
+        out_suffix (str): Suffix for the file name, appended before the extension.
+
+    Returns: void
+    """
+
+    fig = plt.figure(figsize=(20, 12))
+    fig.add_axes((0.05, 0.1, 0.9, 0.8))
+    ax1 = fig.axes[0]
+
+    prepep_keys, postpep_keys, col_ids, btbr_start_col = _filter_entryless_columns(
+        expt_types, transients)
+    col_num = len(col_ids)
+
     jitter = 0.05
     offset = 0.25
 
@@ -164,9 +201,10 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
     ax1.set_xlabel("Experiment Type", fontsize=20)
     plt.xticks(col_ids, col_labels)
     ax1.legend()
+    fig.suptitle(title, fontsize=30)
 
     if out_dir != None:
-        plt.savefig(os.path.join(out_dir, "ephys_scatter_columns"))
+        plt.savefig(os.path.join(out_dir, "ephys_scatter_columns"+out_suffix))
 
     if show:
         plt.show()
