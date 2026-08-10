@@ -295,9 +295,9 @@ def main() -> None:
     parser.add_argument('--cb', action='store_true', default=False,
                         help="Enable CB synapses (default: disabled)")
     parser.add_argument('--params', type=str, default=DEFAULT_PARAMS,
-                        help="Parameter set to use (default: 'default')")
+                        help="Parameter set to use")
     parser.add_argument('--out-dir', type=str, default=DEFAULT_OUT_DIR,
-                        help="Output directory (default: 'output/')")
+                        help="Output directory")
     parser.add_argument('--png', action='store_true', default=False,
                         help='Pass this flag to save standard plot as png instead of svg')
     args = parser.parse_args()
