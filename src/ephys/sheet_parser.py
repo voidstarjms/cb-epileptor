@@ -65,8 +65,8 @@ def parse_sheet(path : str) -> pd.DataFrame:
         has_cbd = "cbd" in raw_df_view["vehicle"][ent_start].lower()
         has_picro = "picrotoxin" in raw_df_view["vehicle"][ent_start].lower()
         has_bc = "bc" in raw_df_view["vehicle"][ent_start].lower()
-        
-        data_ok = True if raw_df_view["total_transients"][ent_start] else False
+
+        data_ok = not raw_df_view["total_transients"][ent_start]
         total_transients = raw_df_view["total_transients"][ent_start + 2]
         resistance = raw_df_view["genotype"][ent_start + 2]
 

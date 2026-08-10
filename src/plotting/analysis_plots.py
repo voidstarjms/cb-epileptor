@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import scipy
-from scipy import signal
+from scipy import signal, ndimage
 from typing import Dict, Any
 
 import plotting.style  # noqa: F401
 
+EPHYS_FS = 10000
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     """Overlay raw and Gaussian-smoothed traces for neuron 0, past the transient.
@@ -82,7 +83,48 @@ def plot_mean_potential():
     # ax1.set_xlabel("Time (s)")
     # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
-def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray, fmax: float = 100.0) -> None:
+def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : float,
+                          fname : str = "power", amp_bounds : tuple = (None, None),
+                          labels : list = None):
+    if labels != None and len(labels) != len(lfp_list):
+        print(f"_make_power_spec_plot: Label count does not match LFP count. Label count is {len(labels)} but LFP count is {len(lfp_list)}")
+        return
+    
+    f_list = []
+    Pxx_list = []
+    for i in lfp_list:
+        f, Pxx = signal.welch(i, fs=fs, nperseg=16384)
+        f_list.append(f)
+        Pxx_list.append(Pxx)
+
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+    fig.suptitle("Power Spectrum")
+
+    if labels == None:
+        for f, Pxx in zip(f_list, Pxx_list):
+            ax.semilogy(f, Pxx)
+    else:
+        for f, Pxx, l in zip(f_list, Pxx_list, labels):
+            ax.semilogy(f, Pxx, label=l)
+    
+    ax.set_xlim(0, fmax)
+    min_amp, max_amp = amp_bounds
+    if min_amp != None:
+        ax.set_ylim(bottom=min_amp)
+    if max_amp != None:
+        ax.set_ylim(top=max_amp)
+
+    ax.set_ylabel("PSD (a.u.)")#"PSD (V^2/Hz)")
+    ax.set_xlabel("Frequency (Hz)")
+    if labels != None:
+        plt.legend()
+
+    plt.savefig(os.path.join(fig_dir, fname + ".png"), format="png")
+    plt.show()
+
+
+def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
+                    fmax: float = 40.0, fname : str = "power") -> None:
     """Welch power spectrum of the 80/20 HR/ML weighted-mean signal.
 
     Args:
@@ -97,18 +139,19 @@ def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.nd
     x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
 
     fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
-    f, Pxx = signal.welch(x_mean, fs=fs)
+    _make_power_spec_plot(filepaths.figures_dir, [x_mean], fs, fmax, fname=fname)
 
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-    fig.suptitle("Power Spectrum")
-    ax.semilogy(f, Pxx)
-    ax.set_xlim(0, fmax)
-    ax.set_ylabel("Power (a.u.)")
-    ax.set_xlabel("Frequency (Hz)")
+def plot_ephys_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
+                          fname : str = "ephys_power", labels : list = None):
+    _make_power_spec_plot(fig_dir, lfp_list, EPHYS_FS, fmax, fname=fname,
+                          amp_bounds=(10e-17, 10e-12), labels=labels)
 
-    plt.savefig(os.path.join(filepaths.figures_dir, "power.png"), format="png")
-    plt.show()
-
+def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
+                               fname : str = "ephys_mean_power", labels : list = None):
+    mean_list = []
+    for i in lfp_list:
+        mean_list.append(np.mean(i, axis=0))
+    plot_ephys_power_spec(fig_dir, mean_list, fmax, fname=fname, labels=labels)
 
 def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                      t: np.ndarray = None, x0_t: np.ndarray = None, ce_t: np.ndarray = None,
