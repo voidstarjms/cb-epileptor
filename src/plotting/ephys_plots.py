@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import ticker
 import os
 from scipy.stats import linregress, wilcoxon
 
@@ -34,27 +35,29 @@ def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed 
     # PLot a single LFP and the transients detected from it
     else:
         fig, (ax1, ax2, ax3) = plt.subplots(3, 1, sharex=True)
-        fig.set_size_inches(10, 6)
+        fig.set_size_inches(18, 10)
         infile_parts = infile.split(os.sep)[-1].split(".")[0].split("_")
         sweep_num = f"Sweep {disp_sweep+1}" if disp_sweep >= 0 else "All Sweeps"
         fdate = f"{infile_parts[-3]}-{infile_parts[-2]}-{infile_parts[-1]} {infile_parts[0]} {sweep_num}"
         fig.suptitle(f"{fdate}", fontsize=22)
-        ax1.plot(x, y_raw[:, disp_sweep])
-        ax2.plot(x, y_filtered[:, disp_sweep])
-        ax3.plot(x, y_processed[:, disp_sweep])
+        ax1.plot(x * 1000, y_raw[:, disp_sweep])
+        ax2.plot(x * 1000, y_filtered[:, disp_sweep])
+        ax3.plot(x * 1000, y_processed[:, disp_sweep])
 
-        ax1.set_ylabel("Raw LFP (V)", fontsize=15)
-        ax2.set_ylabel("Filtered\nLFP (V)", fontsize=15)
-        ax3.set_ylabel("Detected\nTransients (V)", fontsize=15)
-        ax3.set_xlabel("Time (s)", fontsize=15)
+        ax3.xaxis.set_major_locator(ticker.MaxNLocator(nbins=21))
+
+        ax1.set_ylabel("Raw LFP (V)", fontsize=14)
+        ax2.set_ylabel("Filtered\nLFP (V)", fontsize=14)
+        ax3.set_ylabel("Detected\nTransients (V)", fontsize=14)
+        ax3.set_xlabel("Time (ms)", fontsize=14)
         
-        ax1.tick_params(axis='both', which='major', labelsize=10)
-        ax2.tick_params(axis='both', which='major', labelsize=10)
-        ax3.tick_params(axis='both', which='major', labelsize=10)
+        ax1.tick_params(axis='both', which='major', labelsize=12)
+        ax2.tick_params(axis='both', which='major', labelsize=12)
+        ax3.tick_params(axis='both', which='major', labelsize=12)
 
-        ax1.yaxis.get_offset_text().set_fontsize(10)
-        ax2.yaxis.get_offset_text().set_fontsize(10)
-        ax3.yaxis.get_offset_text().set_fontsize(10)
+        ax1.yaxis.get_offset_text().set_fontsize(12)
+        ax2.yaxis.get_offset_text().set_fontsize(12)
+        ax3.yaxis.get_offset_text().set_fontsize(12)
 
         ax2.axhline(std_thresh[disp_sweep], c='r')
         ax3.axhline(std_thresh[disp_sweep], c='r', label="Threshold")
@@ -303,8 +306,8 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
     auto_post_transients = [e for k in auto_postpep_keys for e in auto_transients[k]]
 
     # Plot pre-PEP comparison
-    # print(len(man_pre_transients), len(auto_pre_transients))
-    # print(len(man_post_transients), len(auto_post_transients))
+    print(len(man_pre_transients), len(auto_pre_transients))
+    print(len(man_post_transients), len(auto_post_transients))
     ax1.scatter(man_pre_transients, auto_pre_transients)
     ax1.tick_params(axis='both', which='major', labelsize=15)
     ax1.set_xlabel("# Transients (Manual)", fontsize=20)

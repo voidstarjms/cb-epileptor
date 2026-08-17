@@ -1,20 +1,27 @@
 #!/bin/bash
 
+# Ensure correct number of arguments
+if [ $# != 1 ]; then
+    echo "Usage ./setup_condor.sh [run_name]"
+    exit 1
+fi
+
 CONDOR_DIR="$(realpath .)"
 PROJ_DIR="$(realpath ..)"
 SWEEP_DIR="$PROJ_DIR/src/sweep"
+PARAM_DIR="$SWEEP_DIR/params/$1/"
 
-RUN_NUM=1
-while [ -d "$SWEEP_DIR/figures/${RUN_NUM}_sweep_debug" ]; do
-    RUN_NUM=$((RUN_NUM + 1))
-done
+# Make sure specified run exists
+if [ ! -d $PARAM_DIR ]; then
+    echo "Parameter directory ${$PARAM_DIR} does not exist"
+    exit 2
+fi
 
-LOG_DIR="$CONDOR_DIR/logs/${RUN_NUM}_synchrony"
+LOG_DIR="$CONDOR_DIR/logs/${$1}_synchrony"
 mkdir -p "$LOG_DIR"
-mkdir -p "$SWEEP_DIR/data/results"   # where transferred-back metrics pkls land
-echo "$RUN_NUM" > "$SWEEP_DIR/current_run.txt"
+mkdir -p "$SWEEP_DIR/data/results"   # where transferred metrics pkls land
 
-echo "Run number: $RUN_NUM"
+echo "Run name: $1"
 echo "Created $LOG_DIR"
 echo "Wrote $SWEEP_DIR/current_run.txt"
 
@@ -40,5 +47,5 @@ Request_Memory = 32GB
 
 +CSCI_GrpDesktop = True
 
-Queue params_file from $SWEEP_DIR/params_list.txt
+Queue params_file from $PARAM_DIR/params_list.txt
 EOF

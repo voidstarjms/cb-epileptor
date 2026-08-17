@@ -1,6 +1,7 @@
 import numpy as np
 from igor2 import binarywave
 import matplotlib.pyplot as plt
+from scipy.stats import median_abs_deviation
 from scipy.signal import filtfilt, butter, find_peaks, welch, savgol_filter
 import argparse
 import os
@@ -19,8 +20,8 @@ from plotting import analysis_plots
 DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
 DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
-DRIFT_FILT_FREQ = 200
-STD_THRESH = 4.75
+DRIFT_FILT_FREQ = 150
+STD_THRESH = 8
 EPHYS_FS = 10000
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
@@ -73,22 +74,27 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
     y_processed = np.empty((end_time - start_time, y.shape[1]))
     thresh = np.empty(y.shape[1])
     transients_per_sweep = np.zeros(y.shape[1], dtype=int)
+    #print(fname)
+    #print("Number of sweeps:", y.shape[1])
     for i in range(y.shape[1]):
         # Check for NaN sweep, continue if so
         if scan_for_nan:
             df_sweep_name = "transient" + ("+" if df_start_pos >= 0 else "") + str(df_start_pos)
             df_start_pos += 1
-            if df[df_sweep_name][entry_idx] == np.nan:
+            #print(df[df_sweep_name][entry_idx])
+            if np.isnan(float(df[df_sweep_name][entry_idx])):
                 continue
 
         y_filtered[:, i] = butter_highpass_filter(y[start_time:end_time, i], DRIFT_FILT_FREQ, EPHYS_FS)
         y_raw[:, i] = y[:, i]
         
-        mean = np.mean(y_filtered[:, i])
-        stdev = np.std(y_filtered[:, i])
+        #mean = np.mean(y_filtered[:, i])
+        #stdev = np.std(y_filtered[:, i])
+        median = np.median(y_filtered[:, i])
+        mad = median_abs_deviation(y_filtered[:, i])
 
-        normalized_y = y_filtered[:, i] - mean
-        thresh[i] = -STD_THRESH * stdev
+        normalized_y = y_filtered[:, i] - median
+        thresh[i] = -STD_THRESH * mad
         y_thresholded = np.where(normalized_y < thresh[i], normalized_y, 0)
         transients_per_sweep[i] = find_peaks(y_thresholded)[0].shape[0]
         y_processed[:, i] = y_thresholded
@@ -234,6 +240,7 @@ def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
     sweep_name = "transient"+("" if sweep_idx < 0 else "+")+str(sweep_idx)
     prepep_transients = []
     postpep_transients = []
+    print(df["date"][idx], df["run_num"][idx])
     while (sweep_idx < MAX_POST_PEP_SWEEP and df[sweep_name][idx] != ""):
         # Make sure nan values don't get added
         if not np.isnan(df[sweep_name][idx]):
@@ -343,8 +350,9 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggr
             else:
                 fpath = os.path.join(subdir_path, f)
                 pre_counted, post_counted = get_binary_transients(fpath, df=sheet_df, entry_idx=i,
-                                                                    df_start_pos=start_sweep_count-1,
+                                                                    df_start_pos=start_sweep_count,
                                                                     verbose=verbose, show=False)
+                
                 if aggregate:
                     pre_counted = [np.sum(pre_counted)]
                     post_counted = [np.sum(post_counted)]
@@ -358,6 +366,8 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggr
 
                 if verbose:
                     print("Expected transients:", sheet_df["total_transients"][i])
+                    print(f"Pre-PEP transients: {int(pre_counted[0])}")
+                    print(f"Post-PEP transients: {int(post_counted[0])}")
                 
             i += 1 # Increment DataFrame index
             if verbose:
@@ -411,6 +421,12 @@ Subdirectories must have naming scheme m dd yyyy.""")
     mode = args.mode
     etype = args.type
     sheet_df = sheet_parser.parse_sheet(sheet_path)
+
+    if mode == None:
+        print("Please specify a mode with --mode.")
+        sys.exit(1)
+
+    # TODO debug pipeline to get this working
     if False:#mode == 'auto_v_man':
         expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=verbose,
                                                         aggregate=False)
