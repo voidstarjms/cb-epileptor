@@ -49,10 +49,10 @@ if len(all_results) == 0:
 print(f"Loaded {len(all_results)} job results")
 
 # Reconstruct param axes from results
-J_values = sorted(set(round(r['J'], 6) for r in all_results))
-excite_values = sorted(set(round(r['epop_excite'], 6) for r in all_results))
-Gintra_values = sorted(set(round(r['Gintra'], 6) for r in all_results))
-Ginter_values = sorted(set(round(r['Ginter'], 6) for r in all_results))
+J_values = sorted(set(round(r['params']['COUPLING_STRENGTH'], 6) for r in all_results))
+excite_values = sorted(set(round(r['params']['EPOP_BASE_EXCITE'], 6) for r in all_results))
+Gintra_values = sorted(set(round(r['params']['G_INTRA'], 6) for r in all_results))
+Ginter_values = sorted(set(round(r['params']['G_INTER'], 6) for r in all_results))
 print(f"J values  ({len(J_values)}): {[round(v,3) for v in J_values]}")
 print(f"Epop excite values ({len(excite_values)}): {[round(v,3) for v in excite_values]}")
 print(f"Gintra values ({len(Gintra_values)}): {[round(v,3) for v in Gintra_values]}")
@@ -64,9 +64,9 @@ p2_label = r'Innate Excitability ($x_0$)'
 # Group chi values by (ce, x0, Gintra, Ginter) across realizations
 chi_by_point = defaultdict(list)
 for r in all_results:
-    print(r)
+    #print(r)
     key = (round(r['J'], 6), round(r['epop_excite'], 6), round(r['Gintra'], 6), round(r['Ginter'], 6))
-    chi_by_point[key].append(r['r'])
+    chi_by_point[key].append(r['r_exc'] + r['r_inh'])
 
 figures_dir = 'figures'
 os.makedirs(figures_dir, exist_ok=True)

@@ -8,4 +8,4 @@ mkdir -p venv
 tar -xzf cn_venv.tar.gz -C venv
 . venv/bin/activate
 cd src/sweep
-exec python "$@"
+exec python3 "$@"
