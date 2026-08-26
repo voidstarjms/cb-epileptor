@@ -108,7 +108,7 @@ def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
     plot_synchrony_multifaceted_single(filepaths, chi_mean, param1_values, param2_values,
                           param3_values, param4_values, param1_label, param2_label,
                           param3_label, param4_label, title='Synchrony of Network (CB On)',#+plot_sync_metric_name,
-                          vmin=0.5, vmax=1,
+                          vmin=1.15, vmax=1.75,
                           save_name=save_name_prefix+'_mean_full.png')
 
     sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15

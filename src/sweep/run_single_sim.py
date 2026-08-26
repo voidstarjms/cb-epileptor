@@ -108,7 +108,7 @@ def main():
     )
 
     # In-memory pipeline: no output.pkl write/read/delete on NFS.
-    data = run_sim(filepaths, params_dict, cb_on=True, save_to_disk=False)
+    data = run_sim(filepaths, params_dict, cb_on=True, save=False)
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
@@ -143,15 +143,12 @@ def main():
     results_dir = os.environ.get('_CONDOR_SCRATCH_DIR', os.path.join('data', 'results'))
     os.makedirs(results_dir, exist_ok=True)
     job_result = {
-        'J':           coupling_J,
-        'epop_excite': epop_excite,
-        'Gintra':      Gintra,
-        'Ginter':      Ginter,
-        'realization': realization,
+        'params':           params_dict,
+        'realization':      realization,
         'chi_exc':          float(chi_exc),
         'chi_inh':          float(chi_inh),
-        'r_exc':            float(r_exc),
-        'r_inh':            float(r_inh),
+        'r_exc':            float(np.mean(r_exc)),
+        'r_inh':            float(np.mean(r_inh)),
         'exc_spike_mat':    spike_matrix_1.astype(np.uint8),
         'inh_spike_mat':    spike_matrix_2.astype(np.uint8),
     }

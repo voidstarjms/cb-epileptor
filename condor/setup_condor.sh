@@ -13,13 +13,13 @@ PARAM_DIR="$SWEEP_DIR/params/$1/"
 
 # Make sure specified run exists
 if [ ! -d $PARAM_DIR ]; then
-    echo "Parameter directory ${$PARAM_DIR} does not exist"
+    echo "Parameter directory $PARAM_DIR does not exist"
     exit 2
 fi
 
-LOG_DIR="$CONDOR_DIR/logs/${$1}_synchrony"
+LOG_DIR="$CONDOR_DIR/logs/$1"
 mkdir -p "$LOG_DIR"
-mkdir -p "$SWEEP_DIR/data/results"   # where transferred metrics pkls land
+mkdir -p "$PROJ_DIR/output/$1/data/results"   # where transferred metrics pkls land
 
 echo "Run name: $1"
 echo "Created $LOG_DIR"
@@ -36,7 +36,7 @@ should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
 transfer_input_files    = $PROJ_DIR/src, $CONDOR_DIR/cn_venv.tar.gz
 transfer_output_files   = metrics_\$Fn(params_file).pkl
-transfer_output_remaps  = "metrics_\$Fn(params_file).pkl = data/results/metrics_\$Fn(params_file).pkl"
+transfer_output_remaps  = "metrics_\$Fn(params_file).pkl = ../../output/$1/data/results/metrics_\$Fn(params_file).pkl"
 
 Output = $LOG_DIR/out_\$(Process).log
 Error  = $LOG_DIR/err_\$(Process).log
@@ -47,5 +47,5 @@ Request_Memory = 32GB
 
 +CSCI_GrpDesktop = True
 
-Queue params_file from $PARAM_DIR/params_list.txt
+Queue params_file from ${PARAM_DIR}params_list.txt
 EOF
