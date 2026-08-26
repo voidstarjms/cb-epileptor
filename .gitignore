@@ -6,6 +6,9 @@
 
 **/__pycache__
 **/*.pyc
+output
+parameters
+figures
 src/data
 src/figures
 src/output

@@ -6,11 +6,11 @@ from scipy.signal import filtfilt, butter, find_peaks, welch, savgol_filter
 import argparse
 import os
 import sys
-import numpy as np
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import sheet_parser
+import ephys_util as eh
 
 sys.path.append("..")
 from plotting import ephys_plots
@@ -240,7 +240,6 @@ def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
     sweep_name = "transient"+("" if sweep_idx < 0 else "+")+str(sweep_idx)
     prepep_transients = []
     postpep_transients = []
-    print(df["date"][idx], df["run_num"][idx])
     while (sweep_idx < MAX_POST_PEP_SWEEP and df[sweep_name][idx] != ""):
         # Make sure nan values don't get added
         if not np.isnan(df[sweep_name][idx]):
@@ -253,33 +252,83 @@ def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
 
     return expt_type, prepep_transients, postpep_transients
 
+# TODO add args to this to allow expt_type set switching without commenting
 def _init_transient_dict():
-    # Create set of lists to hold transients counts for each experiment type
-    # Base experiment set
-    expt_types = ["control",
-                  "cbd_10uM"]
-                #   "cbd_100uM",
-                #   "picro",
-                #   "cbd_10uM_picro",
-                #   "cbd_100uM_picro",
-                #   "cbd_10uM_bc",
-                #   "cbd_100uM_bc"]
-    # expt_types = ["control",
-    #               "cbd",
-    #               "picro",
-    #               "cbd_picro",
-    #               "cbd_bc"]
+    expt_type_list = []
+    control = False
+    cbd = False
+    picro = False
+    cbd_picro = False
+    cbd_bc = False
+    cbd_amounts = None
+    cbd_list = []
 
+    # Read CSV to get experiment types and CBD concentrations
+    with open("expt_types.csv", "r") as f:
+        expt_types = f.readline().split(",")
+        if len(expt_types) == 0:
+            print("_init_transient_dict: expt_types.csv is empty or starts with empty line.")
+            sys.exit(1)
+        for i in range(len(expt_types)):
+            expt_types[i] = expt_types[i].strip()
+        
+        for ent in expt_types:
+            match ent:
+                case "control":
+                    control = True
+                case "cbd":
+                    cbd = True
+                case "picro":
+                    picro = True
+                case "cbd_picro":
+                    cbd_picro = True
+                case "cbd_bc":
+                    cbd_bc = True
+
+        cbd_amounts = f.readline().split(",")
+        if cbd_amounts != None:
+            for i in range(len(cbd_amounts)):
+                cbd_amounts[i] = cbd_amounts[i].strip()
+
+    # Generate prefixes for all CBD concentrations
+    if cbd_amounts is None:
+        cbd_list.append("cbd")
+    else:
+        for i in cbd_amounts:
+            cbd_list.append("cbd_"+i)
+
+    # Control entries
+    if control == True:
+        expt_type_list.append("control")
+    
+    # CBD entries
+    if cbd == True:
+        for i in cbd_list:
+            expt_type_list.append(i)
+
+    # Picro
+    if picro == True:
+        expt_type_list.append("picro")
+
+    # CBD picro
+    if cbd_picro == True:
+        for i in cbd_list:
+            expt_type_list.append(i+"_picro")
+
+    # CBD BC
+    if cbd_bc == True:
+        for i in cbd_list:
+            expt_type_list.append(i+"_bc")
 
     # WT vs. BTBR experiments
-    expt_types = ["wt_"+t for t in expt_types] +\
-        ["btbr_"+t for t in expt_types]
+    expt_type_list = ["wt_"+t for t in expt_type_list] +\
+        ["btbr_"+t for t in expt_type_list]
 
     # Pre- vs. post-PEP
-    transients_by_expt_type = {t+"_pre": [] for t in expt_types} |\
-        {t+"_post": [] for t in expt_types}
+    transients_by_expt_type = {t+"_pre": [] for t in expt_type_list} |\
+        {t+"_post": [] for t in expt_type_list}
 
-    return expt_types, transients_by_expt_type
+    return expt_type_list, transients_by_expt_type
 
 def get_manual_transient_count(df : pd.DataFrame, aggregate : bool = True):
     row_count = len(df)
@@ -381,7 +430,7 @@ def main():
                         help='Path to ibw binary file.')
     parser.add_argument('--dirname', type=str, default=DEFAULT_IN_DIR,
                         help="""Path to directory of ibw binary files. 
-Subdirectories must have naming scheme m dd yyyy.""")
+Subdirectories must have naming scheme [m]m dd yyyy.""")
     parser.add_argument('--sweep', default=0, type=int,
                         help='The 1-indexed sweep number to examine. Leave out for all sweeps')
     parser.add_argument('--sheet-path', default=DEFAULT_SHEET_PATH, type=str,
@@ -390,24 +439,28 @@ Subdirectories must have naming scheme m dd yyyy.""")
                         help='Show plots after completion.')
     parser.add_argument('--out-dir', default=DEFAULT_OUT_DIR, type=str,
                         help='Directory to save figures to.')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        default=False, help='Print binary analyses for each file.')
-    parser.add_argument('-q', '--quiet', action='store_true', default=False,
-                        help='Print nothing. Overrides verbose.')
+    parser.add_argument('-v', '--verbose', action='count',
+                        default=0, help='Verbosity of operations.')
     parser.add_argument('--mode', '-m', type=str, default=None,
                         help="""Mode for multi-binary analysis plots.
-    \nscatter_col_auto: Plot scatter column plot of pre- and post-PEP transient counts by
-    experiment type, using std-threshold signal analysis.
-    \nscatter_col_man: Plot scatter column plot of pre- and post-PEP transient counts by
-    experiment type, using manual transient tallies from master sheet.
-    \nmean_cv_auto: Plot two-row bar graph of mean and CV of transient counts by experiment
-    type, plotting both pre- and post-PEP. Uses automated transient counting.
-    \nmean_cv_man: Plot two-row bar graph of mean and CV of transient counts by experiment
-    type, plotting both pre- and post-PEP. Uses manual transient counts from sheet.
+    \nscatter_col: Plot scatter column plot of pre- and post-PEP transient counts by
+    experiment type.
+    \nmean_cv: Plot two-row bar graph of mean and CV of transient counts by experiment
+    type, plotting both pre- and post-PEP.
     \nauto_v_man: Plot a scatter plot of the automatic transient tally against the
-    manual one.""")
+    manual one.
+    \npower: Plot mean pre- and post-PEP power spectral density for a given run.
+    \npower_by_type: Plot mean pre- and post-PEP power spectral density of all runs of
+    a given type.
+    \nmean_spikes: Print mean pre- and post-PEP spike counts for each experiment type.
+    \nwilcoxon: Print statistic value and p-value from Wilcoxon signed-rank test for
+    each experiment type.
+    \nchange_score: Print pre-to-post change scores for each experiment of each type.
+    \n""")
     parser.add_argument('--type', '-t', type=str, default=None,
                         help="Type of experiment for analysis. Used by power_by_type.")
+    parser.add_argument('--man', action='store_true', default=False,
+                        help="Use manual counts from master sheet.")
 
     args = parser.parse_args()
     fname = args.fname
@@ -416,10 +469,10 @@ Subdirectories must have naming scheme m dd yyyy.""")
     out_dir = args.out_dir
     sweep = args.sweep - 1
     show = args.show
-    quiet = args.quiet
-    verbose = args.verbose if not quiet else False
+    verbose = args.verbose
     mode = args.mode
     etype = args.type
+    manual = args.man
     sheet_df = sheet_parser.parse_sheet(sheet_path)
 
     if mode == None:
@@ -427,15 +480,21 @@ Subdirectories must have naming scheme m dd yyyy.""")
         sys.exit(1)
 
     # TODO debug pipeline to get this working
-    if False:#mode == 'auto_v_man':
-        expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=verbose,
-                                                        aggregate=False)
-        expt_types, transients_man = get_manual_transient_count(sheet_df, aggregate=False)
+    if mode == 'auto_v_man':
+        expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=(verbose > 1),
+                                                        aggregate=True)
+        expt_types, transients_man = get_manual_transient_count(sheet_df, aggregate=True)
     else:
-        if "auto" in mode:
-            expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=verbose)
-        if "man" in mode:
-            expt_types, transients_man = get_manual_transient_count(sheet_df)
+        if manual:
+            expt_types, transients = get_manual_transient_count(sheet_df)
+            title_suffix = "(Manual Counting)"
+            out_suffix = "_man"
+        else:
+            expt_types, transients = analyze_binaries(sheet_df, dirname, verbose=(verbose > 1))
+            title_suffix = "(Automated Counting)"
+            out_suffix = "_auto"
+        expt_types, col_num, split_point =\
+            eh.separate_prepost_columns(expt_types, transients)
     
     match mode:
         case 'single_file':
@@ -444,23 +503,17 @@ Subdirectories must have naming scheme m dd yyyy.""")
                 sys.exit(1)
             else:
                 get_binary_transients(fname, disp_sweep=sweep, show=show,
-                                       verbose=not quiet, out_dir=out_dir)
-        case 'scatter_col_auto':
-            ephys_plots.plot_scatter_columns(expt_types, transients_auto,
-                                                show=show, out_dir=out_dir, out_suffix="_auto",
-                                                title="Transients by Experiment (Automated Counting)")
-        case 'scatter_col_man':
-            ephys_plots.plot_scatter_columns(expt_types, transients_man,
-                                                show=show, out_dir=out_dir, out_suffix="_man",
-                                                title="Transients by Experiment (Manual Counting)")
-        case 'mean_cv_auto':
-            ephys_plots.plot_mean_cv_bar(expt_types, transients_auto, out_dir=out_dir,
-                                            show=show, title="Transient Stats (Automated Counting)",
-                                            out_suffix="_auto")
-        case 'mean_cv_man':
-            ephys_plots.plot_mean_cv_bar(expt_types, transients_man, out_dir=out_dir,
-                                            show=show, title="Transient Stats (Manual Counting)",
-                                            out_suffix="_man")
+                                       verbose=(verbose > 0), out_dir=out_dir)
+        case 'scatter_col':
+            ephys_plots.plot_scatter_columns(expt_types, split_point,
+                                                transients, show=show, out_dir=out_dir,
+                                                out_suffix=out_suffix,
+                                                title="Spikes by Experiment " + title_suffix)
+        case 'mean_cv':
+            ephys_plots.plot_mean_cv_bar(expt_types, split_point,
+                                            transients, out_dir=out_dir,
+                                            show=show, title="Spike Stats " + title_suffix,
+                                            out_suffix=out_suffix)
         case 'auto_v_man':
             ephys_plots.plot_auto_v_man(expt_types, transients_man, transients_auto,
                                         out_dir=out_dir, show=show)
@@ -482,6 +535,32 @@ Subdirectories must have naming scheme m dd yyyy.""")
                 analysis_plots.plot_ephys_mean_power_spec(out_dir, [prepep_array, postpep_array], fmax=40,
                                                           fname="ephys_mean_power_"+etype,
                                                           labels=["Pre-PEP", "Post-PEP"])
+        case 'mean_spikes':
+            # Print mean transient counts
+            print("Mean spike counts " + title_suffix)
+            print(f"{"Type":<20}{"Pre":>20}{"Post":>20}")
+            for expt in expt_types:
+                pre_k = expt+"_pre"
+                post_k = expt+"_post"
+                pre_mean = np.mean(transients[pre_k])
+                post_mean = np.mean(transients[post_k])
+                print(f"{expt:<20}{f"{pre_mean:.4f}":>20}{f"{post_mean:.4f}":>20}")
+        case 'wilcoxon':
+            print("Wilcoxon tests " + title_suffix)
+            print(f"{"Type":<20}{"Statistic":>20}{"p-value":>20}")
+            stat_list, pvalue_list = eh.classwise_wilcoxon(transients, expt_types)
+            for expt, statistic, pvalue in zip(expt_types, stat_list, pvalue_list):
+                print(f"{expt:<20}{f"{statistic:.4f}":>20}{f"{pvalue:.4f}":>20}")
+        case 'change_score':
+            # Print change scores for each experiment in each type
+            print("Change scores " + title_suffix)
+            for expt in expt_types:
+                pre_k = expt+"_pre"
+                post_k = expt+"_post"
+                print(expt)
+                for pre_ent, post_ent in zip(transients[pre_k], transients[post_k], strict=True):
+                    print(f"{(post_ent+1) / (pre_ent+1) - 1:.4f} ", end='')
+                print()
         case _:
             print("Mode not recognized. Type --help for mode list.")
                

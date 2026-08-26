@@ -2,7 +2,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import ticker
 import os
-from scipy.stats import linregress, wilcoxon
+from scipy.stats import linregress, wilcoxon, f_oneway
+import sys
+sys.path.append("..")
+from ephys import ephys_util as eh
 
 def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed : np.array,
              std_thresh : float, infile : str, disp_sweep : int, out_dir : str = None):
@@ -48,7 +51,7 @@ def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed 
 
         ax1.set_ylabel("Raw LFP (V)", fontsize=14)
         ax2.set_ylabel("Filtered\nLFP (V)", fontsize=14)
-        ax3.set_ylabel("Detected\nTransients (V)", fontsize=14)
+        ax3.set_ylabel("Detected\nSpikes (V)", fontsize=14)
         ax3.set_xlabel("Time (ms)", fontsize=14)
         
         ax1.tick_params(axis='both', which='major', labelsize=12)
@@ -72,62 +75,6 @@ def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed 
 
     plt.show()
 
-def _filter_entryless_columns(expt_types : list, transients : dict):
-    """Delete experiment types with empty transient count lists.
-
-    Args:
-        expt_types (list[str]): List of experiment type names, keys to the transients dict.
-        transients (dict[list]): Dictionary of lists containing transient counts for each
-            experiment of each experiment type.
-        
-    Returns:
-        tuple (prepep_keys, postpep_keys, col_ids, split_point)
-            prepep_keys: Keys corresponding to pre-PEP transient counts.
-            postpep_keys: Keys corresponding to post-PEP transient counts.
-            col_ids: List of column positions.
-            split_point: The column at which the second arm of the experiment type set
-                starts in the column list (This will usually be WT vs. BTBR or vehicle vs.
-                CBD).
-    """
-    # Check for columns with no entries
-    no_entry_keys = []
-    max_col_num = len(expt_types)
-    col_num = max_col_num
-    split_point = col_num / 2
-    for i, k in enumerate(transients.keys()):
-        if len(transients[k]) == 0:
-            # Add key to list of keys with no entries
-            no_entry_keys.append(k)
-            # Decrease the number of columns
-            if i <= col_num:
-                col_num -= 1
-            # Keep track of the first BTBR column
-            # (WTF why is the +2 needed?)
-            if i < split_point + 2:
-                split_point -= 1
-    
-    # Delete all entryless columns
-    for k in no_entry_keys:
-        # Delete the key from the transients dict
-        del transients[k]
-
-    # Delete the corresponding experiment name from the name list
-    # (stop at col_num to ignore distinct keys for pre and post)
-    new_expt_types = []
-    for e in expt_types:
-        if e+"_pre" not in no_entry_keys:
-            new_expt_types.append(e)
-    expt_types = new_expt_types
-
-    # Generate column positions
-    col_ids = np.arange(col_num)
-
-    # Construct lists of keys, scatter x positions, and scatter y positions for prepep and postpep
-    prepep_keys = list(transients.keys())[:col_num]
-    postpep_keys = list(transients.keys())[col_num:]
-
-    return (prepep_keys, postpep_keys, expt_types, col_ids, split_point)
-
 def _make_column_labels(expt_types : list):
     # Generate column labels
     col_labels = []
@@ -150,13 +97,15 @@ def _make_column_labels(expt_types : list):
 
     return col_labels
 
-def plot_mean_cv_bar(expt_types : list, transients : dict, out_dir : str = None, show : bool = False,
+def plot_mean_cv_bar(expt_types : list, split_point : int,
+                     transients : dict, out_dir : str = None, show : bool = False,
                      title : str = "", out_suffix : str = ""):
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
 
-    prepep_keys, postpep_keys, col_ids, split_point = _filter_entryless_columns(
-        expt_types, transients)
-    col_num = len(col_ids)
+    prepep_keys = [ent+"_pre" for ent in expt_types]
+    postpep_keys = [ent+"_post" for ent in expt_types]
+    col_num = len(expt_types)
+    col_ids = np.arange(col_num)
 
     offset = 0.2
     prepep_arrays = [np.array(transients[k]) for k in prepep_keys]
@@ -169,7 +118,7 @@ def plot_mean_cv_bar(expt_types : list, transients : dict, out_dir : str = None,
                    for i, a in enumerate(postpep_arrays)]
     ax1.bar(col_ids - offset, prepep_means, width=0.3)
     ax1.bar(col_ids + offset, postpep_means, width=0.3)
-    ax1.set_ylabel("Mean Transient Count", fontsize=20)
+    ax1.set_ylabel("Mean Spike Count", fontsize=20)
     ax1.tick_params(axis='both', which='major', labelsize=15)
     for i in range(0, col_num - 1):
         ax1.axvline(i + 0.5, c='k', lw=1)
@@ -179,7 +128,7 @@ def plot_mean_cv_bar(expt_types : list, transients : dict, out_dir : str = None,
 
     ax2.bar(col_ids - offset, prepep_cvs, label="Pre-PEP", width=0.3)
     ax2.bar(col_ids + offset, postpep_cvs, label="Post-PEP", width=0.3)
-    ax2.set_ylabel("CV of Transient Count", fontsize=20)
+    ax2.set_ylabel("CV of Spike Count", fontsize=20)
     ax2.set_xlabel("Experiment Type", fontsize=20)
     ax2.tick_params(axis='both', which='major', labelsize=15)
     for i in range(0, col_num - 1):
@@ -196,8 +145,9 @@ def plot_mean_cv_bar(expt_types : list, transients : dict, out_dir : str = None,
     if show:
         plt.show()
 
-def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = None, show : bool = False, out_suffix : str = "",
-                         title : str = None):
+def plot_scatter_columns(expt_types : list, split_point : int,
+                         transients : dict, out_dir : str = None, show : bool = False,
+                         out_suffix : str = "", title : str = None):
     """Scatter plot organized by column, with each column representing a class of experiment.
         Pre-PEP transient counts are to the left of the column, post-PEP to the right, with
         lines connecting the pre and post values for a given experiment.
@@ -217,9 +167,10 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
     fig.add_axes((0.075, 0.125, 0.85, 0.75))
     ax1 = fig.axes[0]
 
-    prepep_keys, postpep_keys, expt_types, col_ids, split_point = _filter_entryless_columns(
-        expt_types, transients)
-    col_num = len(col_ids)
+    prepep_keys = [ent+"_pre" for ent in expt_types]
+    postpep_keys = [ent+"_post" for ent in expt_types]
+    col_num = len(expt_types)
+    col_ids = np.arange(col_num)
 
     jitter = 0.05
     offset = 0.25
@@ -240,7 +191,7 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
     # Plot column scatter plot of transient counts
     ax1.scatter(prepep_x_list, prepep_y_list, color=(0.0, 0.0, 1.0, 0.5),
                 marker='o', s=80, label="Pre-PEP")
-    ax1.set_ylabel("# of Transients", fontsize=22)
+    ax1.set_ylabel("# of Spikes", fontsize=22)
     ax1.tick_params(axis='both', which='major', labelsize=15)
     for i in range(0, col_num - 1):
         ax1.axvline(i + 0.5, c='k', lw=1)
@@ -259,33 +210,25 @@ def plot_scatter_columns(expt_types : list, transients : dict, out_dir : str = N
     ax1.legend(prop={'size': 12})
     fig.suptitle(title, fontsize=30)
 
-    # Print mean transient counts
-    print("Mean transient counts")
-    print(f"{"Type":<20}{"Pre":>20}{"Post":>20}")
-    for pre_k, post_k in zip(prepep_keys, postpep_keys):
-        pre_mean = np.mean(transients[pre_k])
-        post_mean = np.mean(transients[post_k])
-        print(f"{pre_k.rsplit("_", 1)[0]:<20}{f"{pre_mean:.4f}":>20}{f"{post_mean:.4f}":>20}")
-    print()
-
     # Compute Wilcoxon signed-rank test for each column
-    print("Wilcoxon tests")
-    print(f"{"Type":<20}{"Statistic":>20}{"p-value":>20}")
+    _, pvalue_list = eh.classwise_wilcoxon(transients, expt_types)
     pvalue_text_y = 1.02
     pvalue_num_y = ax1.get_ylim()[1] * pvalue_text_y
     pvalue_text_col = 'b'
     plt.text(-0.075, pvalue_text_y, "p-value", transform=ax1.transAxes,
              fontsize=20, c=pvalue_text_col)
-    for i, pre_k, post_k in zip(ax1.get_xticks(), prepep_keys, postpep_keys):
-        x = np.array(transients[pre_k])
-        y = np.array(transients[post_k])
-        wilcoxon_results = wilcoxon(y - x)
-        statistic = wilcoxon_results.statistic
-        pvalue = wilcoxon_results.pvalue
+    for i, pvalue in zip(ax1.get_xticks(), pvalue_list):
         plt.text(i, pvalue_num_y, f"{pvalue:.4f}",
                  transform=ax1.transData, horizontalalignment='center', fontsize=15,
                  c=pvalue_text_col)
-        print(f"{pre_k.rsplit("_", 1)[0]:<20}{f"{statistic:.4f}":>20}{f"{pvalue:.4f}":>20}")
+
+    # print()
+    # wt_change_scores = np.divide(np.array(transients['wt_cbd_10uM_post'])+1,
+    #                              np.array(transients['wt_cbd_10uM_pre'])+1)
+    # btbr_change_scores = np.divide(np.array(transients['btbr_cbd_10uM_post'])+1,
+    #                                np.array(transients['btbr_cbd_10uM_pre'])+1)
+    # fstat, _ = f_oneway(wt_change_scores, btbr_change_scores, nan_policy='omit')
+    # print(f"F-stat of WT v. BTBR CBD: {fstat}")
 
     if out_dir != None:
         plt.savefig(os.path.join(out_dir, "ephys_scatter_columns"+out_suffix))
@@ -297,21 +240,21 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
                     show : bool = False):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 9))
 
-    man_prepep_keys, man_postpep_keys, _, _, _ = _filter_entryless_columns(expt_types, man_transients)
-    auto_prepep_keys, auto_postpep_keys, _, _, _ = _filter_entryless_columns(expt_types, auto_transients)
+    prepep_keys = [ent+"_pre" for ent in expt_types]
+    postpep_keys = [ent+"_post" for ent in expt_types]
 
-    man_pre_transients = [e for k in man_prepep_keys for e in man_transients[k]]
-    auto_pre_transients = [e for k in auto_prepep_keys for e in auto_transients[k]]
-    man_post_transients = [e for k in man_postpep_keys for e in man_transients[k]]
-    auto_post_transients = [e for k in auto_postpep_keys for e in auto_transients[k]]
+    man_pre_transients = [e for k in prepep_keys for e in man_transients[k]]
+    auto_pre_transients = [e for k in prepep_keys for e in auto_transients[k]]
+    man_post_transients = [e for k in postpep_keys for e in man_transients[k]]
+    auto_post_transients = [e for k in postpep_keys for e in auto_transients[k]]
 
     # Plot pre-PEP comparison
     print(len(man_pre_transients), len(auto_pre_transients))
     print(len(man_post_transients), len(auto_post_transients))
     ax1.scatter(man_pre_transients, auto_pre_transients)
     ax1.tick_params(axis='both', which='major', labelsize=15)
-    ax1.set_xlabel("# Transients (Manual)", fontsize=20)
-    ax1.set_ylabel("# Transients (Automated)", fontsize=20)
+    ax1.set_xlabel("# Spikes (Manual)", fontsize=20)
+    ax1.set_ylabel("# Spikes (Automated)", fontsize=20)
     ax1.set_title("Pre-PEP", fontsize=20)
     upper_lim = max(ax1.get_xlim()[1], ax1.get_ylim()[1])
     ax1.set_xlim(right=upper_lim)
@@ -322,8 +265,8 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
     # Plot post-PEP comparison
     ax2.scatter(man_post_transients, auto_post_transients)
     ax2.tick_params(axis='both', which='major', labelsize=15)
-    ax2.set_xlabel("# Transients (Manual)", fontsize=20)
-    ax2.set_ylabel("# Transients (Automated)", fontsize=20)
+    ax2.set_xlabel("# Spikes (Manual)", fontsize=20)
+    ax2.set_ylabel("# Spikes (Automated)", fontsize=20)
     ax2.set_title("Post-PEP", fontsize=20)
     upper_lim = max(ax2.get_xlim()[1], ax2.get_ylim()[1])
     ax2.set_xlim(right=upper_lim)
@@ -331,7 +274,7 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
     ax2.set_aspect('equal', adjustable='box')
     ax2.plot([0, 1], [0, 1], transform=ax2.transAxes, c='k')
 
-    fig.suptitle("Automated v. Manual Transient Counting", fontsize=30)
+    fig.suptitle("Automated v. Manual Spike Counting", fontsize=30)
     fig.tight_layout(pad=2)
 
     _, _, r_value, _, _ = linregress(man_pre_transients, auto_pre_transients)
