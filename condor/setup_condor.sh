@@ -13,11 +13,11 @@ PARAM_DIR="$SWEEP_DIR/params/$1/"
 
 # Make sure specified run exists
 if [ ! -d $PARAM_DIR ]; then
-    echo "Parameter directory ${$PARAM_DIR} does not exist"
+    echo "Parameter directory $PARAM_DIR does not exist"
     exit 2
 fi
 
-LOG_DIR="$CONDOR_DIR/logs/${$1}_synchrony"
+LOG_DIR="$CONDOR_DIR/logs/$1_synchrony"
 mkdir -p "$LOG_DIR"
 mkdir -p "$SWEEP_DIR/data/results"   # where transferred metrics pkls land
 

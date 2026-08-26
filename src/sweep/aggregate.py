@@ -7,8 +7,8 @@ sweeps don't overwrite each other.
 
 Usage:
 
-    python aggregate.py             # default 2-D heatmap
-    python aggregate.py --full      # multifaceted (Gintra x Ginter) panel grid
+    python aggregate.py             # default 2D heatmap
+    python aggregate.py --full      # multifaceted (4D) panel grid
 """
 import os
 import sys
@@ -21,7 +21,14 @@ sys.path.append("..")
 from run import FilePaths
 import plotting.sync_heatmap as ps
 
-results_dir = os.path.join('data', 'results')
+parser = argparse.ArgumentParser(description='Aggregate synchrony values from experiments into a heat map')
+parser.add_argument('--full', default=False, action='store_true', help='Plot multifaceted heatmap to include synaptic conductances')
+parser.add_argument('--datadir', default='data', type=str, help='Data directory to load from. Default: data')
+args = parser.parse_args()
+datadir = args.datadir
+
+results_dir = os.path.join(datadir, 'results')
+sidecar_path = os.path.join(datadir, 'sidecar.txt')
 
 if not os.path.exists(results_dir):
     print(f"No results directory found at {results_dir}")
@@ -34,17 +41,12 @@ for fname in sorted(os.listdir(results_dir)):
         with open(os.path.join(results_dir, fname), 'rb') as f:
             contents = pickle.load(f)
             all_results.append(contents)
-            print(contents)
 
 if len(all_results) == 0:
-    print("No result files found in data/results/")
+    print(f"No result files found in {results_dir}")
     sys.exit(1)
 
 print(f"Loaded {len(all_results)} job results")
-
-parser = argparse.ArgumentParser(description='Aggregate chi values from experiments into a heat map')
-parser.add_argument('--full', default=False, action='store_true', help='Plot multifaceted heatmap to include synaptic conductances')
-args = parser.parse_args()
 
 # Reconstruct param axes from results
 J_values = sorted(set(round(r['J'], 6) for r in all_results))
@@ -111,7 +113,6 @@ if args.full == False:
                   p1_label, p2_label,
                   run_num=run_num)
 
-    print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")
 # 4-axis plot
 else:
     p3_label = r'$G_{inter}$'
@@ -148,6 +149,3 @@ else:
     ps.plot_synchrony_multifaceted(filepaths, chi_grid, chi_sd,
                   np.array(excite_values), np.array(J_values), np.array(Ginter_values),
                   np.array(Gintra_values), p2_label, p1_label, p3_label, p4_label)
-    
-    print(f"Saved: {run_num}_synchrony_chi_mean_full.png and {run_num}_synchrony_chi_sd_full.png")
-    #print(f"Saved: {run_num}_synchrony_chi_mean.png and {run_num}_synchrony_chi_sd.png")
