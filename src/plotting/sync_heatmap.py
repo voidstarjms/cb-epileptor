@@ -16,7 +16,7 @@ import plotting.style  # noqa: F401
 def plot_synchrony(filepaths, chi_mean, chi_sd,
                    param1_values, param2_values,
                    param1_label, param2_label,
-                   run_num=1):
+                   run_name):
     """Write the mean-chi and SD-chi heatmaps, both prefixed with run_num.
 
     Args:
@@ -33,14 +33,14 @@ def plot_synchrony(filepaths, chi_mean, chi_sd,
                           param1_label, param2_label,
                           title=r'Synchrony $\chi$',
                           vmin=0.5, vmax=1,
-                          save_name=f'{run_num}_synchrony_chi_mean.png')
+                          save_name=f'{run_name}_synchrony_chi_mean.png')
 
     sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
     plot_synchrony_single(filepaths, chi_sd, param1_values, param2_values,
                           param1_label, param2_label,
                           title=r'SD of $\chi$',
                           vmin=0, vmax=sd_max,
-                          save_name=f'{run_num}_synchrony_chi_sd.png')
+                          save_name=f'{run_name}_synchrony_chi_sd.png')
 
 
 def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
@@ -158,6 +158,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         for j, p2 in enumerate(param2_values):
             ax = axes[i, j]
             data = chi_matrix[i, j, :, :]
+            print(data)
 
             im = ax.imshow(
                 data.T,

@@ -9,7 +9,8 @@ import numpy as np
 import data_processing
 from typing import Dict, Any
 
-def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, save: bool = True) -> None:
+def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
+            save: bool = True, timed_array: bool = False) -> None:
     """Build both populations and their synapses, run the sim, save the output.
 
     If cb_on is False, Wpre is dropped from the synaptic current (plasticity
@@ -21,9 +22,14 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         params_dict (Dict[str, Any]): Flat dict from param_loader. Expected keys
             listed in run.REQUIRED_PARAMS.
         cb_on (bool): If False, Wpre is held at 1 in the synaptic current.
-        save_to_disk (bool): If True (default), also pickle the result. Set False
+        save (bool): If True (default), also pickle the result. Set False
             for in-memory consumption (e.g. sweep jobs that compute metrics
             directly and don't need the full trace on disk).
+        timed_array (bool): If True, TimedArrays are used for Epop excite,
+            coupling strength, Gintra, and Ginter to allow these principal
+            variables to be altered over the course of a run. If False, the
+            TimedArray values from the parameter file are ignored and the
+            respective scalar parameters are used instead.
 
     Returns:
         Dict[str, Any]: sim_data dict as built by data_processing.build_sim_dict.
@@ -42,13 +48,19 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True, sav
         'transient':    params_dict['TRANSIENT'],
     }
 
+    # Override timed arrays with scalar values if timed_array is False
+    params_dict['BASE_EXCITE_VALS'] = [params_dict['EPOP_BASE_EXCITE']]
+    params_dict['COUPLING_VALS'] = [params_dict['COUPLING_STRENGTH']]
+    params_dict['G_INTER_VALS'] = [params_dict['G_INTER']]
+    params_dict['G_INTRA_VALS'] = [params_dict['G_INTRA']]
+
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
     timed_x_naught = TimedArray(params_dict['BASE_EXCITE_VALS'], dt=params_dict['BASE_EXCITE_DT'])
     timed_coupling_strength = TimedArray(params_dict['COUPLING_VALS'], dt=params_dict['COUPLING_DT'])
 
     # compute effective synapse strength when factoring network connection percentage
-    eff_g_inter_vals = params_dict['G_INTER_VALS'] / params_dict['PCT_CONNECT']
-    eff_g_intra_vals = params_dict['G_INTRA_VALS'] / params_dict['PCT_CONNECT']
+    eff_g_inter_vals = params_dict['G_INTER_VALS']# / params_dict['PCT_CONNECT']
+    eff_g_intra_vals = params_dict['G_INTRA_VALS']# / params_dict['PCT_CONNECT']
 
     timed_G_inter = TimedArray(eff_g_inter_vals, dt=params_dict['G_INTER_DT'])
     timed_G_intra = TimedArray(eff_g_intra_vals, dt=params_dict['G_INTRA_DT'])

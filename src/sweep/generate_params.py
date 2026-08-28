@@ -85,7 +85,7 @@ def main():
     infile = args.infile
     n_realizations = args.realizations
     granularity = args.granularity
-    WRAPPER_OUT_DIR = args.outdir
+    WRAPPER_OUT_DIR = os.path.join('params', args.outdir)
     OUT_DIR = os.path.join(WRAPPER_OUT_DIR, 'params')
     LIST_FILE = os.path.join(WRAPPER_OUT_DIR, 'params_list.txt')
     SIDECAR_FILE = os.path.join(WRAPPER_OUT_DIR, 'param_name_sidecar.txt')
@@ -142,8 +142,8 @@ def main():
     # Write parameter names to sidecar text file
 
     with open(SIDECAR_FILE, "w") as f:
-        for l in param_names:
-            f.writelines(l)
+        for p, n in zip(params, param_names):
+            f.writelines(p+" "+n)
 
     # Generate parameter ranges
     param1_values = np.linspace(float(param_mins[0]), float(param_maxs[0]), granularity)
@@ -175,7 +175,7 @@ def main():
             yaml.safe_dump(job_yaml, f, sort_keys=False)
         # params_list.txt holds paths relative to the Condor Initialdir
         # (which is set to src/sweep/ in setup_condor.sh).
-        rel_paths.append(os.path.join('params', param_yaml_dir, name))
+        rel_paths.append(os.path.join(param_yaml_dir, name))
 
     with open(LIST_FILE, 'w') as f:
         f.write('\n'.join(rel_paths) + '\n')

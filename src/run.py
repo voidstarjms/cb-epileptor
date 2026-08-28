@@ -299,12 +299,15 @@ def main() -> None:
     parser.add_argument('--out-dir', type=str, default=DEFAULT_OUT_DIR,
                         help="Output directory")
     parser.add_argument('--png', action='store_true', default=False,
-                        help='Pass this flag to save standard plot as png instead of svg')
+                        help='Save standard plot as png instead of svg')
+    parser.add_argument('-t', '--timed-array', action='store_true', default=False,
+                        help='Enable timed arrays in the model')
     args = parser.parse_args()
     run_mode = args.mode
     cb_on = args.cb
     png = args.png
     params = args.params
+    timed_array = args.timed_array
     params_dict = load_params(params)
     missing = REQUIRED_PARAMS - params_dict.keys()
     if missing:
@@ -324,7 +327,7 @@ def main() -> None:
         os.makedirs(filepaths.figures_dir, exist_ok=True)
         _save_params(params, out_dir)
         print("Running simulation...")
-        data = run_sim(filepaths, params_dict, cb_on, save)
+        data = run_sim(filepaths, params_dict, cb_on, save, timed_array)
         if save:
             print(f"Simulation complete. Results saved to {out_dir}")
     else:

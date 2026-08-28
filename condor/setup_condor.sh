@@ -36,7 +36,7 @@ should_transfer_files   = YES
 when_to_transfer_output = ON_EXIT
 transfer_input_files    = $PROJ_DIR/src, $CONDOR_DIR/cn_venv.tar.gz
 transfer_output_files   = metrics_\$Fn(params_file).pkl
-transfer_output_remaps  = "metrics_\$Fn(params_file).pkl = ../../output/$1/data/results/metrics_\$Fn(params_file).pkl"
+transfer_output_remaps  = "metrics_\$Fn(params_file).pkl = ../../output/sweep/$1/data/results/metrics_\$Fn(params_file).pkl"
 
 Output = $LOG_DIR/out_\$(Process).log
 Error  = $LOG_DIR/err_\$(Process).log

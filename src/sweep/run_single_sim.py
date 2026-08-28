@@ -108,7 +108,7 @@ def main():
     )
 
     # In-memory pipeline: no output.pkl write/read/delete on NFS.
-    data = run_sim(filepaths, params_dict, cb_on=True, save=False)
+    data = run_sim(filepaths, params_dict, cb_on=False, save=False)
     res = data['results']
     x1 = res['x1']
     x2 = res['x2']
