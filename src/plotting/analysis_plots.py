@@ -21,6 +21,8 @@ def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs TAU_CLOCK, DT_SCALING, TRANSIENT.
         data: (num_neurons, time) signal.
+    
+    Returns: void
     """
     smoothed_data = scipy.ndimage.gaussian_filter(data, sigma=2.0)
 
@@ -45,6 +47,8 @@ def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
         filepaths (Any): FilePaths with figures_dir.
         phase_matrix (np.ndarray): (num_neurons, time) phase in radians, from
             synch.compute_phase.
+    
+    Returns: void
     """
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
@@ -62,6 +66,8 @@ def plot_autocorr(filepaths: Any, autocorr: np.ndarray, lag: np.ndarray) -> None
         filepaths (Any): FilePaths with figures_dir.
         autocorr (np.ndarray): Autocorrelation values.
         lag (np.ndarray): Lag values, same length as autocorr.
+    
+    Returns: void
     """
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Autocorrelation")
@@ -86,6 +92,22 @@ def plot_mean_potential():
 def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : float,
                           fname : str = "power", amp_bounds : tuple = (None, None),
                           labels : list = None):
+    """Private core function for generating power spectral density plots.
+    
+    Args:
+        fig_dir (str): Output directory for figure.
+        lfp_list (list[np.ndarray]): list of LFP arrays on which to compute PSD.
+        fs (float): Sample frequency of LFPs.
+        fmax (float): Max frequency to plot.
+        fname (str): Output file name.
+        amp_bounds (tuple[None | float, None | float]):
+            min_amp: lower bound of amp axis.
+            max_amp: upper bound of amp axis.
+        labels (list): L
+
+    Returns: void
+    """
+    
     if labels != None and len(labels) != len(lfp_list):
         print(f"_make_power_spec_plot: Label count does not match LFP count. Label count is {len(labels)} but LFP count is {len(lfp_list)}")
         return
@@ -125,14 +147,16 @@ def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : flo
 
 def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                     fmax: float = 40.0, fname : str = "power") -> None:
-    """Welch power spectrum of the 80/20 HR/ML weighted-mean signal.
+    """Welch power spectrum of the 80/20 EPOP/IPOP weighted-mean signal.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs TAU_CLOCK and DT_SCALING to set the sampling rate.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x1 (np.ndarray): (num_cells, time) EPOP x.
+        x2 (np.ndarray): (num_cells, time) IPOP x.
         fmax (float): Upper frequency limit for display in Hz. Default 100 Hz.
+    
+    Returns: void
     """
     x1_mean = np.mean(x1, axis=0)
     x2_mean = np.mean(x2, axis=0)
@@ -156,7 +180,7 @@ def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 10
 def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                      t: np.ndarray = None, x0_t: np.ndarray = None, ce_t: np.ndarray = None,
                      fmax: float = 100.0) -> None:
-    """Time-frequency spectrogram of the 80/20 HR/ML weighted-mean LFP.
+    """Time-frequency spectrogram of the 80/20 EPOP/IPOP weighted-mean LFP.
 
     Optionally adds an x0/CE schedule panel below when t, x0_t, and ce_t
     are provided.
@@ -164,12 +188,14 @@ def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.n
     Args:
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs TAU_CLOCK, DT_SCALING, and TRANSIENT.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x1 (np.ndarray): (num_cells, time) EPOP x.
+        x2 (np.ndarray): (num_cells, time) IPOP x.
         t (np.ndarray): Time vector matching x1/x2 (seconds). Required for param panel.
         x0_t (np.ndarray): Recorded x0 schedule over time. If None, param panel is skipped.
         ce_t (np.ndarray): Recorded CE schedule over time. If None, param panel is skipped.
         fmax (float): Upper frequency limit for display in Hz. Default 100 Hz.
+    
+    Returns: void
     """
     x_lfp = 0.8 * np.mean(x1, axis=0) + 0.2 * np.mean(x2, axis=0)
 

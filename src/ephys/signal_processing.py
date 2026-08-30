@@ -20,6 +20,7 @@ from plotting import analysis_plots
 DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
 DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
+EXPERIMENT_TYPE_FILE = "expt_types.csv"
 DRIFT_FILT_FREQ = 150
 STD_THRESH = 8
 EPHYS_FS = 10000
@@ -27,10 +28,10 @@ MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 
 def butter_highpass_filter(data, cutoff, fs, order=2):
-        nyq = 0.5 * fs
-        high = cutoff / nyq
-        b, a = butter(order, high, btype='high')
-        return filtfilt(b, a, data)
+    nyq = 0.5 * fs
+    high = cutoff / nyq
+    b, a = butter(order, high, btype='high')
+    return filtfilt(b, a, data)
 def butter_bandstop_filter(data, lowcut, highcut, fs, order=2):
     nyq = 0.5 * fs
     low = lowcut / nyq
@@ -110,6 +111,27 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
 
 def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, disp_sweep=-1, show=False,
                                    verbose=True, out_dir=None):
+    """Get transient counts from a provided binary file. Supports collation with a spreadsheet for
+        analysis with metadata and binning of transient counts (e.g. for pre-post analysis of
+        chemical introduction).
+
+    Args:
+        fname (str): Path to binary file.
+        df (DataFrame): The DataFrame containing metadata from the master sheet.
+        entry_idx (int): The index of the experiment's entry in the DataFrame. Must be set if df is not None.
+        df_start_pos (int): The index of the experiment's entry in the DataFrame. Must be set if df is not None.
+        disp_sweep (int): The zero-indexed sweep from the input file to plot. -1 plots all sweeps together.
+        show (bool): Show the plot.
+        verbose (bool): Print extra output info.
+        out_dir (str): The directory to save figures to. Saves to DEFAULT_OUT_DIR if None.
+
+    Returns:
+        tuple[np.array]:
+            prepep_transients: Array of transient counts for pre-PEP sweeps if split point
+                is specified, otherwise array of transient counts for all sweeps.
+            postpep_transients: Array of transient counts for post-PEP sweeps. Unused if
+                split point is not specified.
+    """
     x, y_raw, y_filtered, y_processed, transients_per_sweep, std_thresh = _analyze_single_binary(fname, df=df, entry_idx=entry_idx,
                                                                          df_start_pos=df_start_pos,
                                                                          verbose=verbose)
@@ -137,6 +159,15 @@ def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, dis
     return prepep_transients, postpep_transients
 
 def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
+    """Compute the first used transient cell.
+    
+    Args:
+        sheet_df (DataFrame): The DataFrame containing metadata from the master sheet.
+        idx (int): Index of the entry in sheet_df.
+    
+    Returns:
+        start_sweep_count (int): how many sweeps before PEP+0 the first sweep occurs at.
+    """
     # Find the starting sweep in the DataFrame
     start_sweep_count = -1
     while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
@@ -150,6 +181,16 @@ def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
     return start_sweep_count
 
 def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
+    """Derive the key string for an experiment type.
+    
+    Args:
+        sheet_df (DataFrame): The DataFrame containing metadata from the master sheet.
+        idx (int): Index of the entry in sheet_df.
+    
+    Returns:
+        key (str): The key string for an experiment
+    """
+
     has_cbd = sheet_df["has_cbd"][idx]
     has_picro = sheet_df["has_picro"][idx]
     has_bc = sheet_df["has_bc"][idx]
@@ -171,6 +212,21 @@ def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
     return key
 
 def get_sweeps_by_expt_type(sheet_df : pd.DataFrame, bin_dir : str, type_key : str, verbose : bool = False):
+    """Get the transient counts for all sweeps in all runs of a given type.
+
+    Args:
+        sheet_df (DataFrame): DataFrame containing metadata from the master sheet.
+        bin_dir (str): Path to the directory containing experiment binaries.
+        type_key (str): Key string for an experiment type
+        verbose (bool): Print extra output info
+    
+    Returns:
+        tuple[np.array]:
+            prepep_array (np.array): Array of transient counts for each pre-PEP sweep
+                in each run of the given type, in order.
+            postpep_array (np.array): Array of transient counts for each post-PEP sweep
+                in each run of the given type, in order.
+    """
     subdirs = os.listdir(bin_dir)
     subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
 
@@ -234,6 +290,19 @@ def get_sweeps_by_expt_type(sheet_df : pd.DataFrame, bin_dir : str, type_key : s
 
 
 def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
+    """Get pre-PEP and post-PEP transient counts for each sweep in a given
+        experiment, as tallied in the master sheet.
+    
+    Args:
+        sheet_df (DataFrame): The DataFrame containing metadata from the master sheet.
+        idx (int): Index of the entry in sheet_df.
+    
+    Returns:
+        tuple:
+            expt_type (str): string key of the experiment's type.
+            prepep_transients (list): list of transient counts for pre-PEP sweeps.
+            postpep_transients (list): list of transient counts for post-PEP sweeps.
+    """
     expt_type = _derive_experiment_key(df, idx)
     sweep_idx = _find_first_transient_cell(df, idx)
     
@@ -252,8 +321,19 @@ def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
 
     return expt_type, prepep_transients, postpep_transients
 
-# TODO add args to this to allow expt_type set switching without commenting
 def _init_transient_dict():
+    """Initialize a dictionary with a list for each experiment type in the
+        experiment type list file.
+
+    Args: void
+
+    Returns:
+        tuple:
+            expt_type_list (list[str]): List of experiment types.
+            transients_by_expt_type (dict[list]): dictionary of lists of
+                transient counts for pre- and post-PEP segments of each
+                experiment type.    
+    """
     expt_type_list = []
     control = False
     cbd = False
@@ -264,7 +344,7 @@ def _init_transient_dict():
     cbd_list = []
 
     # Read CSV to get experiment types and CBD concentrations
-    with open("expt_types.csv", "r") as f:
+    with open(EXPERIMENT_TYPE_FILE, "r") as f:
         expt_types = f.readline().split(",")
         if len(expt_types) == 0:
             print("_init_transient_dict: expt_types.csv is empty or starts with empty line.")
@@ -331,6 +411,20 @@ def _init_transient_dict():
     return expt_type_list, transients_by_expt_type
 
 def get_manual_transient_count(df : pd.DataFrame, aggregate : bool = True):
+    """Get pre-PEP and post-PEP transient counts for all experiments, as
+        tallied in the master sheet.
+    
+    Args:
+        sheet_df (DataFrame): The DataFrame containing metadata from the master sheet.
+        aggregate (bool): Compute the sum across all sweeps in each run if True,
+            otherwise keep per-sweep counts separate.
+        
+    Returns:
+        tuple:
+            expt_types (list[str]): list of key strings of experiment types.
+            transients (dict[list]): dictionary of lists of transient counts
+                for pre- and post-PEP segments of each experiment type.
+    """
     row_count = len(df)
     expt_types, transients = _init_transient_dict()
     for i in range(row_count):

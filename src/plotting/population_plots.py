@@ -16,9 +16,12 @@ from plotting.plotting_utils import *
 
 def _apply_zoom(axes: list, zoom: ZoomConfig) -> None:
     """Set the x-axis limits on all given axes.
-        INPUT:
-            axes: list of matplotlib Axes.
-            zoom: ZoomConfig with start and end in seconds.
+
+    Args:
+        axes: list of matplotlib Axes.
+        zoom: ZoomConfig with start and end in seconds.
+    
+    Returns: void    
     """
     for ax in axes:
         ax.set_xlim(zoom.start, zoom.end)
@@ -79,6 +82,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         g_inter_vals: Optional inter-pop conductance schedule; pairs with g_intra_vals.
         show (bool): If True, call plt.show() before closing the figure.
         png (bool): If True, saves as a rasterized png. Otherwise, saves as svg.
+    
+    Returns: void
     """
 
     has_x0_ce = x0_t is not None and ce_t is not None
@@ -174,16 +179,19 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
 def raster_plot(filepaths: Any, population: int, t: np.ndarray,
         x: np.ndarray, spike_matrix: np.ndarray, num_cells: int, sim_duration: float,
         zoom: ZoomConfig = None) -> None:
-    """Mean x trace above the spike raster for one population (1=HR, else ML).
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            population: 1 for excitatory (HR), anything else for inhibitory (ML).
-            t: time vector.
-            x: (num_cells, time) state variable.
-            spike_matrix: spike count matrix.
-            num_cells: number of neurons.
-            sim_duration: simulation duration in seconds.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """Mean x trace above the spike raster for one population (1=EPOP, else IPOP).
+        
+    Args:
+        filepaths: FilePaths with figures_dir.
+        population: 1 for excitatory, anything else for inhibitory.
+        t: time vector.
+        x: (num_cells, time) state variable.
+        spike_matrix: spike count matrix.
+        num_cells: number of neurons.
+        sim_duration: simulation duration in seconds.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+        
+    Returns: void
     """
     population_name = "Excitatory Population" if population == 1 else "Inhibitory Population"
     clim_max = find_clim(spike_matrix)
@@ -211,14 +219,17 @@ def raster_plot(filepaths: Any, population: int, t: np.ndarray,
     plt.savefig(os.path.join(filepaths.figures_dir, f"{population_name}_raster.png"), format='png')
     plt.show()
 
-def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray,
+def plot_epop_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray,
         zoom: ZoomConfig = None) -> None:
-    """x-traces for the first 3 HR neurons.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """x-traces for the first 3 EPOP neurons.
+    
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x1: (num_cells, time) EPOP x.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    
+    Returns: void
     """
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(30, 10), sharex=True)
     fig.suptitle("Excitatory Population - Multiple Neurons")
@@ -236,17 +247,20 @@ def plot_hr_multiple(filepaths: Any, t: np.ndarray, x1: np.ndarray,
     plt.savefig(os.path.join(filepaths.figures_dir, "pop1_multiple_neurons.png"), format="png")
     plt.show()
 
-def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
+def plot_epop_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, I_syn_inter_1: np.ndarray, zoom: ZoomConfig = None) -> None:
-    """x, y, z, and I_syn_inter for HR neuron 0.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: (num_cells, time) HR y.
-            z1: (num_cells, time) HR z.
-            I_syn_inter_1: (num_cells, time) inter-pop synaptic current into HR.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """x, y, z, and I_syn_inter for EPOP neuron 0.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x1: (num_cells, time) HR x.
+        y1: (num_cells, time) HR y.
+        z1: (num_cells, time) HR z.
+        I_syn_inter_1: (num_cells, time) inter-pop synaptic current into EPOP.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    
+    Returns: void
     """
     fig, (ax1) = plt.subplots(1, 1, figsize=(20, 10), sharex=True)
     fig.suptitle("Excitatory Population Variables - One Neuron")
@@ -266,16 +280,19 @@ def plot_hr_single(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray
     plt.savefig(os.path.join(filepaths.figures_dir, "pop1_single_neuron.svg"), format="svg")
     plt.show()
 
-def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
+def plot_epop_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, zoom: ZoomConfig = None) -> None:
-    """Mean x, y, z over all HR neurons.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: (num_cells, time) HR y.
-            z1: (num_cells, time) HR z.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """Mean x, y, z over all EPOP neurons.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x1: (num_cells, time) HR x.
+        y1: (num_cells, time) HR y.
+        z1: (num_cells, time) HR z.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    
+    Returns: void
     """
     x1_mean = np.mean(x1, axis=0)
     y1_mean = np.mean(y1, axis=0)
@@ -297,22 +314,23 @@ def plot_hr_mean(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
     plt.savefig(os.path.join(filepaths.figures_dir, "pop1_mean_neurons.png"), format="png")
     plt.show()
 
-def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray,
+def plot_ipop_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray,
         zoom: ZoomConfig = None) -> None:
-    """x and n for ML neuron 0.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x2: (num_cells, time) ML x.
-            n2: (num_cells, time) ML gating variable n.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """x and n for IPOP neuron 0.
+    
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x2: (num_cells, time) ML x.
+        n2: (num_cells, time) ML gating variable n.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
     """
-    fig, (ax1) = plt.subplots(1, 1, figsize=(20, 10), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 10), sharex=True)
     fig.suptitle("Inhibitory Population Variables - One Neuron")
     ax1.plot(t, x2[0])
     ax1.set_ylabel("x (Neuron 0)")
-    # ax2.plot(t, n2[0])
-    # ax2.set_ylabel("Neuron 0 n")
+    ax2.plot(t, n2[0])
+    ax2.set_ylabel("Neuron 0 n")
     ax1.set_xlabel("Time (s)")
 
     if zoom:
@@ -321,19 +339,22 @@ def plot_ml_single(filepaths: Any, t: np.ndarray, x2: np.ndarray, n2: np.ndarray
     plt.savefig(os.path.join(filepaths.figures_dir, "pop2_single_neuron.svg"), format="svg")
     plt.show()
 
-def plot_ml_mean():
+def plot_ipop_mean():
     """Not implemented."""
     pass
 
 def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray,
         zoom: ZoomConfig = None) -> None:
-    """x of neuron 0 from HR and ML, stacked.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            x2: (num_cells, time) ML x.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """x of neuron 0 from EPOP and IPOP, stacked.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x1: (num_cells, time) HR x.
+        x2: (num_cells, time) ML x.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    
+    Returns: void
     """
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
     fig.suptitle("One Neuron From Excitatory and Inhibitory Populations")
@@ -353,16 +374,19 @@ def plot_both(filepaths: Any, t: np.ndarray, x1: np.ndarray, x2: np.ndarray,
 
 def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
         z1: np.ndarray, x2: np.ndarray, n: np.ndarray, zoom: ZoomConfig = None) -> None:
-    """Mean x of HR and ML, stacked. y1, z1, n are unused.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            t: time vector.
-            x1: (num_cells, time) HR x.
-            y1: unused.
-            z1: unused.
-            x2: (num_cells, time) ML x.
-            n: unused.
-            zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    """Mean x of EPOP and IPOP, stacked. y1, z1, n are unused.
+
+    Args:
+        filepaths: FilePaths with figures_dir.
+        t: time vector.
+        x1: (num_cells, time) HR x.
+        y1: unused.
+        z1: unused.
+        x2: (num_cells, time) ML x.
+        n: unused.
+        zoom: optional ZoomConfig; if provided, restricts x-axis to [start, end].
+    
+    Returns: void
     """
     x1_mean = np.mean(x1, axis=0)
     x2_mean = np.mean(x2, axis=0)
@@ -385,6 +409,18 @@ def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
 def plot_synapse_currents(filepaths: Any, t: np.ndarray, epop_intra: np.ndarray,
         epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray,
         bin_size = 1000):
+    """Plot mean synaptic currents.
+    
+    Args:
+        filepaths (Any): FilePaths object containing figures directory path.
+        epop_intra (np.ndarray): Mean current for EPOP intrapopulation synaptic current.
+        epop_inter (np.ndarray): Mean current for EPOP interpopulation synaptic current.
+        ipop_intra (np.ndarray): Mean current for IPOP intrapopulation synaptic current.
+        ipop_inter (np.ndarray): Mean current for IPOP interpopulation synaptic current.
+        bin_size (int): number of dt by which to bin data.
+    
+    Returns: void
+    """
     epop_intra_mean = bin_data(np.mean(epop_intra, axis=0), bin_size)
     epop_inter_mean = bin_data(np.mean(epop_inter, axis=0), bin_size)
     ipop_intra_mean = bin_data(np.mean(ipop_intra, axis=0), bin_size)

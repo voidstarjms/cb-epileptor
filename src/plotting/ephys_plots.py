@@ -76,6 +76,15 @@ def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed 
     plt.show()
 
 def _make_column_labels(expt_types : list):
+    """Produce column labels for each experiment type.
+
+    Args:
+        expt_types (list): List of experiment type key strings.
+
+    Returns:
+        col_labels (list[str]): List of column labels in the same
+            order that experiment types were provided.
+    """
     # Generate column labels
     col_labels = []
     for t in expt_types:
@@ -100,6 +109,20 @@ def _make_column_labels(expt_types : list):
 def plot_mean_cv_bar(expt_types : list, split_point : int,
                      transients : dict, out_dir : str = None, show : bool = False,
                      title : str = "", out_suffix : str = ""):
+    """A two-row bar plot of mean and coefficient of variance (CV) of pre- and post-PEP
+        transient counts for each experiment type. Top row is mean for each experiment and
+        segment while bottom row is CV for each.
+
+    Args:
+        expt_types (list[str]): List of experiment type names, keys to the transients dict.
+        transients (dict[list]): Dictionary of lists containing transient counts for each
+            experiment of each experiment type.
+        out_dir (str): Directory to save figures to. Pass none to forgo saving.
+        show (bool): Show the plot.
+        out_suffix (str): Suffix for the file name, appended before the extension.
+
+    Returns: void
+    """
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 12), sharex=True)
 
     prepep_keys = [ent+"_pre" for ent in expt_types]
@@ -236,8 +259,23 @@ def plot_scatter_columns(expt_types : list, split_point : int,
     if show:
         plt.show()
 
-def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : dict, out_dir : str = None,
+def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : dict,
+                    out_dir : str = None,
                     show : bool = False):
+    """Scatter plot of manual transient counts for each experiment against automated
+        transient counts for the experiments.
+
+    Args:
+        expt_types (list[str]): List of experiment type names, keys to the transients dict.
+        man_transients (dict[list]): Dictionary of lists containing manual transient counts
+            for each experiment of each experiment type.
+        auto_transients (dict[list]): Dictionary of lists containing automated transient
+            counts for each experiment of each experiment type.
+        out_dir (str): Directory to save figures to. Pass none to forgo saving.
+        show (bool): Show the plot.
+
+    Returns: void
+    """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 9))
 
     prepep_keys = [ent+"_pre" for ent in expt_types]
