@@ -6,7 +6,7 @@ and Igor binary files located in `cb-epileptor/ephys/binaries`. Binaries must be
 subdirectories of the name format `mm dd yyyy`, and binaries must follow the name format
 `R[run_num]_*_[mm]_[dd]_[yyyy].ibw` and must use underscores as their separator.
 
-Usage: `python3 signal_processing.py -m MODE [-f FNAME] [-i IN_DIR] [--sweep SWEEP] [--sheet-path SHEET_PATH] [--show SHOW] [-v[v]] [-o OUT_DIR] [-t TYPE] [--man]`
+Usage: `python3 signal_processing.py -m MODE [-f FNAME] [-i IN_DIR] [--sweep SWEEP] [--sheet-path SHEET_PATH] [--show SHOW] [-v[v]] [-o OUT_DIR] [-t TYPE] [--man] [-e EXPT_LIST]`
 
 Modes:
 * `single_file`: Plot LFPs from a single file specified by `-f` or `--fname`.
