@@ -18,16 +18,6 @@ import yaml
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_YAML = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..', 'parameters', 'params.yaml'))
 
-def _write_param_value(out, param_name, param_val):
-    #parameter = out[param_name]
-    #if parameter is str:
-    #parameter = out[param_name].split('*')
-    #out[param_name] = f"{float(param_val)} *{parameter[1]}"
-    #else:
-        #out[param_name] = float(param_val)
-    out[param_name] = param_val
-    return
-
 def _job_yaml(base, param1_val, param2_val, param3_val, param4_val, seed,
               param1_name = 'COUPLING_STRENGTH', param2_name = 'EPOP_BASE_EXCITE',
               param3_name = 'G_INTRA', param4_name = 'G_INTER'):
@@ -43,10 +33,10 @@ def _job_yaml(base, param1_val, param2_val, param3_val, param4_val, seed,
     """
     out = dict(base)
     # Override the constants that the model eqs actually read.
-    _write_param_value(out, param1_name, param1_val)
-    _write_param_value(out, param2_name, param2_val)
-    _write_param_value(out, param3_name, param3_val)
-    _write_param_value(out, param4_name, param4_val)
+    out[param1_name] = param1_val
+    out[param2_name] = param2_val
+    out[param3_name] = param3_val
+    out[param4_name] = param4_val
     # TODO Timed arrays are no longer updated here, so switching between use of the
     # timed arrays and the single values in the yaml needs to be handled in run.py
     # and model.py
@@ -72,13 +62,13 @@ def main():
     Initialdir set in setup_condor.sh).
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--infile', type=str, default='sweep_manifest.txt',
+    parser.add_argument('--infile', '-i', type=str, default='sweep_manifest.txt',
                         help='The path to the manifest file for the sweep')
     parser.add_argument('--granularity', '-g', type=int, default=4, required=True,
                         help='Number of steps along each parameter axis')
     parser.add_argument('--realizations', '-r', type=int, default=1,
                         help='Number of realizations for each parameter set')
-    parser.add_argument('--outdir', type=str, default=os.path.join(SCRIPT_DIR,
+    parser.add_argument('--outdir', '-o', type=str, default=os.path.join(SCRIPT_DIR,
                         'params', 'default'),
                         help='The directory to output the yaml files to')
     args = parser.parse_args()
@@ -136,11 +126,12 @@ def main():
     if not os.path.isdir(WRAPPER_OUT_DIR):
         os.makedirs(WRAPPER_OUT_DIR)
     param_yaml_dir = os.path.join(WRAPPER_OUT_DIR, 'params')
-    if not os.path.isdir(param_yaml_dir):
-        os.makedirs(param_yaml_dir)
-    
-    # Write parameter names to sidecar text file
+    # Delete the existing parameter YAMLs if present
+    if os.path.isdir(param_yaml_dir):
+        shutil.rmtree(param_yaml_dir)
+    os.makedirs(param_yaml_dir)
 
+    # Write parameter names to sidecar text file
     with open(SIDECAR_FILE, "w") as f:
         for p, n in zip(params, param_names):
             f.writelines(p+" "+n)

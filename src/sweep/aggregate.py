@@ -106,7 +106,7 @@ for r in all_results:
             round(_strip_units(r['params'][params[3]]), 6))
     chi_by_point[key].append(r['r_exc'] + r['r_inh'])
 
-figures_dir = 'figures'
+figures_dir = os.path.join('..', '..', 'figures', 'sweep')
 os.makedirs(figures_dir, exist_ok=True)
 run_num_file = 'current_run.txt'
 filepaths = FilePaths(
