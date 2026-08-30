@@ -520,9 +520,9 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggr
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('--fname', type=str, default=None,
+    parser.add_argument('--fname', '-f', type=str, default=None,
                         help='Path to ibw binary file.')
-    parser.add_argument('--dirname', type=str, default=DEFAULT_IN_DIR,
+    parser.add_argument('--in-dir', '-i', type=str, default=DEFAULT_IN_DIR,
                         help="""Path to directory of ibw binary files. 
 Subdirectories must have naming scheme [m]m dd yyyy.""")
     parser.add_argument('--sweep', default=0, type=int,
@@ -531,17 +531,20 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                         help="""Path to master spreadsheet file to supply ancillary data for binary analysis.""")
     parser.add_argument('--show', default=False, action='store_true',
                         help='Show plots after completion.')
-    parser.add_argument('--out-dir', default=DEFAULT_OUT_DIR, type=str,
+    parser.add_argument('--out-dir', '-o', default=DEFAULT_OUT_DIR, type=str,
                         help='Directory to save figures to.')
     parser.add_argument('-v', '--verbose', action='count',
-                        default=0, help='Verbosity of operations.')
+                        default=0, help='Verbosity of operations. Type vv for level 2 verbosity.')
     parser.add_argument('--mode', '-m', type=str, default=None,
-                        help="""Mode for multi-binary analysis plots.
-    \nscatter_col: Plot scatter column plot of pre- and post-PEP transient counts by
+                        required=True,
+                        help="""Plotting mode.
+    \nsingle_file: Plot LFPs from a single file specified by -f or --fname.
+    Pass --sweep to specify one sweep, otherwise all sweeps will be plotted. 
+    \nscatter_col: Plot scatter column plot of pre- and post-PEP spike counts by
     experiment type.
-    \nmean_cv: Plot two-row bar graph of mean and CV of transient counts by experiment
+    \nmean_cv: Plot two-row bar graph of mean and CV of spike counts by experiment
     type, plotting both pre- and post-PEP.
-    \nauto_v_man: Plot a scatter plot of the automatic transient tally against the
+    \nauto_v_man: Plot a scatter plot of the automatic spike tally against the
     manual one.
     \npower: Plot mean pre- and post-PEP power spectral density for a given run.
     \npower_by_type: Plot mean pre- and post-PEP power spectral density of all runs of
@@ -558,7 +561,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
 
     args = parser.parse_args()
     fname = args.fname
-    dirname = args.dirname
+    in_dir = args.in_dir
     sheet_path = args.sheet_path
     out_dir = args.out_dir
     sweep = args.sweep - 1
@@ -575,7 +578,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
 
     # TODO debug pipeline to get this working
     if mode == 'auto_v_man':
-        expt_types, transients_auto = analyze_binaries(sheet_df, dirname, verbose=(verbose > 1),
+        expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, verbose=(verbose > 1),
                                                         aggregate=True)
         expt_types, transients_man = get_manual_transient_count(sheet_df, aggregate=True)
     else:
@@ -584,7 +587,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
             title_suffix = "(Manual Counting)"
             out_suffix = "_man"
         else:
-            expt_types, transients = analyze_binaries(sheet_df, dirname, verbose=(verbose > 1))
+            expt_types, transients = analyze_binaries(sheet_df, in_dir, verbose=(verbose > 1))
             title_suffix = "(Automated Counting)"
             out_suffix = "_auto"
         expt_types, col_num, split_point =\
@@ -622,7 +625,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 print("Please specify a type of experiment to analyze with --type or -t")
                 sys.exit(1)
             else:
-                prepep_array, postpep_array = get_sweeps_by_expt_type(sheet_df, dirname, etype, verbose)
+                prepep_array, postpep_array = get_sweeps_by_expt_type(sheet_df, in_dir, etype, verbose)
                 if prepep_array.size == 0 or postpep_array.size == 0:
                     print("Specified type had 0 matches. Make sure you spelled it correctly.")
                     sys.exit(1)
