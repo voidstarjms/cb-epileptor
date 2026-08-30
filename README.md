@@ -34,26 +34,30 @@ neurons per population, and writes plots to `src/output/figures/`.
 ## Repository layout
 
 ```
-params.yaml             # default simulation parameters (Brian2 quantity strings)
-requirements.txt        # brian2, brian2tools, matplotlib, scipy, numpy, pyyaml
-branching.md            # git workflow conventions
+params.yaml               # default simulation parameters (Brian2 quantity strings)
+requirements.txt          # brian2, brian2tools, matplotlib, scipy, numpy, pyyaml
+branching.md              # git workflow conventions
 
-condor/                 # HTCondor sweep submission
-  README.md             # full sweep workflow
-  setup_condor.sh       # generates condor.sub
-  wrapper.sh            # activates venv, execs python
+condor/                   # HTCondor sweep submission
+  README.md               # full sweep workflow
+  setup_condor.sh         # generates condor.sub
+  wrapper.sh              # activates venv, execs python
 
 src/
-  run.py                # main entrypoint (CLI: -m rp / rpa / rpf)
-  model.py              # Brian2 sim: HR + ML populations, synapses, plasticity
-  param_loader.py       # YAML -> dict, resolving Brian2 expressions
-  data_processing.py    # save/load output.pkl, spike histograms
-  synch.py              # chi synchrony measure + Kuramoto order parameter
-  plotting/             # LFP/raster, plasticity, signal-analysis, sweep heatmap plots
-  sweep/                # parameter-sweep machinery (drives Condor)
-    generate_params.py  # writes params/param_N.yaml + params_list.txt
-    run_single_sim.py   # one Condor job: run sim, save chi summary
-    aggregate.py        # collate per-job results into heatmaps
+  run.py                  # main entrypoint (CLI: -m rp / rpa / rpf)
+  model.py                # Brian2 sim: HR + ML populations, synapses, plasticity
+  param_loader.py         # YAML -> dict, resolving Brian2 expressions
+  data_processing.py      # save/load output.pkl, spike histograms
+  synch.py                # chi synchrony measure + Kuramoto order parameter
+  plotting/               # LFP/raster, plasticity, signal-analysis, sweep heatmap plots
+  ephys/                  # electrophysiology analysis and plotting
+    ephys_util.py         # ephys processing helper methods
+    sheet_parser.py       # parse master sheet ods file as Pandas DataFrame
+    signal_processing.py  # main entrypoint for ephys tools
+  sweep/                  # parameter-sweep machinery (drives Condor)
+    generate_params.py    # writes params/param_N.yaml + params_list.txt
+    run_single_sim.py     # one Condor job: run sim, save chi summary
+    aggregate.py          # collate per-job results into heatmaps
 ```
 
 ## Single-simulation workflow (`run.py`)
@@ -79,17 +83,6 @@ as a control).
 `--params PATH` points at any YAML matching the schema in `params.yaml`.
 All keys in `run.REQUIRED_PARAMS` must be present.
 
-## Parameter sweep workflow (HTCondor)
-
-The sweep dispatches one Condor job per YAML in `src/sweep/params/`. Each
-job runs a single sim, computes the chi synchrony measure over the HR
-population, and writes a compact result file. `aggregate.py` then
-assembles the chi grid into heatmaps. See
-[condor/README.md](condor/README.md) for the full submission workflow.
-
-Edit the grid (CE × X0 × Gintra × Ginter × realizations) at the top of
-`src/sweep/generate_params.py` before running it.
-
 ## Configuration
 
 `params.yaml` is a flat YAML where most values are Brian2 quantity strings
@@ -110,16 +103,6 @@ overrides both for safety.
 out_dir/
   data/output.pkl    # {metadata, params, results} dict — see data_processing.save_data
   figures/           # PNGs (standard_plot, N1_to_1_wpre, kop, autocorr, ...)
-```
-
-The Condor sweep writes per-job artifacts under `src/sweep/`:
-
-```
-src/sweep/
-  data/jobs/<job_id>/output.pkl       # full per-job sim output
-  data/results/<job_id>.pkl           # compact {ce, x0, Gintra, Ginter, realization, chi}
-  figures/sweep_debug/<job_id>/       # per-job debug plots
-  figures/<run>_synchrony_chi_*.png   # heatmaps from aggregate.py
 ```
 
 ## Git
