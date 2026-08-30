@@ -20,7 +20,7 @@ from plotting import analysis_plots
 DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
 DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
-EXPERIMENT_TYPE_FILE = "expt_types.csv"
+DEFAULT_EXPERIMENT_FILE = "expt_types.csv"
 DRIFT_FILT_FREQ = 150
 STD_THRESH = 8
 EPHYS_FS = 10000
@@ -321,16 +321,17 @@ def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):
 
     return expt_type, prepep_transients, postpep_transients
 
-def _init_transient_dict():
+def _init_transient_dict(type_file_path : str):
     """Initialize a dictionary with a list for each experiment type in the
         experiment type list file.
 
-    Args: void
+    Args:
+        type_file_path (str): File path to load type list from.
 
     Returns:
         tuple:
             expt_type_list (list[str]): List of experiment types.
-            transients_by_expt_type (dict[list]): dictionary of lists of
+            transients_by_expt_type (dict[list]): Dictionary of lists of
                 transient counts for pre- and post-PEP segments of each
                 experiment type.    
     """
@@ -344,7 +345,7 @@ def _init_transient_dict():
     cbd_list = []
 
     # Read CSV to get experiment types and CBD concentrations
-    with open(EXPERIMENT_TYPE_FILE, "r") as f:
+    with open(type_file_path, "r") as f:
         expt_types = f.readline().split(",")
         if len(expt_types) == 0:
             print("_init_transient_dict: expt_types.csv is empty or starts with empty line.")
@@ -410,12 +411,13 @@ def _init_transient_dict():
 
     return expt_type_list, transients_by_expt_type
 
-def get_manual_transient_count(df : pd.DataFrame, aggregate : bool = True):
+def get_manual_transient_count(df : pd.DataFrame, type_list_path : str, aggregate : bool = True):
     """Get pre-PEP and post-PEP transient counts for all experiments, as
         tallied in the master sheet.
     
     Args:
         sheet_df (DataFrame): The DataFrame containing metadata from the master sheet.
+        type_list_path (str): File path of experiment type list.
         aggregate (bool): Compute the sum across all sweeps in each run if True,
             otherwise keep per-sweep counts separate.
         
@@ -426,11 +428,13 @@ def get_manual_transient_count(df : pd.DataFrame, aggregate : bool = True):
                 for pre- and post-PEP segments of each experiment type.
     """
     row_count = len(df)
-    expt_types, transients = _init_transient_dict()
+    expt_types, transients = _init_transient_dict(type_list_path)
     for i in range(row_count):
         if df["data_OK"][i] == False:
             continue
         expt, prepep, postpep = _get_manual_transient_count_single(df, i)
+        if expt not in expt_types:
+            continue
 
         if aggregate:
             prepep = [np.sum(prepep)]
@@ -441,7 +445,7 @@ def get_manual_transient_count(df : pd.DataFrame, aggregate : bool = True):
 
     return expt_types, transients
 
-def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggregate : bool = True):
+def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : str, verbose=False, aggregate : bool = True):
     """Analyze a directory of binary files using a master spreadsheet as metadata.
         Binaries must be organized into subdirectories by date of experiment, and
         subdirectories must be named in the format '[m]m dd yyyy'. Binaries must be
@@ -451,6 +455,7 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggr
             sheet_df (DataFrame): The processed DataFrame derived from the
                 master spreadsheet.
             bin_dir (str): The path to the topmost binary directory.
+            type_list_path (str): Path to experiment type list file.
             verbose (bool): Print extra output info.
         
         Returns:
@@ -463,7 +468,7 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, verbose=False, aggr
     subdirs = os.listdir(bin_dir)
     subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
 
-    expt_types, transients_by_expt_type = _init_transient_dict()
+    expt_types, transients_by_expt_type = _init_transient_dict(type_list_path)
     # Iterate over all subdirectories
     i = 0 # Entry index in the DataFrame
     for d in subdirs:
@@ -558,6 +563,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                         help="Type of experiment for analysis. Used by power_by_type.")
     parser.add_argument('--man', action='store_true', default=False,
                         help="Use manual counts from master sheet.")
+    parser.add_argument('--expt-list', '-e', type=str, default=DEFAULT_EXPERIMENT_FILE)
 
     args = parser.parse_args()
     fname = args.fname
@@ -570,6 +576,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
     mode = args.mode
     etype = args.type
     manual = args.man
+    type_list_path = args.expt_list
     sheet_df = sheet_parser.parse_sheet(sheet_path)
 
     if mode == None:
@@ -578,16 +585,19 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
 
     # TODO debug pipeline to get this working
     if mode == 'auto_v_man':
-        expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, verbose=(verbose > 1),
+        expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, type_list_path,
+                                                        verbose=(verbose > 1),
                                                         aggregate=True)
-        expt_types, transients_man = get_manual_transient_count(sheet_df, aggregate=True)
+        expt_types, transients_man = get_manual_transient_count(sheet_df, type_list_path,
+                                                                aggregate=True)
     else:
         if manual:
-            expt_types, transients = get_manual_transient_count(sheet_df)
+            expt_types, transients = get_manual_transient_count(sheet_df, type_list_path)
             title_suffix = "(Manual Counting)"
             out_suffix = "_man"
         else:
-            expt_types, transients = analyze_binaries(sheet_df, in_dir, verbose=(verbose > 1))
+            expt_types, transients = analyze_binaries(sheet_df, in_dir, type_list_path,
+                                                      verbose=(verbose > 1))
             title_suffix = "(Automated Counting)"
             out_suffix = "_auto"
         expt_types, col_num, split_point =\
