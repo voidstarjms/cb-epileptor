@@ -74,30 +74,26 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
     y_filtered = np.empty((end_time - start_time, y.shape[1]))
     y_processed = np.empty((end_time - start_time, y.shape[1]))
     thresh = np.empty(y.shape[1])
-    transients_per_sweep = np.zeros(y.shape[1], dtype=int)
-    #print(fname)
-    #print("Number of sweeps:", y.shape[1])
+    transients_per_sweep = []
     for i in range(y.shape[1]):
         # Check for NaN sweep, continue if so
         if scan_for_nan:
             df_sweep_name = "transient" + ("+" if df_start_pos >= 0 else "") + str(df_start_pos)
             df_start_pos += 1
-            #print(df[df_sweep_name][entry_idx])
             if np.isnan(float(df[df_sweep_name][entry_idx])):
+                transients_per_sweep.append(np.nan)
                 continue
 
         y_filtered[:, i] = butter_highpass_filter(y[start_time:end_time, i], DRIFT_FILT_FREQ, EPHYS_FS)
         y_raw[:, i] = y[:, i]
         
-        #mean = np.mean(y_filtered[:, i])
-        #stdev = np.std(y_filtered[:, i])
         median = np.median(y_filtered[:, i])
         mad = median_abs_deviation(y_filtered[:, i])
 
         normalized_y = y_filtered[:, i] - median
         thresh[i] = -STD_THRESH * mad
         y_thresholded = np.where(normalized_y < thresh[i], normalized_y, 0)
-        transients_per_sweep[i] = find_peaks(y_thresholded)[0].shape[0]
+        transients_per_sweep.append(find_peaks(y_thresholded)[0].shape[0])
         y_processed[:, i] = y_thresholded
 
     # Reconstruct x axis
@@ -138,6 +134,19 @@ def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, dis
 
     # Compute the sweep that PEP is introduced
     pep_sweep = -df_start_pos if df_start_pos != None else None
+
+    # Remove nan entries and decrement PEP start position as necessary
+    if pep_sweep != None:
+        transients_nonan = []
+        i = 0
+        for ent in transients_per_sweep:
+            if np.isnan(ent):
+                if pep_sweep > i:
+                    pep_sweep -= 1
+            else:
+                transients_nonan.append(ent)
+                i += 1
+        transients_per_sweep = transients_nonan
 
     prepep_transients = 0
     postpep_transients = 0
@@ -511,6 +520,7 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : st
                 if key in expt_types:
                     transients_by_expt_type[key + "_pre"].extend(pre_counted)
                     transients_by_expt_type[key + "_post"].extend(post_counted)
+                #print(len(pre_counted), len(post_counted))
 
                 if verbose:
                     print("Expected transients:", sheet_df["total_transients"][i])
@@ -587,9 +597,9 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
     if mode == 'auto_v_man':
         expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, type_list_path,
                                                         verbose=(verbose > 1),
-                                                        aggregate=True)
+                                                        aggregate=False)
         expt_types, transients_man = get_manual_transient_count(sheet_df, type_list_path,
-                                                                aggregate=True)
+                                                                aggregate=False)
     else:
         if manual:
             expt_types, transients = get_manual_transient_count(sheet_df, type_list_path)
