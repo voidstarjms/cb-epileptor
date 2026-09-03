@@ -1,11 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import ticker
+from matplotlib.backends.backend_pdf import PdfPages
 import os
 from scipy.stats import linregress, wilcoxon, f_oneway
 import sys
 sys.path.append("..")
-from ephys import ephys_util as eh
+from ephys import ephys_util as eh # abbreviated "ephys help"
 
 def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed : np.array,
              std_thresh : float, infile : str, disp_sweep : int, out_dir : str = None):
@@ -69,8 +70,12 @@ def plot_lfp(x : np.array, y_raw : np.array, y_filtered : np.array, y_processed 
 
     #plt.xlabel(w['dimension_units'].decode().strip('\x00'))
     #plt.ylabel(w['data_units'].decode().strip('\x00'))
+    infile_parts = os.path.splitext(os.path.basename(infile))[0].split("_")
+    run_desc = "_".join([infile_parts[-3], infile_parts[-2],
+                     infile_parts[-1], infile_parts[0]])
     if out_dir != None:
-        outfile = "ephys_lfp_" + ("all_sweeps" if disp_sweep == -1 else str(disp_sweep+1))
+        outfile = "ephys_lfp_" + run_desc + ("_all_sweeps" if disp_sweep == -1
+                                             else "_S"+str(disp_sweep+1))
         plt.savefig(os.path.join(out_dir, outfile))
 
     plt.show()
@@ -259,18 +264,19 @@ def plot_scatter_columns(expt_types : list, split_point : int,
     if show:
         plt.show()
 
-def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : dict,
+def plot_auto_v_man(man_transients : dict, auto_transients : dict,
+                    type_list_path : str = None,
                     out_dir : str = None,
                     show : bool = False):
     """Scatter plot of manual transient counts for each experiment against automated
         transient counts for the experiments.
 
     Args:
-        expt_types (list[str]): List of experiment type names, keys to the transients dict.
         man_transients (dict[list]): Dictionary of lists containing manual transient counts
             for each experiment of each experiment type.
         auto_transients (dict[list]): Dictionary of lists containing automated transient
             counts for each experiment of each experiment type.
+        type_list_path (str): Path to experiment type list file.
         out_dir (str): Directory to save figures to. Pass none to forgo saving.
         show (bool): Show the plot.
 
@@ -278,13 +284,10 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
     """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 9))
 
-    prepep_keys = [ent+"_pre" for ent in expt_types]
-    postpep_keys = [ent+"_post" for ent in expt_types]
-
-    man_pre_transients = [e for k in prepep_keys for e in man_transients[k]]
-    auto_pre_transients = [e for k in prepep_keys for e in auto_transients[k]]
-    man_post_transients = [e for k in postpep_keys for e in man_transients[k]]
-    auto_post_transients = [e for k in postpep_keys for e in auto_transients[k]]
+    man_pre_transients, man_post_transients = eh.split_prepost_transients(man_transients,
+                                                                          type_list_path)
+    auto_pre_transients, auto_post_transients = eh.split_prepost_transients(auto_transients,
+                                                                            type_list_path)
 
     # Plot pre-PEP comparison
     print(len(man_pre_transients), len(auto_pre_transients))
@@ -324,3 +327,27 @@ def plot_auto_v_man(expt_types : list, man_transients : dict, auto_transients : 
         plt.savefig(os.path.join(out_dir, "ephys_auto_man_comparison"))
     if show:
         plt.show()
+
+def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, fmax : float = 100.0):
+    with PdfPages(outfile) as pdf:
+        for i, s in enumerate(lfp_list):
+            if s is not np.nan:
+                fig = plt.figure()
+                ax = fig.add_axes((0.1, 0.1, 0.85, 0.8))
+
+                fig.suptitle("Sweep "+str(i+1), fontsize=20)
+
+                _, _, _, im = ax.specgram(s, Fs=fs, NFFT=int(fs),
+                                          noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-90)
+                cbar = fig.colorbar(im, ax=ax, location='right', aspect=25, pad=0.001)
+                cbar.ax.tick_params(labelsize=10)
+                cbar.set_label("Power (dB)", size=15)
+
+                ax.set_xlabel("Time (s)", fontsize=15)
+                ax.xaxis.set_tick_params('both', labelsize=10)
+                ax.set_ylim(0, fmax)
+                ax.set_ylabel("Frequency (Hz)", fontsize=15)
+                ax.yaxis.set_tick_params('both', labelsize=10)
+
+                pdf.savefig()
+                plt.close()

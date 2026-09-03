@@ -1,6 +1,7 @@
 import pandas as pd
 import argparse
 import numpy as np
+from datetime import datetime
 
 MASTER_SHEET_ROW_OFFSET = 23
 MAX_PRE_PEP_SWEEP = -17
@@ -54,11 +55,11 @@ def parse_sheet(path : str) -> pd.DataFrame:
         new_date_id_sex = raw_df_view["date_id_sex"][ent_start].split()
         if new_date_id_sex != []:
             date_id_sex = new_date_id_sex
-        date = date_id_sex[0]
-        id = date_id_sex[1]
-        sex = date_id_sex[2]
+            date_entry = datetime.strptime(date_id_sex[0], "%m/%d/%Y").date()
+            id = date_id_sex[1]
+            sex = date_id_sex[2]
 
-        run_num = raw_df_view["run_num"][ent_start]
+        run_num = int(raw_df_view["run_num"][ent_start])
         genotype = raw_df_view["genotype"][ent_start]
         
         # Parse the vehicle type and set Boolean flags accordingly
@@ -80,7 +81,7 @@ def parse_sheet(path : str) -> pd.DataFrame:
             seizure_freq = seizure_freq_cells[seizure_freq_cells.str.len() > 0].values
         else:
             seizure_freq = np.nan
-        processed_df_entry = [date, id, sex, run_num, genotype,
+        processed_df_entry = [date_entry, id, sex, run_num, genotype,
                                     has_cbd, has_picro, has_bc, data_ok,
                                     total_transients, resistance, seizure_sweep,
                                     seizure_freq]

@@ -125,12 +125,12 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     res = data['results']
     t = res['t']
     x1 = res['x1']
-    # y1 = res['y1']
-    # z1 = res['z1']
-    # I_syn_inter = res['I_syn_inter_1']
-    # I_syn_intra = res['I_syn_intra_1']
+    y1 = res['y1']
+    z1 = res['z1']
+    I_syn_inter = res['I_syn_inter_1']
+    I_syn_intra = res['I_syn_intra_1']
     x2 = res['x2']
-    # n = res['n2']
+    n = res['n2']
 
     if cb_on:
         plot_synapse_dynamics(filepaths, params_dict, res)
@@ -140,8 +140,8 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
     spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
 
     zoom = ZoomConfig(start=60, end=60.2)
-    pop_plotter.plot_hr_single(filepaths, t, x1, y1, z1, I_syn_inter, zoom=zoom)
-    pop_plotter.plot_ml_single(filepaths, t, x2, n, zoom=zoom)
+    pop_plotter.plot_epop_single(filepaths, t, x1, y1, z1, I_syn_inter, zoom=zoom)
+    pop_plotter.plot_ipop_single(filepaths, t, x2, n, zoom=zoom)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
                               num_cells, params_dict['SIM_DURATION'] / second, zoom=zoom)
                             #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],

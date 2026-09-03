@@ -232,3 +232,4 @@ def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.n
 
     plt.savefig(os.path.join(filepaths.figures_dir, "spectrogram.png"), format="png")
     plt.show()
+

@@ -1,8 +1,8 @@
 import numpy as np
 from igor2 import binarywave
 import matplotlib.pyplot as plt
-from scipy.stats import median_abs_deviation
-from scipy.signal import filtfilt, butter, find_peaks, welch, savgol_filter
+from scipy.stats import median_abs_deviation, linregress
+from scipy.signal import filtfilt, butter, find_peaks
 import argparse
 import os
 import sys
@@ -21,8 +21,8 @@ DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
 DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
 DEFAULT_EXPERIMENT_FILE = "expt_types.csv"
-DRIFT_FILT_FREQ = 150
-STD_THRESH = 8
+DRIFT_FILT_FREQ = 120
+STD_THRESH = 7.6
 EPHYS_FS = 10000
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
@@ -39,7 +39,32 @@ def butter_bandstop_filter(data, lowcut, highcut, fs, order=2):
     b, a = butter(order, [low, high], btype='bandstop')
     return filtfilt(b, a, data)
 
-def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, verbose=True):
+def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
+    """"""
+    if type(df) is not type(None) and (entry_idx == None or df_start_pos == None):
+        print("get_lfp_list: You must specify a row and transient starting column to analyze using a spreadsheet")
+        sys.exit(1)
+    scan_for_nan = type(df) is not type(None)
+
+    wave = binarywave.load(fname)
+    w = wave['wave']
+    y = w['wData'] # numpy array of waveform values
+
+    lfp_list = []
+    for i in range(y.shape[1]):
+        if scan_for_nan:
+            df_sweep_name = "transient" + ("+" if df_start_pos >= 0 else "") + str(df_start_pos)
+            df_start_pos += 1
+            if np.isnan(float(df[df_sweep_name][entry_idx])):
+                lfp_list.append(np.nan)
+                continue
+        lfp_list.append(butter_highpass_filter(y[:, i], 0.25, EPHYS_FS))
+
+    return lfp_list
+
+def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
+                            detect_freq = DRIFT_FILT_FREQ, detect_thresh = STD_THRESH,
+                            verbose=True):
     """Load and count the transients in a single ibw binary file.
 
     Args:
@@ -75,6 +100,8 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
     y_processed = np.empty((end_time - start_time, y.shape[1]))
     thresh = np.empty(y.shape[1])
     transients_per_sweep = []
+    if verbose:
+        print("Sweeps in binary:", y.shape[1])
     for i in range(y.shape[1]):
         # Check for NaN sweep, continue if so
         if scan_for_nan:
@@ -84,16 +111,16 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
                 transients_per_sweep.append(np.nan)
                 continue
 
-        y_filtered[:, i] = butter_highpass_filter(y[start_time:end_time, i], DRIFT_FILT_FREQ, EPHYS_FS)
+        y_filtered[:, i] = butter_highpass_filter(y[start_time:end_time, i], detect_freq, EPHYS_FS)
         y_raw[:, i] = y[:, i]
         
         median = np.median(y_filtered[:, i])
         mad = median_abs_deviation(y_filtered[:, i])
 
         normalized_y = y_filtered[:, i] - median
-        thresh[i] = -STD_THRESH * mad
+        thresh[i] = -detect_thresh * mad
         y_thresholded = np.where(normalized_y < thresh[i], normalized_y, 0)
-        transients_per_sweep.append(find_peaks(y_thresholded)[0].shape[0])
+        transients_per_sweep.append(find_peaks(-y_thresholded)[0].shape[0])
         y_processed[:, i] = y_thresholded
 
     # Reconstruct x axis
@@ -105,8 +132,9 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None, ve
 
     return x, y_raw, y_filtered, y_processed, transients_per_sweep, thresh
 
-def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, disp_sweep=-1, show=False,
-                                   verbose=True, out_dir=None):
+def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, disp_sweep=-1,
+                          detect_freq = DRIFT_FILT_FREQ, detect_thresh = STD_THRESH, show=False,
+                                   verbose=True, out_dir=None, scan_for_nan=True):
     """Get transient counts from a provided binary file. Supports collation with a spreadsheet for
         analysis with metadata and binning of transient counts (e.g. for pre-post analysis of
         chemical introduction).
@@ -130,13 +158,14 @@ def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, dis
     """
     x, y_raw, y_filtered, y_processed, transients_per_sweep, std_thresh = _analyze_single_binary(fname, df=df, entry_idx=entry_idx,
                                                                          df_start_pos=df_start_pos,
+                                                                         detect_freq=detect_freq, detect_thresh=detect_thresh,
                                                                          verbose=verbose)
 
     # Compute the sweep that PEP is introduced
     pep_sweep = -df_start_pos if df_start_pos != None else None
 
     # Remove nan entries and decrement PEP start position as necessary
-    if pep_sweep != None:
+    if pep_sweep != None and scan_for_nan == True:
         transients_nonan = []
         i = 0
         for ent in transients_per_sweep:
@@ -167,6 +196,19 @@ def get_binary_transients(fname, df=None, entry_idx=None, df_start_pos=None, dis
 
     return prepep_transients, postpep_transients
 
+def _find_first_transient_cell_core(df_ent : pd.Series):
+    # Find the starting sweep in the DataFrame
+    start_sweep_count = -1
+    while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
+        start_sweep = "transient"+str(start_sweep_count)
+        if df_ent[start_sweep] == "":
+            # Increment back up to the last cell with content
+            start_sweep_count += 1
+            break
+        start_sweep_count -= 1
+
+    return start_sweep_count
+
 def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
     """Compute the first used transient cell.
     
@@ -177,17 +219,17 @@ def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
     Returns:
         start_sweep_count (int): how many sweeps before PEP+0 the first sweep occurs at.
     """
-    # Find the starting sweep in the DataFrame
-    start_sweep_count = -1
-    while (start_sweep_count >= MAX_PRE_PEP_SWEEP-1):
-        start_sweep = "transient"+str(start_sweep_count)
-        if sheet_df[start_sweep][idx] == "":
-            # Increment back up to the last cell with content
-            start_sweep_count += 1
-            break
-        start_sweep_count -= 1
+    return _find_first_transient_cell_core(sheet_df.iloc[idx])
 
-    return start_sweep_count
+def _find_first_transient_cell_by_file(sheet_df : pd.DataFrame, fname : str):
+    """"""
+    file_basename = os.path.splitext(os.path.basename(fname))[0]
+    fname_parts = file_basename.split("_")
+    fdate = datetime(int(fname_parts[-1]), int(fname_parts[-3]),
+                        int(fname_parts[-2])).date()
+    run_num = int(fname_parts[0][1:])
+    df_slice = sheet_df[(sheet_df["date"] == fdate) & (sheet_df["run_num"] == run_num)]
+    return (_find_first_transient_cell_core(df_slice.squeeze(axis=0)), df_slice.index[0])
 
 def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
     """Derive the key string for an experiment type.
@@ -208,7 +250,7 @@ def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
     if has_cbd:
         key += "cbd_"
         #Distinguish CBD concentrations by date
-        if datetime.strptime(sheet_df["date"][idx], "%m/%d/%Y") > datetime(2026, 3, 5):
+        if sheet_df["date"][idx] > datetime(2026, 3, 5).date():
             key += "10"
         else:
             key += "100"
@@ -344,83 +386,17 @@ def _init_transient_dict(type_file_path : str):
                 transient counts for pre- and post-PEP segments of each
                 experiment type.    
     """
-    expt_type_list = []
-    control = False
-    cbd = False
-    picro = False
-    cbd_picro = False
-    cbd_bc = False
-    cbd_amounts = None
-    cbd_list = []
-
-    # Read CSV to get experiment types and CBD concentrations
-    with open(type_file_path, "r") as f:
-        expt_types = f.readline().split(",")
-        if len(expt_types) == 0:
-            print("_init_transient_dict: expt_types.csv is empty or starts with empty line.")
-            sys.exit(1)
-        for i in range(len(expt_types)):
-            expt_types[i] = expt_types[i].strip()
-        
-        for ent in expt_types:
-            match ent:
-                case "control":
-                    control = True
-                case "cbd":
-                    cbd = True
-                case "picro":
-                    picro = True
-                case "cbd_picro":
-                    cbd_picro = True
-                case "cbd_bc":
-                    cbd_bc = True
-
-        cbd_amounts = f.readline().split(",")
-        if cbd_amounts != None:
-            for i in range(len(cbd_amounts)):
-                cbd_amounts[i] = cbd_amounts[i].strip()
-
-    # Generate prefixes for all CBD concentrations
-    if cbd_amounts is None:
-        cbd_list.append("cbd")
-    else:
-        for i in cbd_amounts:
-            cbd_list.append("cbd_"+i)
-
-    # Control entries
-    if control == True:
-        expt_type_list.append("control")
-    
-    # CBD entries
-    if cbd == True:
-        for i in cbd_list:
-            expt_type_list.append(i)
-
-    # Picro
-    if picro == True:
-        expt_type_list.append("picro")
-
-    # CBD picro
-    if cbd_picro == True:
-        for i in cbd_list:
-            expt_type_list.append(i+"_picro")
-
-    # CBD BC
-    if cbd_bc == True:
-        for i in cbd_list:
-            expt_type_list.append(i+"_bc")
-
-    # WT vs. BTBR experiments
-    expt_type_list = ["wt_"+t for t in expt_type_list] +\
-        ["btbr_"+t for t in expt_type_list]
+    expt_types = eh.get_expt_types(type_file_path)
+    pre_keys, post_keys = eh.get_expt_keys(type_file_path)
 
     # Pre- vs. post-PEP
-    transients_by_expt_type = {t+"_pre": [] for t in expt_type_list} |\
-        {t+"_post": [] for t in expt_type_list}
+    transients_by_expt_type = {k: [] for k in pre_keys} |\
+        {k: [] for k in post_keys}
 
-    return expt_type_list, transients_by_expt_type
+    return expt_types, transients_by_expt_type
 
-def get_manual_transient_count(df : pd.DataFrame, type_list_path : str, aggregate : bool = True):
+def get_manual_transient_count(df : pd.DataFrame, type_list_path : str,
+                               aggregate : bool = True):
     """Get pre-PEP and post-PEP transient counts for all experiments, as
         tallied in the master sheet.
     
@@ -454,7 +430,9 @@ def get_manual_transient_count(df : pd.DataFrame, type_list_path : str, aggregat
 
     return expt_types, transients
 
-def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : str, verbose=False, aggregate : bool = True):
+def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : str, 
+                     detect_freq = DRIFT_FILT_FREQ, detect_thresh = STD_THRESH,
+                     verbose=False, aggregate : bool = True):
     """Analyze a directory of binary files using a master spreadsheet as metadata.
         Binaries must be organized into subdirectories by date of experiment, and
         subdirectories must be named in the format '[m]m dd yyyy'. Binaries must be
@@ -491,7 +469,7 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : st
             fdate = datetime.strptime("/".join(f.split(".")[0].rsplit("_", 3)[1:]),
                                       "%m/%d/%Y").date()
             frun = int(f.split("_", 1)[0][1])
-            sheet_date = datetime.strptime(sheet_df["date"][i], "%m/%d/%Y").date()
+            sheet_date = sheet_df["date"][i]
             sheet_run = sheet_df["run_num"][i]
             if fdate != sheet_date or frun != sheet_run:
                 print(f"""Entry in spreadsheet does not match. Sheet has \
@@ -508,6 +486,8 @@ def analyze_binaries(sheet_df : pd.DataFrame, bin_dir : str, type_list_path : st
                 fpath = os.path.join(subdir_path, f)
                 pre_counted, post_counted = get_binary_transients(fpath, df=sheet_df, entry_idx=i,
                                                                     df_start_pos=start_sweep_count,
+                                                                    detect_freq=detect_freq,
+                                                                    detect_thresh=detect_thresh,
                                                                     verbose=verbose, show=False)
                 
                 if aggregate:
@@ -553,7 +533,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
     parser.add_argument('--mode', '-m', type=str, default=None,
                         required=True,
                         help="""Plotting mode.
-    \nsingle_file: Plot LFPs from a single file specified by -f or --fname.
+    \nplot_sweep: Plot LFPs from a single file specified by -f or --fname.
     Pass --sweep to specify one sweep, otherwise all sweeps will be plotted. 
     \nscatter_col: Plot scatter column plot of pre- and post-PEP spike counts by
     experiment type.
@@ -593,28 +573,38 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
         print("Please specify a mode with --mode.")
         sys.exit(1)
 
-    # TODO debug pipeline to get this working
-    if mode == 'auto_v_man':
-        expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, type_list_path,
-                                                        verbose=(verbose > 1),
-                                                        aggregate=False)
-        expt_types, transients_man = get_manual_transient_count(sheet_df, type_list_path,
-                                                                aggregate=False)
-    else:
-        if manual:
-            expt_types, transients = get_manual_transient_count(sheet_df, type_list_path)
-            title_suffix = "(Manual Counting)"
-            out_suffix = "_man"
+    if mode != 'detect_param_sweep' and mode != 'specgram_pdf':
+        if mode == 'auto_v_man':
+            expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, type_list_path,
+                                                            verbose=(verbose > 1),
+                                                            aggregate=False)
+            expt_types, transients_man = get_manual_transient_count(sheet_df, type_list_path,
+                                                                    aggregate=False)
         else:
-            expt_types, transients = analyze_binaries(sheet_df, in_dir, type_list_path,
-                                                      verbose=(verbose > 1))
-            title_suffix = "(Automated Counting)"
-            out_suffix = "_auto"
-        expt_types, col_num, split_point =\
-            eh.separate_prepost_columns(expt_types, transients)
+            if manual:
+                expt_types, transients = get_manual_transient_count(sheet_df, type_list_path)
+                title_suffix = "(Manual Counting)"
+                out_suffix = "_man"
+            else:
+                expt_types, transients = analyze_binaries(sheet_df, in_dir, type_list_path,
+                                                        verbose=(verbose > 1))
+                title_suffix = "(Automated Counting)"
+                out_suffix = "_auto"
+            expt_types, split_point = eh.separate_prepost_columns(expt_types, transients)
     
     match mode:
-        case 'single_file':
+        case 'count':
+            if fname == None:
+                print("Please specify a file to plot with --fname")
+                sys.exit(1)
+            else:
+                start_sweep, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                prepep, postpep = get_binary_transients(fname, df=sheet_df, entry_idx=idx,
+                                                        verbose=(verbose > 0),
+                                                        df_start_pos=start_sweep, scan_for_nan=False)
+                print("Pre-PEP transients:", prepep)
+                print("Post-PEP transients:", postpep)
+        case 'plot_sweep':
             if fname == None:
                 print("Please specify a file to plot with --fname")
                 sys.exit(1)
@@ -632,7 +622,8 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                                             show=show, title="Spike Stats " + title_suffix,
                                             out_suffix=out_suffix)
         case 'auto_v_man':
-            ephys_plots.plot_auto_v_man(expt_types, transients_man, transients_auto,
+            ephys_plots.plot_auto_v_man(transients_man, transients_auto,
+                                        type_list_path=type_list_path,
                                         out_dir=out_dir, show=show)
         case 'power':
             if fname == None:
@@ -652,6 +643,17 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 analysis_plots.plot_ephys_mean_power_spec(out_dir, [prepep_array, postpep_array], fmax=40,
                                                           fname="ephys_mean_power_"+etype,
                                                           labels=["Pre-PEP", "Post-PEP"])
+        case 'specgram_pdf':
+            if fname == None: 
+                print("Please specify a file to plot with --fname")
+                sys.exit(1)
+            else:
+                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                        df_start_pos=start_sweep_count)
+                out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
+                                        "_sweep_spectrogram.pdf")
+                ephys_plots.ephys_spectrogram_pdf(out_name, lfp_list, EPHYS_FS, fmax=100)
         case 'mean_spikes':
             # Print mean transient counts
             print("Mean spike counts " + title_suffix)
@@ -678,6 +680,43 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 for pre_ent, post_ent in zip(transients[pre_k], transients[post_k], strict=True):
                     print(f"{(post_ent+1) / (pre_ent+1) - 1:.4f} ", end='')
                 print()
+        case 'detect_param_sweep':
+            param_step_count = 11
+            detect_freq_start = 75
+            detect_freq_end = 225
+            detect_freq_step = (detect_freq_end - detect_freq_start) / (param_step_count - 1)
+            detect_thresh_start = 6
+            detect_thresh_end = 10
+            detect_thresh_step = (detect_thresh_end - detect_thresh_start) / (param_step_count - 1)
+            rsquare_results_pre = np.zeros((param_step_count, param_step_count))
+            rsquare_results_post = np.zeros((param_step_count, param_step_count))
+            freq_range = np.arange(detect_freq_start, detect_freq_end, detect_freq_step)
+            thresh_range = np.arange(detect_thresh_start, detect_thresh_end, detect_thresh_step)
+            _, man_transients = get_manual_transient_count(sheet_df, type_list_path, aggregate=False)
+            for i, freq in enumerate(freq_range):
+                for j, thresh in enumerate(thresh_range):
+                    _, auto_transients = analyze_binaries(sheet_df, in_dir, type_list_path,
+                                                     detect_freq=freq, detect_thresh=thresh,
+                                                     verbose=(verbose > 1),
+                                                     aggregate=False)
+                    auto_pre, auto_post = eh.split_prepost_transients(auto_transients)
+                    man_pre, man_post = eh.split_prepost_transients(man_transients)
+                    _, _, r_pre, _, _ = linregress(man_pre, auto_pre)
+                    _, _, r_post, _, _ = linregress(man_post, auto_post)
+                    rsquare_results_pre[i, j] = r_pre**2
+                    rsquare_results_post[i, j] = r_post**2
+            print("Pre-PEP R squared results")
+            print(rsquare_results_pre)
+            max_ind = np.argmax(rsquare_results_pre)
+            print("Max R squared:", np.max(rsquare_results_pre),
+                  "from parameters freq", freq_range[max_ind // param_step_count],
+                  "thresh", thresh_range[max_ind % param_step_count])
+            print("Post-PEP R squared results")
+            print(rsquare_results_post)
+            max_ind = np.argmax(rsquare_results_post)
+            print("Max R squared:", np.max(rsquare_results_post),
+                  "from parameters freq", freq_range[max_ind // param_step_count],
+                  "thresh", thresh_range[max_ind % param_step_count])
         case _:
             print("Mode not recognized. Type --help for mode list.")
                
