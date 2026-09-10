@@ -340,7 +340,7 @@ def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, 
                 fig.suptitle("Sweep "+str(i+1), fontsize=20)
 
                 _, _, _, im = ax.specgram(s, Fs=fs, NFFT=int(fs),
-                                          noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-90)
+                                          noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-110)
                 cbar = fig.colorbar(im, ax=ax, location='right', aspect=25, pad=0.001)
                 cbar.ax.tick_params(labelsize=10)
                 cbar.set_label("Power (dB)", size=15)
@@ -371,7 +371,7 @@ def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : f
                 t = np.arange(run_len) / fs
                 ax1.plot(t, butter_lowpass_filter(lfp_list[i], 10, 10000))
                 ax1.xaxis.set_tick_params('both', labelsize=10)
-                ax1.set_ylim(-0.0000125, 0.0000125)
+                ax1.set_ylim(-0.00005, 0.00005)
                 ax1.set_ylabel("LFP (V)", fontsize=15)
                 ax1.yaxis.set_tick_params('both', labelsize=10)
                 ax1.yaxis.get_offset_text().set_fontsize(12)

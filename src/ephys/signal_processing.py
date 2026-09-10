@@ -655,7 +655,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                                         df_start_pos=start_sweep_count)
                 out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
                                         "_sweep_spectrogram.pdf")
-                ephys_plots.ephys_spectrogram_pdf(out_name, lfp_list, EPHYS_FS, fmax=100)
+                ephys_plots.ephys_spectrogram_pdf(out_name, lfp_list, EPHYS_FS, fmax=10)
         case 'specgram_trace_pdf':
             if fname == None: 
                 print("Please specify a file to plot with --fname")
