@@ -102,6 +102,7 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
     transients_per_sweep = []
     if verbose:
         print("Sweeps in binary:", y.shape[1])
+    print(df['date'][entry_idx], df['run_num'][entry_idx])
     for i in range(y.shape[1]):
         # Check for NaN sweep, continue if so
         if scan_for_nan:
@@ -654,6 +655,17 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
                                         "_sweep_spectrogram.pdf")
                 ephys_plots.ephys_spectrogram_pdf(out_name, lfp_list, EPHYS_FS, fmax=100)
+        case 'specgram_trace_pdf':
+            if fname == None: 
+                print("Please specify a file to plot with --fname")
+                sys.exit(1)
+            else:
+                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                        df_start_pos=start_sweep_count)
+                out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
+                                        "_sweep_spectrogram_trace.pdf")
+                ephys_plots.ephys_spectrogram_trace_pdf(out_name, lfp_list, EPHYS_FS, fmax=10)
         case 'mean_spikes':
             # Print mean transient counts
             print("Mean spike counts " + title_suffix)

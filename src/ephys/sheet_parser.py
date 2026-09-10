@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from datetime import datetime
 
-MASTER_SHEET_ROW_OFFSET = 23
+MASTER_SHEET_ROW_OFFSET = 1
 MAX_PRE_PEP_SWEEP = -17
 MAX_POST_PEP_SWEEP = 24
 EXPERIMENT_ENTRY_HEIGHT = 3

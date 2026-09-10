@@ -4,7 +4,9 @@ from matplotlib import ticker
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 from scipy.stats import linregress, wilcoxon, f_oneway
+from scipy.signal import butter, filtfilt
 import sys
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 sys.path.append("..")
 from ephys import ephys_util as eh # abbreviated "ephys help"
 
@@ -348,6 +350,46 @@ def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, 
                 ax.set_ylim(0, fmax)
                 ax.set_ylabel("Frequency (Hz)", fontsize=15)
                 ax.yaxis.set_tick_params('both', labelsize=10)
+
+                pdf.savefig()
+                plt.close()
+
+def butter_lowpass_filter(data, cutoff, fs, order=2):
+    nyq = 0.5 * fs
+    low = cutoff / nyq
+    b, a = butter(order, low, btype='low')
+    return filtfilt(b, a, data)
+def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : float, fmax : float = 100.0):
+    with PdfPages(outfile) as pdf:
+        for i, s in enumerate(lfp_list):
+            if s is not np.nan:
+                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10), sharex=True, layout='constrained')
+
+                fig.suptitle("Sweep "+str(i+1), fontsize=20)
+
+                run_len = len(lfp_list[i])
+                t = np.arange(run_len) / fs
+                ax1.plot(t, butter_lowpass_filter(lfp_list[i], 10, 10000))
+                ax1.xaxis.set_tick_params('both', labelsize=10)
+                ax1.set_ylim(-0.0000125, 0.0000125)
+                ax1.set_ylabel("LFP (V)", fontsize=15)
+                ax1.yaxis.set_tick_params('both', labelsize=10)
+                ax1.yaxis.get_offset_text().set_fontsize(12)
+                ax1.margins(0)
+
+                _, _, _, im = ax2.specgram(s, Fs=fs, NFFT=int(fs) * 2,
+                                            noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-110)
+                cbar = fig.colorbar(im, ax=ax2, label="Power (dB)", location='right', aspect=40, pad=0.001)
+                cbar.ax.tick_params(labelsize=10)
+                cbar.set_label("Log Power (dB)", size=15)
+
+                ax2.xaxis.set_tick_params('both', labelsize=10)
+                ax2.set_ylim(0, fmax)
+                ax2.set_ylabel("Frequency (Hz)", fontsize=15)
+                ax2.yaxis.set_tick_params('both', labelsize=10)
+                ax2.margins(0)
+
+                ax2.set_xlabel("Time (s)", fontsize=15)
 
                 pdf.savefig()
                 plt.close()
