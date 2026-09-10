@@ -26,6 +26,8 @@ STD_THRESH = 7.6
 EPHYS_FS = 10000
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
+NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
+                    'specgram_trace_pdf', 'power', 'detect_param_sweep']
 
 def butter_highpass_filter(data, cutoff, fs, order=2):
     nyq = 0.5 * fs
@@ -102,7 +104,6 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
     transients_per_sweep = []
     if verbose:
         print("Sweeps in binary:", y.shape[1])
-    print(df['date'][entry_idx], df['run_num'][entry_idx])
     for i in range(y.shape[1]):
         # Check for NaN sweep, continue if so
         if scan_for_nan:
@@ -574,7 +575,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
         print("Please specify a mode with --mode.")
         sys.exit(1)
 
-    if mode != 'detect_param_sweep' and mode != 'specgram_pdf':
+    if mode not in NO_ANALYZE_MODES:
         if mode == 'auto_v_man':
             expt_types, transients_auto = analyze_binaries(sheet_df, in_dir, type_list_path,
                                                             verbose=(verbose > 1),
