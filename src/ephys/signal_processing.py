@@ -94,12 +94,10 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
     wave = binarywave.load(fname)
     w = wave['wave']
     y = w['wData'] # numpy array of waveform values
-        
-    start_time = 0
-    end_time = 200000
-    y_raw = np.empty((end_time - start_time, y.shape[1]))
-    y_filtered = np.empty((end_time - start_time, y.shape[1]))
-    y_processed = np.empty((end_time - start_time, y.shape[1]))
+    
+    y_raw = np.empty(y.shape)
+    y_filtered = np.empty(y.shape)
+    y_processed = np.empty(y.shape)
     thresh = np.empty(y.shape[1])
     transients_per_sweep = []
     if verbose:
@@ -113,7 +111,7 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
                 transients_per_sweep.append(np.nan)
                 continue
 
-        y_filtered[:, i] = butter_highpass_filter(y[start_time:end_time, i], detect_freq, EPHYS_FS)
+        y_filtered[:, i] = butter_highpass_filter(y[:, i], detect_freq, EPHYS_FS)
         y_raw[:, i] = y[:, i]
         
         median = np.median(y_filtered[:, i])
@@ -130,7 +128,7 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
     delta  = header['sfA'][0]   # spacing between points
     offset = header['sfB'][0]   # x value of first point
 
-    x = offset + delta * np.arange(len(y)) + start_time * delta
+    x = offset + delta * np.arange(len(y))
 
     return x, y_raw, y_filtered, y_processed, transients_per_sweep, thresh
 
