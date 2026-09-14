@@ -354,11 +354,6 @@ def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, 
                 pdf.savefig()
                 plt.close()
 
-def butter_lowpass_filter(data, cutoff, fs, order=2):
-    nyq = 0.5 * fs
-    low = cutoff / nyq
-    b, a = butter(order, low, btype='low')
-    return filtfilt(b, a, data)
 def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : float, fmax : float = 100.0):
     with PdfPages(outfile) as pdf:
         for i, s in enumerate(lfp_list):
@@ -369,7 +364,7 @@ def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : f
 
                 run_len = len(lfp_list[i])
                 t = np.arange(run_len) / fs
-                ax1.plot(t, butter_lowpass_filter(lfp_list[i], 10, 10000))
+                ax1.plot(t, eh.butter_lowpass_filter(lfp_list[i], 10, 10000))
                 ax1.xaxis.set_tick_params('both', labelsize=10)
                 ax1.set_ylim(-0.00005, 0.00005)
                 ax1.set_ylabel("LFP (V)", fontsize=15)
@@ -393,3 +388,16 @@ def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : f
 
                 pdf.savefig()
                 plt.close()
+
+def lowpass_trace(outfile : str, lfp : np.array, fs : float):
+    run_len = len(lfp)
+    t = np.arange(run_len) / fs
+    plt.plot(t, eh.butter_lowpass_filter(lfp, 10.0, fs))
+    ax = plt.gca()
+    ax.xaxis.set_tick_params('both', labelsize=10)
+    ax.set_ylabel("LFP (V)", fontsize=15)
+    ax.yaxis.set_tick_params('both', labelsize=10)
+    ax.yaxis.get_offset_text().set_fontsize(12)
+    ax.set_xlabel("Time (s)", fontsize=15)
+    plt.savefig(outfile)
+    plt.show()

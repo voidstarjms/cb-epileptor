@@ -27,19 +27,8 @@ EPHYS_FS = 10000
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
-                    'specgram_trace_pdf', 'power', 'detect_param_sweep']
-
-def butter_highpass_filter(data, cutoff, fs, order=2):
-    nyq = 0.5 * fs
-    high = cutoff / nyq
-    b, a = butter(order, high, btype='high')
-    return filtfilt(b, a, data)
-def butter_bandstop_filter(data, lowcut, highcut, fs, order=2):
-    nyq = 0.5 * fs
-    low = lowcut / nyq
-    high = highcut / nyq
-    b, a = butter(order, [low, high], btype='bandstop')
-    return filtfilt(b, a, data)
+                    'specgram_trace_pdf', 'power', 'detect_param_sweep',
+                    'lowpass_trace']
 
 def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
     """"""
@@ -60,7 +49,7 @@ def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
             if np.isnan(float(df[df_sweep_name][entry_idx])):
                 lfp_list.append(np.nan)
                 continue
-        lfp_list.append(butter_highpass_filter(y[:, i], 0.25, EPHYS_FS))
+        lfp_list.append(eh.butter_highpass_filter(y[:, i], 0.25, EPHYS_FS))
 
     return lfp_list
 
@@ -111,7 +100,7 @@ def _analyze_single_binary(fname, df=None, entry_idx=None, df_start_pos=None,
                 transients_per_sweep.append(np.nan)
                 continue
 
-        y_filtered[:, i] = butter_highpass_filter(y[:, i], detect_freq, EPHYS_FS)
+        y_filtered[:, i] = eh.butter_highpass_filter(y[:, i], detect_freq, EPHYS_FS)
         y_raw[:, i] = y[:, i]
         
         median = np.median(y_filtered[:, i])
@@ -221,14 +210,16 @@ def _find_first_transient_cell(sheet_df : pd.DataFrame, idx : int):
     """
     return _find_first_transient_cell_core(sheet_df.iloc[idx])
 
-def _find_first_transient_cell_by_file(sheet_df : pd.DataFrame, fname : str):
-    """"""
+def get_df_slice(sheet_df : pd.DataFrame, fname : str):
     file_basename = os.path.splitext(os.path.basename(fname))[0]
     fname_parts = file_basename.split("_")
     fdate = datetime(int(fname_parts[-1]), int(fname_parts[-3]),
                         int(fname_parts[-2])).date()
     run_num = int(fname_parts[0][1:])
-    df_slice = sheet_df[(sheet_df["date"] == fdate) & (sheet_df["run_num"] == run_num)]
+    return sheet_df[(sheet_df["date"] == fdate) & (sheet_df["run_num"] == run_num)]
+
+def _find_first_transient_cell_by_file(sheet_df : pd.DataFrame, fname : str):
+    df_slice = get_df_slice(sheet_df, fname)
     return (_find_first_transient_cell_core(df_slice.squeeze(axis=0)), df_slice.index[0])
 
 def _derive_experiment_key(sheet_df : pd.DataFrame, idx : int):
@@ -665,6 +656,17 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
                                         "_sweep_spectrogram_trace.pdf")
                 ephys_plots.ephys_spectrogram_trace_pdf(out_name, lfp_list, EPHYS_FS, fmax=10)
+        case 'lowpass_trace':
+            if sweep == -1:
+                print("Please specify a sweep number with --sweep")
+                sys.exit(1)
+            else:
+                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                            df_start_pos=start_sweep_count)
+                in_file_name = os.path.splitext(os.path.basename(fname))[0]
+                ephys_plots.lowpass_trace(os.path.join(out_dir, f"{in_file_name}_sweep{args.sweep}_lowpass_trace.png"),
+                                          lfp_list[sweep], EPHYS_FS)
         case 'mean_spikes':
             # Print mean transient counts
             print("Mean spike counts " + title_suffix)

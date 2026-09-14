@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import wilcoxon
+from scipy.signal import butter, filtfilt
 import sys
 
 EXPT_TYPE_LIST = None
@@ -184,3 +185,15 @@ def split_prepost_transients(transients, type_file_path=None):
     pre = [e for k in PREPEP_KEYS for e in transients[k]]
     post = [e for k in POSTPEP_KEYS for e in transients[k]]
     return pre, post
+
+def _butter_filter(data, cutoff, fs, btype, order=2):
+    nyq = 0.5 * fs
+    cut = cutoff / nyq
+    b, a = butter(order, cut, btype=btype)
+    return filtfilt(b, a, data)
+
+def butter_lowpass_filter(data, cutoff, fs, order=2):
+    return _butter_filter(data, cutoff, fs, 'low', order)
+
+def butter_highpass_filter(data, cutoff, fs, order=2):
+    return _butter_filter(data, cutoff, fs, 'high', order)
