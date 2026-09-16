@@ -28,7 +28,7 @@ MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
                     'specgram_trace_pdf', 'power', 'detect_param_sweep',
-                    'lowpass_trace']
+                    'lowpass_trace', 'esd_classify']
 
 def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
     """"""
@@ -667,6 +667,15 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 in_file_name = os.path.splitext(os.path.basename(fname))[0]
                 ephys_plots.lowpass_trace(os.path.join(out_dir, f"{in_file_name}_sweep{args.sweep}_lowpass_trace.png"),
                                           lfp_list[sweep], EPHYS_FS)
+        case 'esd_classify':
+            if sweep == -1:
+                print("Please specify a sweep number with --sweep")
+                sys.exit(1)
+            else:
+                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                            df_start_pos=start_sweep_count)
+                ephys_plots.low_freq_esd(lfp_list[sweep], EPHYS_FS, fmax=10)
         case 'mean_spikes':
             # Print mean transient counts
             print("Mean spike counts " + title_suffix)

@@ -4,7 +4,6 @@ from matplotlib import ticker
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 from scipy.stats import linregress, wilcoxon, f_oneway
-from scipy.signal import butter, filtfilt
 import sys
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 sys.path.append("..")
@@ -330,6 +329,22 @@ def plot_auto_v_man(man_transients : dict, auto_transients : dict,
     if show:
         plt.show()
 
+def _make_spectrogram(fig : plt.Figure, ax : plt.Axes, lfp : np.array,
+                      fs : float, nfft : int, noverlap : int, fmax : float = 100.0):
+    Sxx, freqs, t, im = ax.specgram(lfp, Fs=fs, NFFT=nfft,
+                                noverlap=noverlap, cmap='viridis', vmin=-140, vmax=-110)
+    cbar = fig.colorbar(im, ax=ax, label="Power (dB)", location='right', aspect=40, pad=0.001)
+    cbar.ax.tick_params(labelsize=10)
+    cbar.set_label("Log Power (dB)", size=15)
+
+    ax.xaxis.set_tick_params('both', labelsize=10)
+    ax.set_ylim(0, fmax)
+    ax.set_ylabel("Frequency (Hz)", fontsize=15)
+    ax.yaxis.set_tick_params('both', labelsize=10)
+    ax.margins(0)
+
+    return Sxx, freqs, t, im
+
 def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, fmax : float = 100.0):
     with PdfPages(outfile) as pdf:
         for i, s in enumerate(lfp_list):
@@ -339,17 +354,9 @@ def ephys_spectrogram_pdf(outfile : str, lfp_list : list[np.array], fs : float, 
 
                 fig.suptitle("Sweep "+str(i+1), fontsize=20)
 
-                _, _, _, im = ax.specgram(s, Fs=fs, NFFT=int(fs),
-                                          noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-110)
-                cbar = fig.colorbar(im, ax=ax, location='right', aspect=25, pad=0.001)
-                cbar.ax.tick_params(labelsize=10)
-                cbar.set_label("Power (dB)", size=15)
+                _make_spectrogram(fig, ax, s, fs, int(fs) * 2, int(fs) // 2, fmax)
 
                 ax.set_xlabel("Time (s)", fontsize=15)
-                ax.xaxis.set_tick_params('both', labelsize=10)
-                ax.set_ylim(0, fmax)
-                ax.set_ylabel("Frequency (Hz)", fontsize=15)
-                ax.yaxis.set_tick_params('both', labelsize=10)
 
                 pdf.savefig()
                 plt.close()
@@ -372,17 +379,7 @@ def ephys_spectrogram_trace_pdf(outfile : str, lfp_list : list[np.array], fs : f
                 ax1.yaxis.get_offset_text().set_fontsize(12)
                 ax1.margins(0)
 
-                _, _, _, im = ax2.specgram(s, Fs=fs, NFFT=int(fs) * 2,
-                                            noverlap=int(fs) // 2, cmap='viridis', vmin=-140, vmax=-110)
-                cbar = fig.colorbar(im, ax=ax2, label="Power (dB)", location='right', aspect=40, pad=0.001)
-                cbar.ax.tick_params(labelsize=10)
-                cbar.set_label("Log Power (dB)", size=15)
-
-                ax2.xaxis.set_tick_params('both', labelsize=10)
-                ax2.set_ylim(0, fmax)
-                ax2.set_ylabel("Frequency (Hz)", fontsize=15)
-                ax2.yaxis.set_tick_params('both', labelsize=10)
-                ax2.margins(0)
+                _make_spectrogram(fig, ax2, lfp_list[i], fs, int(fs) * 2, int(fs) // 2, fmax)
 
                 ax2.set_xlabel("Time (s)", fontsize=15)
 
@@ -401,3 +398,21 @@ def lowpass_trace(outfile : str, lfp : np.array, fs : float):
     ax.set_xlabel("Time (s)", fontsize=15)
     plt.savefig(outfile)
     plt.show()
+
+def low_freq_esd(lfp : np.array, fs : float, fmax : float = 100.0):
+    fig = plt.figure()
+    ax = plt.gca()
+    Sxx, freqs, t, _ = _make_spectrogram(fig, ax, lfp, fs, int(fs) // 2,
+                                          int(fs) // 4, fmax)
+
+    ax.set_xlabel("Time (s)", fontsize=15)
+
+    Sxx_len = len(Sxx[0])
+    lfp_duration = len(lfp) / fs
+    print(f"Summing {Sxx_len} slices over {lfp_duration}s (delta: {lfp_duration / Sxx_len:.4g}s)")
+    print(f"{f"Freq. (Hz)":<15}ESD (v^2 * s / Hz)")
+    # Print frequency bands from 2-10Hz
+    i = 1
+    while freqs[i] < 10.0:
+        print(f"{f"{freqs[i]}-{freqs[i+1]:<10}"} {np.sum(Sxx[i]):.4g}")
+        i += 1
