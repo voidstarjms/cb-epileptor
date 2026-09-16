@@ -28,7 +28,7 @@ MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
                     'specgram_trace_pdf', 'power', 'detect_param_sweep',
-                    'lowpass_trace', 'esd_classify']
+                    'lowpass_trace', 'esd']
 
 def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
     """"""
@@ -667,7 +667,7 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 in_file_name = os.path.splitext(os.path.basename(fname))[0]
                 ephys_plots.lowpass_trace(os.path.join(out_dir, f"{in_file_name}_sweep{args.sweep}_lowpass_trace.png"),
                                           lfp_list[sweep], EPHYS_FS)
-        case 'esd_classify':
+        case 'esd':
             if sweep == -1:
                 print("Please specify a sweep number with --sweep")
                 sys.exit(1)
