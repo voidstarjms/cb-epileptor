@@ -399,20 +399,50 @@ def lowpass_trace(outfile : str, lfp : np.array, fs : float):
     plt.savefig(outfile)
     plt.show()
 
-def low_freq_esd(lfp : np.array, fs : float, fmax : float = 100.0):
+def low_freq_esd(lfp_list : np.array, sweep : int, fs : float, fmax : float = 100.0):
+    # Dummy figure and axes
     fig = plt.figure()
     ax = plt.gca()
-    Sxx, freqs, t, _ = _make_spectrogram(fig, ax, lfp, fs, int(fs) // 2,
-                                          int(fs) // 4, fmax)
+
+    # Perform first spectral analysis to get Sxx length and frequency bands
+    esd_list = []
+    freqs = None
+    Sxx_len = 0
+    first_sweep = 0 if sweep == -1 else sweep
+    Sxx, freqs, _, _ = _make_spectrogram(fig, ax, lfp_list[first_sweep], fs,
+                                         int(fs) // 2, int(fs) // 4, fmax)
+    i = 0
+    freq_start_ix = 0
+    while freqs[i] < 10.0:
+        if freqs[i] < 2.0:
+            i += 1
+            continue
+        if freq_start_ix == 0:
+            freq_start_ix = i
+            Sxx_len = len(Sxx[0])
+        i += 1
+    freq_end_ix = i
+    esd_list.append(np.sum(Sxx[freq_start_ix:freq_end_ix], axis=1))
+
+    if sweep == -1:
+        for lfp in lfp_list[1:]:
+            Sxx, _, _, _ = _make_spectrogram(fig, ax, lfp, fs, int(fs) // 2,
+                                            int(fs) // 4, fmax)
+            esd_list.append(np.sum(Sxx[freq_start_ix:freq_end_ix], axis=1))
+    freqs = freqs[freq_start_ix:freq_end_ix]
+    esd_list = np.asarray(esd_list)
 
     ax.set_xlabel("Time (s)", fontsize=15)
 
-    Sxx_len = len(Sxx[0])
-    lfp_duration = len(lfp) / fs
-    print(f"Summing {Sxx_len} slices over {lfp_duration}s (delta: {lfp_duration / Sxx_len:.4g}s)")
-    print(f"{f"Freq. (Hz)":<15}ESD (v^2 * s / Hz)")
+    lfp_duration = len(lfp_list[0]) / fs
+    print(f"Analyzing sweep {sweep}" if sweep > -1 else "Analyzing all sweeps")
+    print(f"Bandwidth: {freqs[1]-freqs[0]}Hz, starting at band floor")
+    print(f"Summing {Sxx_len} slices over {lfp_duration}s (delta: {lfp_duration / Sxx_len:.4g}s)\n")
+    # for i in range(5):
+    #     print(esd_list[i])
     # Print frequency bands from 2-10Hz
-    i = 1
-    while freqs[i] < 10.0:
-        print(f"{f"{freqs[i]}-{freqs[i+1]:<10}"} {np.sum(Sxx[i]):.4g}")
-        i += 1
+    with np.printoptions(precision=2):
+        for i in range(freq_end_ix - freq_start_ix):
+            print(f"Band {i+1}: {freqs[i]} Hz\nESD (V^2 * s / Hz):")
+            print(esd_list[:, i])
+            print()

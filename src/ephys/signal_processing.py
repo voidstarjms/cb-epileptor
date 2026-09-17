@@ -668,14 +668,10 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 ephys_plots.lowpass_trace(os.path.join(out_dir, f"{in_file_name}_sweep{args.sweep}_lowpass_trace.png"),
                                           lfp_list[sweep], EPHYS_FS)
         case 'esd':
-            if sweep == -1:
-                print("Please specify a sweep number with --sweep")
-                sys.exit(1)
-            else:
-                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
-                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
-                                            df_start_pos=start_sweep_count)
-                ephys_plots.low_freq_esd(lfp_list[sweep], EPHYS_FS, fmax=10)
+            start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+            lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                        df_start_pos=start_sweep_count)
+            ephys_plots.low_freq_esd(lfp_list, sweep, EPHYS_FS, fmax=10)
         case 'mean_spikes':
             # Print mean transient counts
             print("Mean spike counts " + title_suffix)
