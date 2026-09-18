@@ -9,6 +9,7 @@ import numpy as np
 import scipy
 from scipy import signal, ndimage
 from typing import Dict, Any
+from matplotlib.backends.backend_pdf import PdfPages
 
 import plotting.style  # noqa: F401
 
@@ -89,8 +90,8 @@ def plot_mean_potential():
     # ax1.set_xlabel("Time (s)")
     # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
-def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : float,
-                          fname : str = "power", amp_bounds : tuple = (None, None),
+def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
+                          amp_bounds : tuple = (None, None),
                           labels : list = None):
     """Private core function for generating power spectral density plots.
     
@@ -120,7 +121,6 @@ def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : flo
         Pxx_list.append(Pxx)
 
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
-    fig.suptitle("Power Spectrum")
 
     if labels == None:
         for f, Pxx in zip(f_list, Pxx_list):
@@ -136,14 +136,23 @@ def _make_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : flo
     if max_amp != None:
         ax.set_ylim(top=max_amp)
 
-    ax.set_ylabel("PSD (a.u.)")#"PSD (V^2/Hz)")
+    ax.set_ylabel("PSD (a.u.)")
     ax.set_xlabel("Frequency (Hz)")
+    plt.xticks(np.arange(0, fmax, fmax / 10))
     if labels != None:
         plt.legend()
 
+    return fig
+
+def _output_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : float,
+                          fname : str = "power", amp_bounds : tuple = (None, None),
+                          labels : list = None):
+    fig = plt.figure(_make_power_spec_plot(lfp_list, fs, fmax,
+                                     amp_bounds, labels))
+    fig.suptitle("Power Spectrum")
+    
     plt.savefig(os.path.join(fig_dir, fname + ".png"), format="png")
     plt.show()
-
 
 def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                     fmax: float = 40.0, fname : str = "power") -> None:
@@ -163,11 +172,11 @@ def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.nd
     x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
 
     fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
-    _make_power_spec_plot(filepaths.figures_dir, [x_mean], fs, fmax, fname=fname)
+    _output_power_spec_plot(filepaths.figures_dir, [x_mean], fs, fmax, fname=fname)
 
 def plot_ephys_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
                           fname : str = "ephys_power", labels : list = None):
-    _make_power_spec_plot(fig_dir, lfp_list, EPHYS_FS, fmax, fname=fname,
+    _output_power_spec_plot(fig_dir, lfp_list, EPHYS_FS, fmax, fname=fname,
                           amp_bounds=(10e-17, 10e-12), labels=labels)
 
 def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
@@ -176,6 +185,19 @@ def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 10
     for i in lfp_list:
         mean_list.append(np.mean(i, axis=0))
     plot_ephys_power_spec(fig_dir, mean_list, fmax, fname=fname, labels=labels)
+
+def ephys_power_spec_pdf(lfp_list : list, fmax : float = 100.0,
+                        outfile : str = "ephys_mean_power", labels : list = None):
+    with PdfPages(outfile) as pdf:
+        for i, s in enumerate(lfp_list):
+            if s is not np.nan:
+                fig = plt.figure(_make_power_spec_plot(lfp_list[i:i+1], EPHYS_FS, fmax,
+                                                 amp_bounds=(10e-17, 10e-12),
+                                                 labels=labels))
+                fig.suptitle(f"Power Spectrum (Sweep {i+1})")
+
+                pdf.savefig()
+                plt.close()
 
 def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                      t: np.ndarray = None, x0_t: np.ndarray = None, ce_t: np.ndarray = None,

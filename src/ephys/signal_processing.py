@@ -28,7 +28,7 @@ MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
 NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
                     'specgram_trace_pdf', 'power', 'detect_param_sweep',
-                    'lowpass_trace', 'esd']
+                    'lowpass_trace', 'esd', 'power_pdf']
 
 def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
     """"""
@@ -634,8 +634,20 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 analysis_plots.plot_ephys_mean_power_spec(out_dir, [prepep_array, postpep_array], fmax=40,
                                                           fname="ephys_mean_power_"+etype,
                                                           labels=["Pre-PEP", "Post-PEP"])
+        case 'power_pdf':
+            if fname == None:
+                print("Please specify a file to plot with --fname")
+                sys.exit(1)
+            else:
+                start_sweep_count, idx = _find_first_transient_cell_by_file(sheet_df, fname)
+                lfp_list = get_lfp_list(fname, df=sheet_df, entry_idx=idx,
+                                        df_start_pos=start_sweep_count)
+                out_name = os.path.join(out_dir, os.path.splitext(os.path.basename(fname))[0]+\
+                                        "_power.pdf")
+                analysis_plots.ephys_power_spec_pdf(lfp_list, fmax=100, outfile=out_name)
+
         case 'specgram_pdf':
-            if fname == None: 
+            if fname == None:
                 print("Please specify a file to plot with --fname")
                 sys.exit(1)
             else:
