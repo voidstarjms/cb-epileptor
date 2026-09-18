@@ -408,9 +408,27 @@ def low_freq_esd(lfp_list : np.array, sweep : int, fs : float, fmax : float = 10
     esd_list = []
     freqs = None
     Sxx_len = 0
-    first_sweep = 0 if sweep == -1 else sweep
-    Sxx, freqs, _, _ = _make_spectrogram(fig, ax, lfp_list[first_sweep], fs,
-                                         int(fs) // 2, int(fs) // 4, fmax)
+    lfp_list_len = len(lfp_list)
+    if sweep == -1:
+        # Find first non-NaN sweep to get frequency bands and first Sxx
+        first_sweep = 0
+        while first_sweep < lfp_list_len and lfp_list[first_sweep] is np.nan:
+            esd_list.append(np.nan)
+            first_sweep += 1
+        if first_sweep == lfp_list_len:
+            print("low_freq_esd: Cannot analyze a run with exclusively NaN sweeps.")
+            sys.exit(1)
+        Sxx, freqs, _, _ = _make_spectrogram(fig, ax, lfp_list[first_sweep], fs,
+                                            int(fs) // 2, int(fs) // 4, fmax)
+    else:
+        if lfp_list[sweep] is np.nan:
+            print("Requested sweep is marked as confounded.")
+            return
+        else:
+            Sxx, freqs, _, _ = _make_spectrogram(fig, ax, lfp_list[sweep], fs,
+                                                int(fs) // 2, int(fs) // 4, fmax)
+
+    # Compute which frequency bands are >=2Hz and <10Hz
     i = 0
     freq_start_ix = 0
     while freqs[i] < 10.0:
@@ -424,25 +442,32 @@ def low_freq_esd(lfp_list : np.array, sweep : int, fs : float, fmax : float = 10
     freq_end_ix = i
     esd_list.append(np.sum(Sxx[freq_start_ix:freq_end_ix], axis=1))
 
+    # Go through the rest of the sweeps in all-sweep mode
     if sweep == -1:
-        for lfp in lfp_list[1:]:
-            Sxx, _, _, _ = _make_spectrogram(fig, ax, lfp, fs, int(fs) // 2,
-                                            int(fs) // 4, fmax)
-            esd_list.append(np.sum(Sxx[freq_start_ix:freq_end_ix], axis=1))
+        for lfp in lfp_list[first_sweep+1:]:
+            if lfp is np.nan:
+                esd_list.append(np.nan)
+            else:
+                Sxx, _, _, _ = _make_spectrogram(fig, ax, lfp, fs, int(fs) // 2,
+                                                int(fs) // 4, fmax)
+                esd_list.append(np.sum(Sxx[freq_start_ix:freq_end_ix], axis=1))
     freqs = freqs[freq_start_ix:freq_end_ix]
-    esd_list = np.asarray(esd_list)
 
     ax.set_xlabel("Time (s)", fontsize=15)
 
+    # Print analysis info
     lfp_duration = len(lfp_list[0]) / fs
-    print(f"Analyzing sweep {sweep}" if sweep > -1 else "Analyzing all sweeps")
+    print(f"Analyzing sweep {sweep+1}" if sweep > -1 else "Analyzing all sweeps")
     print(f"Bandwidth: {freqs[1]-freqs[0]}Hz, starting at band floor")
     print(f"Summing {Sxx_len} slices over {lfp_duration}s (delta: {lfp_duration / Sxx_len:.4g}s)\n")
-    # for i in range(5):
-    #     print(esd_list[i])
+
     # Print frequency bands from 2-10Hz
-    with np.printoptions(precision=2):
-        for i in range(freq_end_ix - freq_start_ix):
-            print(f"Band {i+1}: {freqs[i]} Hz\nESD (V^2 * s / Hz):")
-            print(esd_list[:, i])
-            print()
+    for i in range(freq_end_ix - freq_start_ix):
+        print(f"Band {i+1}: {freqs[i]} Hz\nESD (V^2 * s / Hz):")
+        for j in range(len(esd_list)):
+            if esd_list[j] is np.nan:
+                print(np.nan, end='')
+            else:
+                print(float(f"{esd_list[j][i]:.4g}"), end='')
+            print(" ", end='')
+        print()
