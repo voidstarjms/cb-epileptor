@@ -177,7 +177,7 @@ def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.nd
 def plot_ephys_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
                           fname : str = "ephys_power", labels : list = None):
     _output_power_spec_plot(fig_dir, lfp_list, EPHYS_FS, fmax, fname=fname,
-                          amp_bounds=(10e-17, 10e-12), labels=labels)
+                          amp_bounds=(10e-17, 10e-11), labels=labels)
 
 def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
                                fname : str = "ephys_mean_power", labels : list = None):
@@ -192,7 +192,7 @@ def ephys_power_spec_pdf(lfp_list : list, fmax : float = 100.0,
         for i, s in enumerate(lfp_list):
             if s is not np.nan:
                 fig = plt.figure(_make_power_spec_plot(lfp_list[i:i+1], EPHYS_FS, fmax,
-                                                 amp_bounds=(10e-17, 10e-12),
+                                                 amp_bounds=(10e-17, 10e-11),
                                                  labels=labels))
                 fig.suptitle(f"Power Spectrum (Sweep {i+1})")
 
