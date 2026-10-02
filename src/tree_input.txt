@@ -1,0 +1,7 @@
+Mean Firing Rate (Exc) > 100 Hz?
+  Yes -> KOP r (Inh) > 0.8?
+    Yes -> Phase 3 (run3)
+    No -> Phase 2 (run2)
+  No -> KOP r (Exc) > 0.7 OR ISI CV (Exc) > 4?
+    Yes -> Phase 4 (run4)
+    No -> Phase 1 (run1)

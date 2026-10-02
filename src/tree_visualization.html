@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Parsed Decision Tree</title>
+    <!-- Load Mermaid.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad:true, theme: 'dark'});</script>
+    <style>
+        body { background-color: #111827; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 3rem; }
+        .mermaid { background-color: #1f2937; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h2 { font-weight: 300; margin-bottom: 2rem; color: #9ca3af; }
+    </style>
+</head>
+<body>
+    <h2>Parsed Decision Tree Visualization</h2>
+    <div class="mermaid">
+graph TD
+    Node_0["Mean Firing Rate (Exc) > 100 Hz?"] -- "Yes" --> Node_1["KOP r (Inh) > 0.8?"]
+    Node_1["KOP r (Inh) > 0.8?"] -- "Yes" --> Node_2["Phase 3 (run3)"]
+    Node_1["KOP r (Inh) > 0.8?"] -- "No" --> Node_3["Phase 2 (run2)"]
+    Node_0["Mean Firing Rate (Exc) > 100 Hz?"] -- "No" --> Node_4["KOP r (Exc) > 0.7 OR ISI CV (Exc) > 4?"]
+    Node_4["KOP r (Exc) > 0.7 OR ISI CV (Exc) > 4?"] -- "Yes" --> Node_5["Phase 4 (run4)"]
+    Node_4["KOP r (Exc) > 0.7 OR ISI CV (Exc) > 4?"] -- "No" --> Node_6["Phase 1 (run1)"]
+    </div>
+</body>
+</html>
