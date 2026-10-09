@@ -295,7 +295,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Run and/or plot the simulation.")
     parser.add_argument('-m', '--mode', type=str, default='rp',
-                        help="Run mode: 'r' run, 'p' plot, 'a' analyze, 't' test.")
+                        help="Run mode: 'r' run, 'p' plot, 'a' analyze, 'q' quantitative summary, 's' save results to output.pkl")
     parser.add_argument('--cb', action='store_true', default=False,
                         help="Enable CB synapses (default: disabled)")
     parser.add_argument('--params', type=str, default=DEFAULT_PARAMS,
@@ -354,7 +354,7 @@ def main() -> None:
         analyze_populations(filepaths, data['params'], data)
 
     # Print population behavior metrics
-    if 't' in run_mode:
+    if 'q' in run_mode:
         report_metrics(data['params'], data)
 
 
