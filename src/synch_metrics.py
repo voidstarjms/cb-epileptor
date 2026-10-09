@@ -49,13 +49,15 @@ def synchrony_stats(data: np.ndarray, maxlags: int = 3000) -> Tuple[float, np.nd
     return chi, autocorr, lag
 
 
-def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float,
+        t_start: float = 0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Kuramoto order parameter from spike-derived phases.
 
     Args:
         neuron_idx (np.ndarray): Per-spike neuron index.
         spike_times (np.ndarray): Per-spike times (seconds).
         duration (float): Simulation duration (seconds).
+        t_start (float): Time of the first recorded sample (seconds), i.e. TRANSIENT.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: Z (complex mean of
@@ -63,7 +65,7 @@ def KOP(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> Tup
         0 = no lock, 1 = full lock), and psi (angle of Z in radians, i.e.
         the collective phase).
     """
-    phase = compute_phase(neuron_idx, spike_times, duration)
+    phase = compute_phase(neuron_idx, spike_times, duration, t_start)
     Z = np.mean(np.exp(1j * phase), axis=0)
 
     # r is the magnitude of z
@@ -135,13 +137,16 @@ def isi_cv(neuron_idx: np.ndarray, spike_times: np.ndarray) -> float:
 
 
 
-def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float) -> np.ndarray:
+def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: float,
+                  t_start: float = 0.0) -> np.ndarray:
     """Interpolate phase on a 1 ms grid: the k-th spike gets phase 2*pi*k.
 
     Args:
         neuron_idx (np.ndarray): Per-spike neuron index.
         spike_times (np.ndarray): Per-spike times (seconds).
         duration (float): Simulation duration (seconds).
+        t_start (float): Time of the first recorded sample (seconds), i.e. TRANSIENT.
+            Spike times are absolute, so the grid must start here to line up with them.
 
     Returns:
         np.ndarray: (num_unique_neurons, num_time_steps) phase matrix in radians.
@@ -150,7 +155,7 @@ def compute_phase(neuron_idx: np.ndarray, spike_times: np.ndarray, duration: flo
     # Uniform discritized representation of time. 
     # All oscillators will be mapped to this scale
     # these are also the time steps of theta in the KOP
-    time_grid = np.arange(0, duration+time_bin_size, time_bin_size)
+    time_grid = np.arange(t_start, t_start+duration+time_bin_size, time_bin_size)
 
     # find unique neuron indices to iterate through
     unique_idx = np.unique(neuron_idx)

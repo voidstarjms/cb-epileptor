@@ -188,16 +188,20 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     print("============HINDMARSH ROSE STATS============")
     chi, autocorr, lag = syn.autocorrelate(x1)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
-    z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second)
+    z, r, psi = syn.KOP(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second,
+                      params_dict['TRANSIENT'])
     print(f'r: {np.mean(r)}')
     analysis_plotter.plot_autocorr(filepaths, autocorr, lag)
-    phase_matrix = syn.compute_phase(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second)
-    analysis_plotter.plot_kop(filepaths, phase_matrix)
+    phase_matrix = syn.compute_phase(pop1_neuron_idx, pop1_spike_times, params_dict['SIM_DURATION'] / second,
+                                     params_dict['TRANSIENT'])
+    analysis_plotter.plot_kop(filepaths, phase_matrix, params_dict['TRANSIENT'],
+                              params_dict['TRANSIENT'] + params_dict['SIM_DURATION'] / second)
 
     print("\n============MORRIS LECAR STATS============")
     chi, autocorr, lag = syn.autocorrelate(x2)
     print(f'synchrony measure: {chi}\nautocorrelation: {autocorr}')
-    z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params_dict['SIM_DURATION'] / second)
+    z, r, psi = syn.KOP(pop2_neuron_idx, pop2_spike_times, params_dict['SIM_DURATION'] / second,
+                      params_dict['TRANSIENT'])
     print(f'r: {np.mean(r)}')
 
     analysis_plotter.plot_power_spec(filepaths, params_dict, x1, x2)
@@ -222,8 +226,8 @@ def report_metrics(params_dict: Dict, data: Dict) -> None:
     chi1, _, _ = syn.autocorrelate(res['x1'])
     chi2, _, _ = syn.autocorrelate(res['x2'])
 
-    _, r1, _ = syn.KOP(res['spikes_n1']['i'], res['spikes_n1']['t'], duration)
-    _, r2, _ = syn.KOP(res['spikes_n2']['i'], res['spikes_n2']['t'], duration)
+    _, r1, _ = syn.KOP(res['spikes_n1']['i'], res['spikes_n1']['t'], duration, params_dict['TRANSIENT'])
+    _, r2, _ = syn.KOP(res['spikes_n2']['i'], res['spikes_n2']['t'], duration, params_dict['TRANSIENT'])
     r1, r2 = float(np.mean(r1)), float(np.mean(r2))
 
     fr1 = syn.mean_firing_rate(res['spikes_n1']['i'], res['spikes_n1']['t'], num_cells, duration)

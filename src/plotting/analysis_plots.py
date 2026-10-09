@@ -41,22 +41,28 @@ def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     plt.savefig(os.path.join(filepaths.figures_dir, "auto_lfp.png"), format="png")
     plt.show()
 
-def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
+def plot_kop(filepaths: Any, phase_matrix: np.ndarray, t_start: float, t_end: float) -> None:
     """Plot the interpolated phase trace of the first neuron.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         phase_matrix (np.ndarray): (num_neurons, time) phase in radians, from
             synch.compute_phase.
-    
+        t_start (float): Start time of the phase grid in seconds (TRANSIENT).
+        t_end (float): End time of the phase grid in seconds (TRANSIENT + SIM_DURATION).
+
     Returns: void
     """
+    # compute_phase's grid includes both endpoints, so linspace reproduces it
+    t = np.linspace(t_start, t_end, phase_matrix.shape[1])
+
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Kop Phase For a Single Neuron")
-    ax.set_xlabel("Time (ms)")
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Phase (angle in radians)")
-    ax.plot(phase_matrix[0])
+    ax.plot(t, phase_matrix[0])
+    ax.set_xlim(t_start, t_end)
     plt.savefig(os.path.join(filepaths.figures_dir, "kop.png"), format="png")
     plt.show()
 
