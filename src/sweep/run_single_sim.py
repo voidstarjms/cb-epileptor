@@ -1,177 +1,127 @@
 #!/usr/bin/env python3
-"""One sim job in the parameter sweep — Condor runs one process per YAML in params/.
+"""Run one sweep job: simulate one job YAML and save its raw output.
 
-Each job's full configuration (including sweep dimensions and seed) lives in the
-YAML pointed to by --params. Outputs go under cwd/data and cwd/figures, so this
-should be run with cwd = src/sweep/ (Condor's Initialdir handles that).
+    python run_single_sim.py --params params/<run>/jobs/param_7.yaml [--out-dir DIR] [--debug-plot]
+
+Condor runs one copy per line of job_list.txt. No metrics are computed here;
+build_table.py derives them from the raw files, so they can be recomputed later.
+
+Output (same layout as older full-output pickles, minus the synaptic current traces):
+    {'metadata': {..., job_id, cb_on, low_res, seed},
+     'params':   the job's params dict,
+     'results':  {t, x1, x2, spikes_n1: {t, i}, spikes_n2: {t, i}}}
+
+Where it goes:
+    - Under Condor: $_CONDOR_SCRATCH_DIR/output_<job_id>.pkl. Condor copies it to
+      output/sweep/<run>/jobs/<job_id>/output.pkl (see condor/setup_condor.sh).
+    - Locally: <out-dir>/jobs/<job_id>/output.pkl.
 """
-
 import argparse
 import os
 import pickle
-import tempfile
-import numpy as np
-
-# Headless backend. Must be set before any pyplot import, direct or transitive.
-# import matplotlib
-# matplotlib.use('Agg')
-
-from brian2 import prefs, seed
-from brian2.units import *
-
 import sys
-sys.path.append("..")
-import data_processing
-import synch_metrics as syn
-import plotting.population_plots as ph
+import tempfile
+import types
+
+from brian2 import prefs, seed, second
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import run_sim
 from param_loader import load_params
-from run import FilePaths
+
+RAW_RESULT_KEYS = ('t', 'x1', 'x2', 'spikes_n1', 'spikes_n2')
 
 
-def _to_uS_float(v):
-    """Convert a Brian2 conductance quantity (or plain number) to a float in uS.
-
-    Args:
-        v: Brian2 conductance quantity (e.g. 0.5 * uS) or a plain number.
-
-    Returns:
-        float: The value expressed in microsiemens.
-    """
-    try:
-        return float(v / uS)
-    except (TypeError, ValueError):
-        return float(v)
-
-
-def main():
-    """Run one sim from a YAML, write its chi summary; optional per-job debug plot.
-
-    Reads the YAML pointed to by --params and , runs the simulation via model.run_sim
-    in memory (no intermediate output.pkl on NFS), computes synchrony chi and
-    KOP r over the HR population, and writes:
-
-      - data/results/metrics_<job_id>.pkl: compact summary {ce, x0, Gintra, Ginter,
-        realization, chi, r} consumed by aggregate.py. (Only NFS write per job.)
-      - figures/sweep_debug/<job_id>/standard_plot.svg: per-job debug plot,
-        written only when --debug-plot is passed.
-    """
-    parser = argparse.ArgumentParser(description='Run one simulation from a YAML param file.')
-    parser.add_argument('--params', type=str, default='../../params.yaml', required=False,
-                        help='Path to a YAML param file (e.g. params/param_1.yaml).')
-    parser.add_argument('--excite', type=float, default=None, required=False,
-                        help='Manually assigns epop excitability')
-    parser.add_argument('--J', type=float, default=None, required=False,
-                        help='Manually assigns gap junction strength')
-    parser.add_argument('--Gintra', type=float, default=None, required=False,
-                        help='Manually assigns intrapopulation synapse strength')
-    parser.add_argument('--Ginter', type=float, default=None, required=False,
-                        help='Manually assigns interpopulation synapse strength')
-    parser.add_argument('--realization', type=int, default=None, required=False,
-                        help='The random seed for the experiment')
-    parser.add_argument('--debug-plot', action='store_true', default=False,
-                        help='Write a per-job standard_plot debug image. Off by default '
-                             'for sweeps to avoid per-job NFS plot writes.')
-    args = parser.parse_args()
-    
-    params_dict = load_params(args.params)
-    # Load scientific parameters from command line if supplied
-    if args.excite != None:
-        params_dict['EPOP_BASE_EXCITE'] = args.excite
-    if args.J != None:
-        params_dict['COUPLING_STRENGTH'] = args.J
-    if args.Gintra != None:
-        params_dict['G_INTRA'] = args.Gintra
-    if args.Ginter != None:
-        params_dict['G_INTER'] = args.Ginter
-    if args.realization != None:
-        params_dict['SEED'] = args.realization
-
-    # Job ID is the YAML basename (e.g. 'param_37'). Matches what condor/README.md documents.
-    job_id = os.path.splitext(os.path.basename(args.params))[0]
-
-    # Unique cache dir so parallel jobs don't collide on C++ compilation.
-    cache_dir = tempfile.mkdtemp(prefix=f'brian2_{job_id}_')
-    prefs.codegen.runtime.cython.cache_dir = cache_dir
-
-    realization = int(params_dict.get('SEED', args.realization))
-    seed(realization)
-
-    print(f"Starting job: {job_id}")
-
-    # Per-job dirs so parallel jobs don't overwrite each other's output.
-    # data_dir is unused under the in-memory pipeline but kept on the dataclass
-    # for plot helpers that expect a populated FilePaths.
-    filepaths = FilePaths(
-        data_dir=os.path.join('data', 'jobs', job_id),
-        figures_dir=os.path.join('figures', 'sweep_debug', job_id),
-    )
-
-    # In-memory pipeline: no output.pkl write/read/delete on NFS.
-    data = run_sim(filepaths, params_dict, cb_on=False, save=False)
-    res = data['results']
-    x1 = res['x1']
-    x2 = res['x2']
-    t  = res['t']
-    spikes_1 = res['spikes_n1']
-    spikes_2 = res['spikes_n2']
-
-    num_cells = params_dict['NUM_CELLS']
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
-
-    # Compute synchrony
-    chi_exc, _, _ = syn.autocorrelate(x1)
-    chi_inh, _, _ = syn.autocorrelate(x2)
-
-    _, r_exc, _ = syn.KOP(spikes_1['i'], spikes_1['t'], params_dict['SIM_DURATION'] / second)
-    _, r_inh, _ = syn.KOP(spikes_2['i'], spikes_2['t'], params_dict['SIM_DURATION'] / second)
-    r = np.mean(r_exc) + np.mean(r_inh)
-    
-    print(f"  r = {r:.4f}")
-
-    # Pull the sweep dims back out of the YAML so aggregate.py can reconstruct
-    # the grid without re-parsing filenames.
-    coupling_J = float(params_dict['COUPLING_STRENGTH'])
-    epop_excite = float(params_dict['EPOP_BASE_EXCITE'])
-    Gintra = _to_uS_float(params_dict['G_INTRA'])
-    Ginter = _to_uS_float(params_dict['G_INTER'])
-
-    # Save per-job result. Under Condor file transfer the job runs in a scratch
-    # sandbox; write to its root ($_CONDOR_SCRATCH_DIR) so Condor transfers the metrics
-    # file back. Falls back to data/results/ for local (non-Condor) runs.
-    results_dir = os.environ.get('_CONDOR_SCRATCH_DIR', os.path.join('data', 'results'))
-    os.makedirs(results_dir, exist_ok=True)
-    job_result = {
-        'params':           params_dict,
-        'realization':      realization,
-        'chi_exc':          float(chi_exc),
-        'chi_inh':          float(chi_inh),
-        'r_exc':            float(np.mean(r_exc)),
-        'r_inh':            float(np.mean(r_inh)),
-        'exc_spike_mat':    spike_matrix_1.astype(np.uint8),
-        'inh_spike_mat':    spike_matrix_2.astype(np.uint8),
+def job_settings(params: dict, params_path: str) -> dict:
+    """Read the per-job settings that generate_params.py writes into every job YAML."""
+    missing = [k for k in ('SEED', 'CB_ON', 'LOW_RES') if k not in params]
+    if missing:
+        sys.exit(f"{params_path} has no {missing}; make job YAMLs with generate_params.py")
+    return {
+        'job_id': os.path.splitext(os.path.basename(params_path))[0],
+        'seed': int(params['SEED']),
+        'cb_on': bool(params['CB_ON']),
+        'low_res': bool(params['LOW_RES']),
     }
-    
-    with open(os.path.join(results_dir, f'metrics_{job_id}.pkl'), 'wb') as f:
-        pickle.dump(job_result, f)
 
-    if args.debug_plot:
-        os.makedirs(filepaths.figures_dir, exist_ok=True)
-        spike_matrix_1 = data_processing.create_spike_matrix_histo(
-            params_dict, res['spikes_n1'], params_dict['NUM_CELLS'])
-        spike_matrix_2 = data_processing.create_spike_matrix_histo(
-            params_dict, res['spikes_n2'], params_dict['NUM_CELLS'])
-        ph.standard_plot(filepaths, params_dict, t, x1, x2,
-                         spike_matrix_1, spike_matrix_2,
-                         params_dict['NUM_CELLS'],
-                         params_dict['SIM_DURATION'] / second,
-                         g_inter_vals=params_dict['G_INTER_VALS'],
-                         g_intra_vals=params_dict['G_INTRA_VALS'],
-                         x0_t=res.get('x0_t'), ce_t=res.get('ce_t'),
-                         show=False)
 
-    print(f"Done: {job_id}")
+def simulate(params: dict, settings: dict) -> dict:
+    """Run the model in memory and return its full sim_data dict."""
+    # Separate Cython cache per job so parallel jobs don't collide while compiling.
+    prefs.codegen.runtime.cython.cache_dir = tempfile.mkdtemp(prefix=f"brian2_{settings['job_id']}_")
+    seed(settings['seed'])
+    return run_sim(None, params, cb_on=settings['cb_on'], save=False,
+                   low_res=settings['low_res'])
+
+
+def raw_output(sim_data: dict, settings: dict) -> dict:
+    """Keep only what metrics need, and record how the job was run."""
+    return {
+        'metadata': {**sim_data['metadata'], **settings},
+        'params': sim_data['params'],
+        'results': {key: sim_data['results'][key] for key in RAW_RESULT_KEYS},
+    }
+
+
+def output_path(job_id: str, out_dir: str) -> str:
+    """Condor scratch root if running under Condor, else <out_dir>/jobs/<job_id>/output.pkl."""
+    scratch = os.environ.get('_CONDOR_SCRATCH_DIR')
+    if scratch:
+        return os.path.join(scratch, f'output_{job_id}.pkl')
+    if out_dir is None:
+        sys.exit("Not running under Condor: pass --out-dir for local runs")
+    job_dir = os.path.join(out_dir, 'jobs', job_id)
+    os.makedirs(job_dir, exist_ok=True)
+    return os.path.join(job_dir, 'output.pkl')
+
+
+def save_debug_plot(sim_data: dict, params: dict, figures_dir: str) -> None:
+    """Write the standard population plot. Local runs only: Condor doesn't copy it back."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import numpy as np
+    import data_processing
+    import plotting.population_plots as population_plots
+
+    os.makedirs(figures_dir, exist_ok=True)
+    res = sim_data['results']
+    num_cells = params['NUM_CELLS']
+    bin_width = params['PLOT_BIN_WIDTH'] / second
+    histo_bin_width = params['SPIKE_HISTO_BIN_WIDTH'] / second
+    population_plots.standard_plot(
+        types.SimpleNamespace(data_dir=None, figures_dir=figures_dir), params,
+        res['t'],
+        data_processing.bin_data(res['t'], np.mean(res['x1'], axis=0), bin_width),
+        data_processing.bin_data(res['t'], np.mean(res['x2'], axis=0), bin_width),
+        data_processing.create_spike_matrix_histo(params, res['spikes_n1'], num_cells, histo_bin_width),
+        data_processing.create_spike_matrix_histo(params, res['spikes_n2'], num_cells, histo_bin_width),
+        num_cells, params['SIM_DURATION'] / second,
+        g_inter_vals=params['G_INTER_VALS'], g_intra_vals=params['G_INTRA_VALS'],
+        x0_t=res.get('x0_t'), ce_t=res.get('ce_t'), show=False)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Run one sweep job and save its raw output.')
+    parser.add_argument('--params', required=True,
+                        help='Job YAML written by generate_params.py')
+    parser.add_argument('--out-dir', default=None,
+                        help='Local runs only: write <out-dir>/jobs/<job_id>/output.pkl')
+    parser.add_argument('--debug-plot', action='store_true',
+                        help='Local runs only: also write <out-dir>/figures/<job_id>/ plots')
+    args = parser.parse_args(argv)
+
+    params = load_params(args.params)
+    settings = job_settings(params, args.params)
+    path = output_path(settings['job_id'], args.out_dir)
+
+    print(f"Starting job {settings['job_id']} (seed {settings['seed']}, cb_on {settings['cb_on']})")
+    sim_data = simulate(params, settings)
+    with open(path, 'wb') as f:
+        pickle.dump(raw_output(sim_data, settings), f)
+    print(f"Wrote {path}")
+
+    if args.debug_plot and args.out_dir is not None:
+        save_debug_plot(sim_data, params, os.path.join(args.out_dir, 'figures', settings['job_id']))
 
 
 if __name__ == '__main__':
