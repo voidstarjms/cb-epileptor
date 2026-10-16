@@ -15,6 +15,7 @@ from config_structs import ZoomConfig
 from typing import Dict
 
 
+
 @dataclass
 class FilePaths:
     """Groups output paths; instantiated from CLI args in main() and injected throughout.
@@ -31,51 +32,52 @@ def plot_synapse_dynamics(filepaths: FilePaths, params_dict: Dict, res: Dict):
     
     Args:
         filepaths (FilePaths): Reads from data_dir, writes to figures_dir.
-        params_dict (Dict): Parameter dict loaded from YAML.
+        params_dict (Dict): Parameter dict loaded from YAML. PLOT_BIN_WIDTH sets the time bin.
         res: Results from the simulation dictionary.
     """
     t = res['t']
-    x1 = res['x1']
-    x2 = res['x2']
+    bin_width = params_dict['PLOT_BIN_WIDTH'] / second
+    x1 = data_processing.bin_data(t, np.mean(res['x1'], axis=0), bin_width)
+    x2 = data_processing.bin_data(t, np.mean(res['x2'], axis=0), bin_width)
     excite_sched = res.get('x0_t')
     coupling_sched = res.get('ce_t')
 
     # E->E synapse stats
-    wpre = res['S1_1_wpre']
-    u = res['S1_1_u']
-    Ca = res['S1_1_Ca']
-    p = res['S1_1_plasticity']
-    I_syn = res['I_syn_intra_1']
+    wpre = data_processing.bin_data(t, res['S1_1_wpre'], bin_width)
+    u = data_processing.bin_data(t, res['S1_1_u'], bin_width)
+    Ca = data_processing.bin_data(t, res['S1_1_Ca'], bin_width)
+    p = data_processing.bin_data(t, res['S1_1_plasticity'], bin_width)
+    I_syn = data_processing.bin_data(t, np.mean(res['I_syn_intra_1'], axis=0), bin_width)
     plast_plotter.plot_plasticity(filepaths, "S1_1_synapse_stats.png",
                                   params_dict, "E-to-E Synapse Stats", t, x1, wpre, u, Ca, p, I_syn,
-                                  False, excite=excite_sched, coupling=coupling_sched)
+                                  presyn_is_inh=False, excite=excite_sched, coupling=coupling_sched)
     # E->I synapse stats
-    wpre = res['S1_2_wpre']
-    u = res['S1_2_u']
-    Ca = res['S1_2_Ca']
-    p = res['S1_2_plasticity']
-    I_syn = res['I_syn_inter_1']
+    wpre = data_processing.bin_data(t, res['S1_2_wpre'], bin_width)
+    u = data_processing.bin_data(t, res['S1_2_u'], bin_width)
+    Ca = data_processing.bin_data(t, res['S1_2_Ca'], bin_width)
+    p = data_processing.bin_data(t, res['S1_2_plasticity'], bin_width)
+    I_syn = data_processing.bin_data(t, np.mean(res['I_syn_inter_1'], axis=0), bin_width)
     plast_plotter.plot_plasticity(filepaths, "S1_2_synapse_stats.png", params_dict, "E-to-I Synapse Stats",
                                   t, x1, wpre, u, Ca, p, I_syn,
-                                  False, excite=excite_sched, coupling=coupling_sched)
+                                  presyn_is_inh=False, excite=excite_sched, coupling=coupling_sched)
     # I->I synapse stats
-    wpre = res['S2_2_wpre']
-    u = res['S2_2_u']
-    Ca = res['S2_2_Ca']
-    p = res['S2_2_plasticity']
-    I_syn = res['I_syn_intra_2']
+    wpre = data_processing.bin_data(t, res['S2_2_wpre'], bin_width)
+    u = data_processing.bin_data(t, res['S2_2_u'], bin_width)
+    Ca = data_processing.bin_data(t, res['S2_2_Ca'], bin_width)
+    p = data_processing.bin_data(t, res['S2_2_plasticity'], bin_width)
+    I_syn = data_processing.bin_data(t, np.mean(res['I_syn_intra_2'], axis=0), bin_width)
     plast_plotter.plot_plasticity(filepaths, "S2_2_synapse_stats.png", params_dict, "I-to-I Synapse Stats",
                                   t, x2, wpre, u, Ca, p, I_syn,
-                                  True, excite=excite_sched, coupling=coupling_sched)
+                                  presyn_is_inh=True, excite=excite_sched, coupling=coupling_sched)
     # I->E synapse stats
-    wpre = res['S2_1_wpre']
-    u = res['S2_1_u']
-    Ca = res['S2_1_Ca']
-    p = res['S2_1_plasticity']
-    I_syn = res['I_syn_inter_2']
+    wpre = data_processing.bin_data(t, res['S2_1_wpre'], bin_width)
+    u = data_processing.bin_data(t, res['S2_1_u'], bin_width)
+    Ca = data_processing.bin_data(t, res['S2_1_Ca'], bin_width)
+    p = data_processing.bin_data(t, res['S2_1_plasticity'], bin_width)
+    I_syn = data_processing.bin_data(t, np.mean(res['I_syn_inter_2'], axis=0), bin_width)
     plast_plotter.plot_plasticity(filepaths, "S2_1_synapse_stats.png", params_dict, "I-to-E Synapse Stats",
                                   t, x2, wpre, u, Ca, p, I_syn,
-                                  True, excite=excite_sched, coupling=coupling_sched)
+                                  presyn_is_inh=True, excite=excite_sched, coupling=coupling_sched)
 
 
 def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, results_dict: Dict = None, png = False) -> None:
@@ -91,19 +93,23 @@ def plot_output(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True, res
     os.makedirs(filepaths.figures_dir, exist_ok=True)
     res = results_dict['results']
     t = res['t']
-    x1 = res['x1']
-    x2 = res['x2']
-    epop_intra = res['I_syn_intra_1']
-    epop_inter = res['I_syn_inter_1']
-    ipop_intra = res['I_syn_intra_2']
-    ipop_inter = res['I_syn_inter_2']
+    bin_width = params_dict['PLOT_BIN_WIDTH'] / second
+    # Mean over neurons, then binned in time, for the LFP and synaptic current plots.
+    x1 = data_processing.bin_data(t, np.mean(res['x1'], axis=0), bin_width)
+    x2 = data_processing.bin_data(t, np.mean(res['x2'], axis=0), bin_width)
+    epop_intra = data_processing.bin_data(t, np.mean(res['I_syn_intra_1'], axis=0), bin_width)
+    epop_inter = data_processing.bin_data(t, np.mean(res['I_syn_inter_1'], axis=0), bin_width)
+    ipop_intra = data_processing.bin_data(t, np.mean(res['I_syn_intra_2'], axis=0), bin_width)
+    ipop_inter = data_processing.bin_data(t, np.mean(res['I_syn_inter_2'], axis=0), bin_width)
 
     if cb_on:
         plot_synapse_dynamics(filepaths, params_dict, res)
     
     num_cells = params_dict['NUM_CELLS']
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n1'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n2'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
     pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
                               num_cells, params_dict['SIM_DURATION'] / second,
                               g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
@@ -136,13 +142,18 @@ def plot_output_full(filepaths: FilePaths, params_dict: Dict, cb_on: bool = True
         plot_synapse_dynamics(filepaths, params_dict, res)
 
     num_cells = params_dict['NUM_CELLS']
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n1'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n2'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
 
     zoom = ZoomConfig(start=60, end=60.2)
     pop_plotter.plot_epop_single(filepaths, t, x1, y1, z1, I_syn_inter, zoom=zoom)
     pop_plotter.plot_ipop_single(filepaths, t, x2, n, zoom=zoom)
-    pop_plotter.standard_plot(filepaths, params_dict, t, x1, x2, spike_matrix_1, spike_matrix_2,
+    bin_width = params_dict['PLOT_BIN_WIDTH'] / second
+    x1_binned = data_processing.bin_data(t, np.mean(x1, axis=0), bin_width)
+    x2_binned = data_processing.bin_data(t, np.mean(x2, axis=0), bin_width)
+    pop_plotter.standard_plot(filepaths, params_dict, t, x1_binned, x2_binned, spike_matrix_1, spike_matrix_2,
                               num_cells, params_dict['SIM_DURATION'] / second, zoom=zoom)
                             #   g_inter_vals=params_dict['G_INTER_VALS'], g_intra_vals=params_dict['G_INTRA_VALS'],
                             #   x0_t=res.get('x0_t'), ce_t=res.get('ce_t'))
@@ -180,8 +191,10 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
     num_cells = params_dict['NUM_CELLS']
     data_processing.save_raw_spikes(filepaths, res['spikes_n1'], filename="sparse_spikes_n1.pkl")
     data_processing.save_raw_spikes(filepaths, res['spikes_n2'], filename="sparse_spikes_n2.pkl")
-    spike_matrix_1 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n1'], num_cells)
-    spike_matrix_2 = data_processing.create_spike_matrix_histo(params_dict, res['spikes_n2'], num_cells)
+    spike_matrix_1 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n1'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
+    spike_matrix_2 = data_processing.create_spike_matrix_histo(
+        params_dict, res['spikes_n2'], num_cells, params_dict['SPIKE_HISTO_BIN_WIDTH'] / second)
     data_processing.save_spike_histo(filepaths, spike_matrix_1, filename="spike_histo_n1.pkl")
     data_processing.save_spike_histo(filepaths, spike_matrix_2, filename="spike_histo_n2.pkl")
 
@@ -204,8 +217,9 @@ def analyze_populations(filepaths: FilePaths, params_dict: Dict, data: Dict) -> 
                       params_dict['TRANSIENT'])
     print(f'r: {np.mean(r)}')
 
-    analysis_plotter.plot_power_spec(filepaths, params_dict, x1, x2)
-    analysis_plotter.plot_spectrogram(filepaths, params_dict, x1, x2,
+    fs = syn.sample_rate(res['t'])
+    analysis_plotter.plot_power_spec(filepaths, x1, x2, fs)
+    analysis_plotter.plot_spectrogram(filepaths, params_dict, x1, x2, fs,
                                       t=res['t'],
                                       x0_t=res.get('x0_t'),
                                       ce_t=res.get('ce_t'))
@@ -218,36 +232,18 @@ def report_metrics(params_dict: Dict, data: Dict) -> None:
         params_dict: Parameter dict loaded from YAML.
         data: Dict returned by data_processing.load_sim_data.
     """
-    res = data['results']
-    duration = params_dict['SIM_DURATION'] / second
-    num_cells = params_dict['NUM_CELLS']
-    fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
-
-    chi1, _, _ = syn.autocorrelate(res['x1'])
-    chi2, _, _ = syn.autocorrelate(res['x2'])
-
-    _, r1, _ = syn.KOP(res['spikes_n1']['i'], res['spikes_n1']['t'], duration, params_dict['TRANSIENT'])
-    _, r2, _ = syn.KOP(res['spikes_n2']['i'], res['spikes_n2']['t'], duration, params_dict['TRANSIENT'])
-    r1, r2 = float(np.mean(r1)), float(np.mean(r2))
-
-    fr1 = syn.mean_firing_rate(res['spikes_n1']['i'], res['spikes_n1']['t'], num_cells, duration)
-    fr2 = syn.mean_firing_rate(res['spikes_n2']['i'], res['spikes_n2']['t'], num_cells, duration)
-
-    df1 = syn.median_frequency(res['x1'], fs)
-    df2 = syn.median_frequency(res['x2'], fs)
-
-    cv1 = syn.isi_cv(res['spikes_n1']['i'], res['spikes_n1']['t'])
-    cv2 = syn.isi_cv(res['spikes_n2']['i'], res['spikes_n2']['t'])
+    m = syn.summarize_run(data['results'], params_dict['NUM_CELLS'],
+                          params_dict['SIM_DURATION'] / second, params_dict['TRANSIENT'])
 
     W = 28
     print("\n============ METRIC REPORT ============")
     print(f"\n{'Metric':<{W}} {'EPOP':>10} {'IPOP':>10}")
     print("-" * (W + 22))
-    print(f"{'Chi (autocorr)':<{W}} {chi1:>10.4f} {chi2:>10.4f}")
-    print(f"{'KOP r':<{W}} {r1:>10.4f} {r2:>10.4f}")
-    print(f"{'Mean firing rate (Hz)':<{W}} {fr1:>10.4f} {fr2:>10.4f}")
-    print(f"{'Median frequency (Hz)':<{W}} {df1:>10.4f} {df2:>10.4f}")
-    print(f"{'ISI CV':<{W}} {cv1:>10.4f} {cv2:>10.4f}")
+    for name, key in (('Chi (autocorr)', 'chi'), ('KOP r', 'r'),
+                      ('Mean firing rate (Hz)', 'rate'), ('Median frequency (Hz)', 'median_freq'),
+                      ('ISI CV', 'isi_cv')):
+        suffix = '_hz' if key in ('rate', 'median_freq') else ''
+        print(f"{name:<{W}} {m[f'{key}_exc{suffix}']:>10.4f} {m[f'{key}_inh{suffix}']:>10.4f}")
 
 
 def _save_params(params_file: str, run_dir: str) -> None:
@@ -261,7 +257,7 @@ def _save_params(params_file: str, run_dir: str) -> None:
 
 
 REQUIRED_PARAMS = {
-    'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT',
+    'SIM_DURATION', 'NUM_CELLS', 'TAU_CLOCK', 'DT_SCALING', 'TRANSIENT', 'DOWNSAMPLE_INTERVAL',
     'ISOLATE', 'W_MAX', 'I_SCALE', 'NOISE_INIT_OFFSET',
     'EPOP_A', 'EPOP_B', 'EPOP_C', 'EPOP_D', 'EPOP_S', 'EPOP_I_APP',
     'EPOP_BASE_EXCITE', 'EPOP_R', 'EPOP_SIGMA', 'EPOP_THRESHOLD', 'EPOP_REFRACTORY_CONDITION',
@@ -280,6 +276,7 @@ REQUIRED_PARAMS = {
     'COUPLING_VALS', 'COUPLING_DT',
     'G_INTER_VALS', 'G_INTER_DT',
     'G_INTRA_VALS', 'G_INTRA_DT',
+    'PLOT_BIN_WIDTH', 'SPIKE_HISTO_BIN_WIDTH',
 }
 
 
@@ -306,12 +303,15 @@ def main() -> None:
                         help='Save standard plot as png instead of svg')
     parser.add_argument('-t', '--timed-array', action='store_true', default=False,
                         help='Enable timed arrays in the model')
+    parser.add_argument('--low-res', action='store_true', default=False,
+                        help='Record state traces every DOWNSAMPLE_INTERVAL (params file) instead of every sim timestep')
     args = parser.parse_args()
     run_mode = args.mode
     cb_on = args.cb
     png = args.png
     params = args.params
     timed_array = args.timed_array
+    low_res = args.low_res
     params_dict = load_params(params)
     missing = REQUIRED_PARAMS - params_dict.keys()
     if missing:
@@ -331,7 +331,7 @@ def main() -> None:
         os.makedirs(filepaths.figures_dir, exist_ok=True)
         _save_params(params, out_dir)
         print("Running simulation...")
-        data = run_sim(filepaths, params_dict, cb_on, save, timed_array)
+        data = run_sim(filepaths, params_dict, cb_on, save, timed_array, low_res)
         if save:
             print(f"Simulation complete. Results saved to {out_dir}")
     else:

@@ -9,14 +9,15 @@ from typing import Dict, Any
 
 _OUTPUT_DATA_FILE = 'output.pkl'
 
-
-def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: int) -> np.ndarray:
-    """Bin spikes into a (num_cells, time_bins) count matrix using 20 ms bins.
+def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: int,
+                              bin_size: float = 0.02) -> np.ndarray:
+    """Bin spikes into a (num_cells, time_bins) count matrix.
 
     Args:
         params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
         spike_data (Dict): Dict with 't' (spike times in seconds) and 'i' (neuron indices).
         num_cells (int): Number of neurons; sets the neuron-axis size.
+        bin_size (float): Width of each time bin in seconds (default 0.02 = 20 ms).
 
     Returns:
         np.ndarray: 2D array of shape (num_cells, num_time_bins) holding spike counts.
@@ -25,9 +26,8 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
     neuron_indices = spike_data['i']
 
     duration = params_dict['SIM_DURATION'] / second + params_dict['TRANSIENT']
-    dt = 0.02  # 20ms per bin
 
-    time_bins = np.arange(params_dict['TRANSIENT'], duration + dt, dt)
+    time_bins = np.arange(params_dict['TRANSIENT'], duration + bin_size, bin_size)
     neuron_bins = np.arange(0, num_cells + 1)
 
     spike_matrix, neuron_edges, time_edges = np.histogram2d(
@@ -37,6 +37,42 @@ def create_spike_matrix_histo(params_dict: Dict, spike_data: Dict, num_cells: in
     )
 
     return spike_matrix
+
+def bin_data(t: np.ndarray, data: np.ndarray, bin_width: float) -> np.ndarray:
+    """Replace each sample with the mean of its time bin.
+
+    Bins are bin_width seconds long, starting at t[0], so they depend only on
+    time, not on how many samples there are or how often they were recorded.
+    Binning already-binned data with the same t and bin_width gives the same
+    data back. The last bin may be shorter if the duration doesn't divide evenly.
+
+    Args:
+        t (np.ndarray): Sample times in seconds, same length as data.
+        data (np.ndarray): 1D array to bin. Not modified.
+        bin_width (float): Bin length in seconds.
+
+    Returns:
+        np.ndarray: Same length as data; every sample holds its bin's mean.
+    """
+    t = np.asarray(t)
+    data = np.asarray(data, dtype=float)
+
+    # Which bin each sample falls in: 0 for the first bin_width seconds, then 1, ...
+    # rounding to 6 decimal places protects against floating point math error
+    # floor places decimal values into the correct bin.
+    bin_index = np.floor(np.round((t - t[0]) / bin_width, 6)).astype(int)
+
+    # Sum and count of the samples in each bin, then each bin's mean.
+    bin_sums = np.bincount(bin_index, weights=data)
+    bin_counts = np.bincount(bin_index)
+    bin_means = bin_sums / np.maximum(bin_counts, 1)  # max avoids 0/0 for empty bins (never indexed below)
+
+    # Give every sample its bin's mean.
+    binned = np.empty(len(data))
+    for i in range(len(data)):
+        binned[i] = bin_means[bin_index[i]]
+    return binned
+
 
 def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
               SM_N1: Any, SM_N2: Any, M_S1_1: Any = None, M_S1_2: Any = None,
@@ -78,8 +114,11 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
     M_N1.__del__()
     M_N2.__del__()
 
-    eff_Ca = lambda Ca, pop : ((params_dict['INH_CB_PREVALENCE'] if pop else params_dict['EXC_CB_PREVALENCE']) *
-                               (1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT']) if cb_on else 1) * Ca
+    # CB1 receptors sit on the presynaptic terminal, so the prevalence used is
+    # the presynaptic population's: S1_* synapses start in the exc pop, S2_* in the inh pop.
+    eff_Ca = lambda Ca, presyn_is_inh : \
+        (params_dict['INH_CB_PREVALENCE'] if presyn_is_inh else params_dict['EXC_CB_PREVALENCE']) * \
+        (1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT'] if cb_on else 1) * Ca
     p = lambda Ca : (1
         - params_dict['A_LTD'] * np.where(Ca > params_dict['THETA_LTD_START'], 1, 0)
         * np.where(Ca < params_dict['THETA_LTD_END'], 1, 0)
@@ -92,7 +131,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S1_1_wpre': np.mean(np.asarray(M_S1_1.Wpre), axis=0),
                 'S1_1_u':    np.mean(np.asarray(M_S1_1.u), axis=0),
                 'S1_1_Ca':   np.mean(np.asarray(M_S1_1.Ca), axis=0),
-                'S1_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_1.Ca), False)), axis=0)
+                'S1_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_1.Ca), presyn_is_inh=False)), axis=0)
             })
             M_S1_1.__del__()
         # e->i (HR->ML)
@@ -101,7 +140,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S1_2_wpre': np.mean(np.asarray(M_S1_2.Wpre), axis=0),
                 'S1_2_u':    np.mean(np.asarray(M_S1_2.u), axis=0),
                 'S1_2_Ca':   np.mean(np.asarray(M_S1_2.Ca), axis=0),
-                'S1_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_2.Ca), False)), axis=0)
+                'S1_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S1_2.Ca), presyn_is_inh=False)), axis=0)
             })
             M_S1_2.__del__()
         # i->e (ML->HR)
@@ -110,7 +149,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S2_1_wpre': np.mean(np.asarray(M_S2_1.Wpre), axis=0),
                 'S2_1_u':    np.mean(np.asarray(M_S2_1.u), axis=0),
                 'S2_1_Ca':   np.mean(np.asarray(M_S2_1.Ca), axis=0),
-                'S2_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_1.Ca), True)), axis=0)
+                'S2_1_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_1.Ca), presyn_is_inh=True)), axis=0)
             })
             M_S2_1.__del__()
         # i->i (ML->ML)
@@ -119,7 +158,7 @@ def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
                 'S2_2_wpre': np.mean(np.asarray(M_S2_2.Wpre), axis=0),
                 'S2_2_u':    np.mean(np.asarray(M_S2_2.u), axis=0),
                 'S2_2_Ca':   np.mean(np.asarray(M_S2_2.Ca), axis=0),
-                'S2_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_2.Ca), True)), axis=0)
+                'S2_2_plasticity':  np.mean(p(eff_Ca(np.asarray(M_S2_2.Ca), presyn_is_inh=True)), axis=0)
             })
             M_S2_2.__del__()
 

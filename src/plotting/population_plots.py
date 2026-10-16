@@ -12,7 +12,6 @@ from typing import Dict, Any
 from config_structs import ZoomConfig
 
 import plotting.style  # noqa: F401
-from plotting.plotting_utils import *
 
 def _apply_zoom(axes: list, zoom: ZoomConfig) -> None:
     """Set the x-axis limits on all given axes.
@@ -69,8 +68,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         filepaths (Any): FilePaths with figures_dir.
         params_dict (Dict): Needs SIM_DURATION and TRANSIENT.
         t (np.ndarray): Time vector.
-        x1 (np.ndarray): (num_cells, time) HR x.
-        x2 (np.ndarray): (num_cells, time) ML x.
+        x1 (np.ndarray): (time,) HR x, averaged over neurons and binned by the caller.
+        x2 (np.ndarray): (time,) ML x, averaged over neurons and binned by the caller.
         spike_matrix_1 (np.ndarray): HR spike count matrix.
         spike_matrix_2 (np.ndarray): ML spike count matrix.
         num_cells (int): Number of neurons per population.
@@ -85,7 +84,8 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     
     Returns: void
     """
-
+    # TODO: 3 is hardcoded
+    # height ratio can be config'd
     has_x0_ce = x0_t is not None and ce_t is not None
     has_g = g_intra_vals is not None and g_inter_vals is not None
     n_axes = 3 + has_x0_ce + has_g
@@ -102,16 +102,17 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
     fig.set_constrained_layout_pads(w_pad=0.1, h_pad=0.1,
                                      wspace=0.02, hspace=0.02)
 
-    x1_mean = bin_data(np.mean(x1, axis=0), 100)
-    x2_mean = bin_data(np.mean(x2, axis=0), 100)
-    x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
+    # TODO: hardcoded
+    x_mean = (0.8 * x1) + (0.2 * x2)
     ax1.plot(t, x_mean)
     ax1.set_ylabel("LFP (a.u.)", fontsize=10)
     ax1.set_title("LFP signal (80/20 weight excitatory/inhibitory)", fontsize=10)
     ax1.tick_params(axis='y', labelsize=10)
 
     # raster 1
-    HR_CLIM = max(5, find_clim(spike_matrix_1))
+    # TODO: why max 5?
+    # HR_CLIM = max(5, find_clim(spike_matrix_1))
+    HR_CLIM = find_clim(spike_matrix_1)
     print(spike_matrix_1.shape)
     raster1 = ax2.imshow(spike_matrix_1, interpolation='none', aspect='auto',
                    origin='lower', extent=[params_dict['TRANSIENT'], sim_duration+params_dict['TRANSIENT'], 0, num_cells], clim=(0, HR_CLIM))
@@ -176,6 +177,7 @@ def standard_plot(filepaths: Any, params_dict: Dict, t: np.ndarray,
         plt.show()
     plt.close()
 
+# TODO: UNUSED function. 
 def raster_plot(filepaths: Any, population: int, t: np.ndarray,
         x: np.ndarray, spike_matrix: np.ndarray, num_cells: int, sim_duration: float,
         zoom: ZoomConfig = None) -> None:
@@ -407,9 +409,8 @@ def plot_both_avg(filepaths: Any, t: np.ndarray, x1: np.ndarray, y1: np.ndarray,
     plt.show()
 
 def plot_synapse_currents(filepaths: Any, t: np.ndarray, epop_intra: np.ndarray,
-        epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray,
-        bin_size = 1000):
-    """Plot mean synaptic currents.
+        epop_inter: np.ndarray, ipop_intra: np.ndarray, ipop_inter: np.ndarray):
+    """Plot mean synaptic currents. Averaging over neurons and binning are done by the caller.
     
     Args:
         filepaths (Any): FilePaths object containing figures directory path.
@@ -417,30 +418,28 @@ def plot_synapse_currents(filepaths: Any, t: np.ndarray, epop_intra: np.ndarray,
         epop_inter (np.ndarray): Mean current for EPOP interpopulation synaptic current.
         ipop_intra (np.ndarray): Mean current for IPOP intrapopulation synaptic current.
         ipop_inter (np.ndarray): Mean current for IPOP interpopulation synaptic current.
-        bin_size (int): number of dt by which to bin data.
     
     Returns: void
     """
-    epop_intra_mean = bin_data(np.mean(epop_intra, axis=0), bin_size)
-    epop_inter_mean = bin_data(np.mean(epop_inter, axis=0), bin_size)
-    ipop_intra_mean = bin_data(np.mean(ipop_intra, axis=0), bin_size)
-    ipop_inter_mean = bin_data(np.mean(ipop_inter, axis=0), bin_size)
-
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
     fig.suptitle("Mean Synaptic Currents (uS)")
-    ax1.plot(t, epop_intra_mean)
+
+    ax1.plot(t, epop_intra)
     ax1.set_ylabel(u"E \u2192 E", fontsize=10)
     ax1.tick_params(axis='both', which='major', labelsize=10)
     ax1.yaxis.get_offset_text().set_fontsize(10)
-    ax2.plot(t, epop_inter_mean)
+
+    ax2.plot(t, epop_inter)
     ax2.set_ylabel(u"E \u2192 I", fontsize=10)
     ax2.tick_params(axis='both', which='major', labelsize=10)
     ax2.yaxis.get_offset_text().set_fontsize(10)
-    ax3.plot(t, ipop_intra_mean)
+
+    ax3.plot(t, ipop_intra)
     ax3.set_ylabel(u"I \u2192 I", fontsize=10)
     ax3.tick_params(axis='both', which='major', labelsize=10)
     ax3.yaxis.get_offset_text().set_fontsize(10)
-    ax4.plot(t, ipop_inter_mean)
+    
+    ax4.plot(t, ipop_inter)
     ax4.set_ylabel(u"I \u2192 E", fontsize=10)
     ax4.tick_params(axis='both', which='major', labelsize=10)
     ax4.yaxis.get_offset_text().set_fontsize(10)
