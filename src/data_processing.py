@@ -60,7 +60,7 @@ def bin_data(t: np.ndarray, data: np.ndarray, bin_width: float) -> np.ndarray:
     # Which bin each sample falls in: 0 for the first bin_width seconds, then 1, ...
     # rounding to 6 decimal places protects against floating point math error
     # floor places decimal values into the correct bin.
-    bin_index = np.floor(np.round((t - t[0]) / bin_width, 6)).astype(int)
+    bin_index = np.floor((t - t[0]) / bin_width).astype(int)
 
     # Sum and count of the samples in each bin, then each bin's mean.
     bin_sums = np.bincount(bin_index, weights=data)
