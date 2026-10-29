@@ -58,8 +58,6 @@ def bin_data(t: np.ndarray, data: np.ndarray, bin_width: float) -> np.ndarray:
     data = np.asarray(data, dtype=float)
 
     # Which bin each sample falls in: 0 for the first bin_width seconds, then 1, ...
-    # rounding to 6 decimal places protects against floating point math error
-    # floor places decimal values into the correct bin.
     bin_index = np.floor((t - t[0]) / bin_width).astype(int)
 
     # Sum and count of the samples in each bin, then each bin's mean.
@@ -68,10 +66,7 @@ def bin_data(t: np.ndarray, data: np.ndarray, bin_width: float) -> np.ndarray:
     bin_means = bin_sums / np.maximum(bin_counts, 1)  # max avoids 0/0 for empty bins (never indexed below)
 
     # Give every sample its bin's mean.
-    binned = np.empty(len(data))
-    for i in range(len(data)):
-        binned[i] = bin_means[bin_index[i]]
-    return binned
+    return bin_means[bin_index]
 
 
 def pack_data(params_dict: Dict, M_N1: Any, M_N2: Any,
