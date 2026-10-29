@@ -1,14 +1,16 @@
 # --- Simulation Control ---
 SIM_DURATION: "40*second"
-NUM_CELLS: 5
+NUM_CELLS: 10
 TAU_CLOCK: "1*msecond"
 DT_SCALING: 20
 TRANSIENT: 10
+# StateMonitor recording interval when running with --low-res
+DOWNSAMPLE_INTERVAL: "1*msecond"
 
 # --- Coupling & Global Logic ---
 # ISOLATE = 0 decoupled, 1 coupled
 ISOLATE: 1
-COUPLING_STRENGTH: 0.1
+COUPLING_STRENGTH: 0.2
 W_MAX: 0.012
 
 # --- Population 1: Excitatory (Hindmarsh-Rose) ---
@@ -18,7 +20,7 @@ EPOP_C: 1.0
 EPOP_D: 5.0
 EPOP_S: 4.0
 EPOP_I_APP: 6
-EPOP_BASE_EXCITE: -3.5
+EPOP_BASE_EXCITE: -2.5
 EPOP_R: "0.00002/msecond"
 EPOP_SIGMA: 0.02  # was 1/50 in params.py; = 0.02 exactly
 EPOP_THRESHOLD: "x > 1.5"
@@ -97,3 +99,9 @@ CA_SIGMOID_SHIFT: 0.8
 CA_SIGMOID_SLOPE: 0.2
 
 NOISE_INIT_OFFSET: 1.5
+
+# --- Plotting ---
+# Time bin for the LFP, synapse and current traces
+PLOT_BIN_WIDTH: "10*msecond"
+# Time bin for the spike raster histograms
+SPIKE_HISTO_BIN_WIDTH: "20*msecond"

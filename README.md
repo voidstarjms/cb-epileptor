@@ -55,7 +55,7 @@ src/
     sheet_parser.py       # parse master sheet ods file as Pandas DataFrame
     signal_processing.py  # main entrypoint for ephys tools
   sweep/                  # parameter-sweep machinery (drives Condor)
-    generate_params.py    # writes params/param_N.yaml + params_list.txt
+    generate_params.py    # writes params/param_N.yaml + job_list.txt
     run_single_sim.py     # one Condor job: run sim, save chi summary
     aggregate.py          # collate per-job results into heatmaps
 ```
@@ -63,7 +63,7 @@ src/
 ## Single-simulation workflow (`run.py`)
 
 ```sh
-python run.py [-m MODE] [--params PATH] [--out-dir DIR] [--no-cb]
+python run.py [-m MODE] [--params PATH] [--out-dir DIR]
 ```
 
 Mode flags are independent and stackable — e.g. `-m rpa` means run, plot,
@@ -76,7 +76,7 @@ then analyze.
 | `f` | Combined with `p`, also draw HR (x,y,z,I_syn) and ML (x,n) traces |
 | `a` | Print chi/KOP stats and write autocorr+KOP plots |
 
-`--no-cb` keeps the Wpre dynamics evolving but drops Wpre from the
+`--cb` Turns ecb system on. Defaults to false if not specified, which models ecb system off by dropping Wpre from the
 synaptic current (so plasticity has no effect on the dynamics — useful
 as a control).
 

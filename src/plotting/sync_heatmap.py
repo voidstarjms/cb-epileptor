@@ -1,7 +1,8 @@
-"""Sweep heatmaps: mean chi and SD chi over a (param1, param2) grid.
+"""Sweep heatmaps for sweep/plot_sweep.py.
 
-Used by sweep/aggregate.py after a Condor run to visualize synchrony across
-the swept parameter combinations.
+plot_synchrony_single draws one 2D grid; plot_synchrony_multifaceted_single
+draws a grid of 2D panels for 4 swept parameters. Callers pass the title,
+colour range and colorbar label, so nothing here assumes a particular metric.
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,45 +10,14 @@ from matplotlib import gridspec
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 import os
-from run import FilePaths
 
 import plotting.style  # noqa: F401
-
-def plot_synchrony(filepaths, chi_mean, chi_sd,
-                   param1_values, param2_values,
-                   param1_label, param2_label,
-                   run_name):
-    """Write the mean-chi and SD-chi heatmaps, both prefixed with run_num.
-
-    Args:
-        filepaths: FilePaths with figures_dir.
-        chi_mean (np.ndarray): 2D array of mean chi values, shape (len(param2), len(param1)).
-        chi_sd (np.ndarray): 2D array of chi SDs, same shape as chi_mean.
-        param1_values: Values along the x axis.
-        param2_values: Values along the y axis.
-        param1_label (str): x-axis label (LaTeX allowed).
-        param2_label (str): y-axis label (LaTeX allowed).
-        run_num (int): Integer prefix for the output filenames.
-    """
-    plot_synchrony_single(filepaths, chi_mean, param1_values, param2_values,
-                          param1_label, param2_label,
-                          title=r'Synchrony $\chi$',
-                          vmin=0.5, vmax=1,
-                          save_name=f'{run_name}_synchrony_chi_mean.png')
-
-    sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
-    plot_synchrony_single(filepaths, chi_sd, param1_values, param2_values,
-                          param1_label, param2_label,
-                          title=r'SD of $\chi$',
-                          vmin=0, vmax=sd_max,
-                          save_name=f'{run_name}_synchrony_chi_sd.png')
-
 
 def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
                           param1_label, param2_label,
                           title=r'Synchrony $\chi$',
                           vmin=0, vmax=1,
-                          save_name='synchrony_single.png'):
+                          save_name='synchrony_single.png', cbar_label=''):
     """pcolormesh of chi_matrix with param1 on x, param2 on y.
 
     Args:
@@ -61,6 +31,7 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
         vmin (float): Colormap lower bound.
         vmax (float): Colormap upper bound.
         save_name (str): Output filename inside filepaths.figures_dir.
+        cbar_label (str): Colorbar label.
     """
     if not os.path.exists(filepaths.figures_dir):
         os.makedirs(filepaths.figures_dir)
@@ -72,58 +43,39 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
 
     im = ax.pcolormesh(p1_edges, p2_edges, chi_matrix,
                        cmap='viridis', vmin=vmin, vmax=vmax, shading='flat')
+    # Ticks on the swept values (cell centres), not matplotlib's round numbers.
+    ax.set_xticks(param1_values, [f'{v:.4g}' for v in param1_values])
+    ax.set_yticks(param2_values, [f'{v:.4g}' for v in param2_values])
     ax.set_xlabel(param1_label)
     ax.set_ylabel(param2_label)
     ax.set_title(title, fontweight='bold')
-    fig.colorbar(im, ax=ax, pad=0.02)
+    fig.colorbar(im, ax=ax, pad=0.02, label=cbar_label)
 
     fig.tight_layout()
     filepath = os.path.join(filepaths.figures_dir, save_name)
     fig.savefig(filepath, dpi=200, bbox_inches='tight')
-    plt.show()
+    plt.close(fig)
     print(f"Saved to {filepath}")
-
-def plot_synchrony_multifaceted(filepaths, chi_mean, chi_sd,
-                                param1_values, param2_values, param3_values,
-                                param4_values, param1_label, param2_label,
-                                param3_label, param4_label, run_num=1, plot_mode='r'):
-    """Write the multifaceted mean-chi and SD-chi heatmaps, both prefixed with run_num.
-        INPUT:
-            filepaths: FilePaths with figures_dir.
-            chi_mean: 4D array of mean chi values, shape (len(param2), len(param1),
-                len(param4), len(param3)).
-            chi_sd: 4D array of chi SDs, same shape as chi_mean.
-            param1_values: values along the outer x axis.
-            param2_values: values along the outer y axis.
-            param3_values: values along the inner x axis.
-            param4_values: values along the inner y axis.
-            param1_label: outer x-axis label (LaTeX allowed).
-            param2_label: outer y-axis label (LaTeX allowed).
-            param3_label: inner x-axis label (LaTeX allowed).
-            param4_label: inner y-axis label (LaTeX allowed).
-            run_num: integer prefix for the output filenames.
-    """
-    save_name_prefix = f'{run_num}_synchrony_r' if plot_mode == 'r' else f'{run_num}_synchrony_chi'
-    plot_sync_metric_name = 'r' if plot_mode == 'r' else r'$\chi$'
-    plot_synchrony_multifaceted_single(filepaths, chi_mean, param1_values, param2_values,
-                          param3_values, param4_values, param1_label, param2_label,
-                          param3_label, param4_label, title='Synchrony of Network (CB On)',#+plot_sync_metric_name,
-                          vmin=1.15, vmax=1.75,
-                          save_name=save_name_prefix+'_mean_full.png')
-
-    sd_max = np.nanmax(chi_sd) if np.nanmax(chi_sd) > 0 else 0.15
-    plot_synchrony_multifaceted_single(filepaths, chi_sd, param1_values, param2_values,
-                          param3_values, param4_values, param1_label, param2_label,
-                          param3_label, param4_label, title='SD of '+plot_sync_metric_name,
-                          vmin=0, vmax=sd_max,
-                          save_name=save_name_prefix+'_sd_full.png')
-
 
 def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, param2_values,
                                 param3_values, param4_values, param1_label,
                                 param2_label, param3_label, param4_label,
                                 title, vmin=0, vmax=1,
-                                save_name='synchrony_all_params.png'):
+                                save_name='synchrony_all_params.png', cbar_label=''):
+    """Grid of heatmap panels: param1 picks the panel row, param2 the panel column,
+    and each panel shows param3 (x) against param4 (y).
+
+    Args:
+        filepaths: Object with figures_dir.
+        chi_matrix (np.ndarray): 4D array indexed [param1, param2, param3, param4].
+        param1_values .. param4_values: Values along each of those axes.
+        param1_label .. param4_label (str): Axis labels (LaTeX allowed).
+        title (str): Figure title.
+        vmin, vmax (float): Colour range shared by every panel.
+        save_name (str): Output filename inside filepaths.figures_dir.
+        cbar_label (str): Colorbar label.
+    """
+    os.makedirs(filepaths.figures_dir, exist_ok=True)
 
     n_outer_rows = len(param1_values)
     n_outer_cols = len(param2_values)
@@ -158,7 +110,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
         for j, p2 in enumerate(param2_values):
             ax = axes[i, j]
             data = chi_matrix[i, j, :, :]
-            print(data)
+            # print(data)
 
             im = ax.imshow(
                 data.T,
@@ -193,7 +145,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     row_height = (gs_top - gs_bottom) / n_outer_rows
 
     for i, p1 in enumerate(param1_values):
-        row_center = gs_bottom + (i + 0.5) * row_height
+        row_center = gs_top - (i + 0.5) * row_height
 
         fig.add_artist(plt.Line2D(
             [gs_left - OUTER_AXIS_OFFSET - 0.01, gs_left - OUTER_AXIS_OFFSET],
@@ -268,14 +220,15 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     sm = ScalarMappable(cmap='viridis')
     sm.set_clim(vmin, vmax)
     cb = fig.colorbar(sm, cax=cbar_ax)
-    cb.set_label("Synchrony (KOP r)", fontsize=11, fontweight="bold")
+    cb.set_label(cbar_label, fontsize=11, fontweight="bold")
     cb.ax.tick_params(labelsize=8)
 
     fig.suptitle(title, fontsize=24, fontweight="bold", y=0.98)
 
     fname = os.path.join(filepaths.figures_dir, save_name)
-    plt.savefig(fname, dpi=200, bbox_inches="tight")
-    plt.show()
+    fig.savefig(fname, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved to {fname}")
 
 
 def _make_edges(values):

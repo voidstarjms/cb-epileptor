@@ -10,13 +10,11 @@ import numpy as np
 from typing import Dict, Any
 
 import plotting.style  # noqa: F401
-from plotting.plotting_utils import *
 
 
 def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
-                    t, x, wpre, u, Ca, plasticity, current, presyn_pop : bool, excite = None, coupling = None,
-                    bin_size = 1000) -> None:
-    """Five panels: x, Wpre, u, Ca, and plasticity
+                    t, x, wpre, u, Ca, plasticity, current, presyn_is_inh : bool, excite = None, coupling = None) -> None:
+    """6-7 panels: x, Wpre, u, effCa, plasticity, current, and excite (what is excite??)
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
@@ -25,15 +23,15 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
             THETA_LTP_START, CA_SIGMOID_SHIFT, CA_SIGMOID_SLOPE.
         title (str): Title of the plot.
         t: Time vector.
-        x: (num_neurons, time) presynaptic population LFP
+        x: (time,) presynaptic population LFP, averaged over neurons and binned by the caller.
         wpre: (num_neurons, time) Wpre trace.
-        u: (num_neurons, time) u (fraction of open channels) trace.
+        u: (time,) u (fraction of open channels) trace, binned by the caller.
         Ca: (num_neurons, time) Ca trace.
-        plasticity: (num_neurons, time) plasticity trace
-        current: (num_neurons, time) synaptic current
-        presyn_pop (bool): false is excitatory, true is inhibitory
-        binning: bin size in multiples of dt
+        plasticity: (time,) plasticity trace, binned by the caller.
+        current: (time,) synaptic current, averaged over neurons and binned by the caller.
+        presyn_is_inh (bool): True if the synapse starts in the inhibitory pop (S2_*), False for excitatory (S1_*)
     """
+    # TODO: hardcoded 6 could be improved. using has_excite_coupling as int and condition looks weird especially because theres a conditional anyways. on line 40
     has_excite_coupling = int(excite is not None and coupling is not None)
     fig, ax_list = plt.subplots(6 + has_excite_coupling, 1, figsize=(10, 12), sharex=True)
     if has_excite_coupling:
@@ -42,7 +40,7 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
         (ax1, ax2, ax3, ax4, ax5, ax6) = ax_list
     ax_count = len(ax_list)
     Ca = np.asarray(Ca)
-    cb_preval = params_dict['INH_CB_PREVALENCE'] if presyn_pop else params_dict['EXC_CB_PREVALENCE']
+    cb_preval = params_dict['INH_CB_PREVALENCE'] if presyn_is_inh else params_dict['EXC_CB_PREVALENCE']
     #x_post = np.asarray(x[1])
 
     effCa = cb_preval * (1 - params_dict['ALPHA_W'] * params_dict['CBD_AMOUNT']) * Ca
@@ -50,7 +48,7 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
 
     fig.suptitle(title)
     # Presynaptic LFP
-    ax1.plot(t, bin_data(np.mean(x, axis=0), bin_size))
+    ax1.plot(t, x)
     ax1.set_ylabel("Presynaptic\nLFP (A.U.)", fontsize=10)
     ax1.tick_params(axis='both', which='major', labelsize='10')
 
@@ -61,7 +59,7 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
     ax2.tick_params(axis='both', which='major', labelsize='10')
 
     # Synaptic opening factor
-    ax3.plot(t, bin_data(u, bin_size))
+    ax3.plot(t, u)
     ax3.set_ylabel("u", fontsize=10)
     ax3.tick_params(axis='both', which='major', labelsize='10')
 
@@ -76,12 +74,12 @@ def plot_plasticity(filepaths: Any, fname: str, params_dict: Dict, title: str,
     ax4.legend([ltd_start_line, ltd_end_line, ltp_start_line], ['LTD start', 'LTD end', 'LTP start'], loc='upper right', fontsize=8)
 
     # Plasticity
-    ax5.plot(t, bin_data(plasticity, bin_size))
+    ax5.plot(t, plasticity)
     ax5.set_ylabel("Plasticity", fontsize=10)
     ax5.tick_params(axis='both', which='major', labelsize=10)
 
     # Synaptic current
-    ax6.plot(t, bin_data(np.mean(current, axis=0), bin_size))
+    ax6.plot(t, current)
     ax6.set_ylabel("Synaptic Current", fontsize=10)
     ax6.yaxis.get_offset_text().set_fontsize(10)
     ax6.tick_params(axis='both', which='major', labelsize=10)

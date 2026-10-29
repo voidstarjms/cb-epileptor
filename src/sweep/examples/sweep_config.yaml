@@ -1,0 +1,18 @@
+# What a sweep varies. Pass to generate_params.py:
+#   python generate_params.py examples/sweep_config.yaml --name my_run
+#
+# Every job gets the base params file with the axis keys below replaced.
+# Paths are relative to this file.
+base_params: ../../../parameters/params.yaml
+realizations: 2        # jobs per grid point; realization k uses SEED = k
+cb_on: false           # CB plasticity acting on synapses in every job
+low_res: true          # record traces at 1 ms instead of every sim step
+
+# Axis order is plot order: x, y, then panel row and panel column (4 axes).
+# unit is a Brian unit expression ("1" for unitless); values are min..max in
+# `steps` evenly spaced points (np.linspace), written as "<value>*<unit>".
+axes:
+  - {key: COUPLING_STRENGTH, unit: "1",  min: 0.0,  max: 0.1,  steps: 4, label: "Coupling strength $C_E$"}
+  - {key: EPOP_BASE_EXCITE,  unit: "1",  min: -4.5, max: -2.5, steps: 4, label: "Excitability $x_0$"}
+  - {key: G_INTRA,           unit: "uS", min: 0.5,  max: 2.0,  steps: 4, label: "$G_{intra}$ (µS)"}
+  - {key: G_INTER,           unit: "uS", min: 1.0,  max: 4.0,  steps: 4, label: "$G_{inter}$ (µS)"}

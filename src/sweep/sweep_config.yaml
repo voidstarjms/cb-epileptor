@@ -1,0 +1,8 @@
+# Describes an old (feat/metrics) sweep so build_table.py can read its raw output.
+# Key names are the ones feat/metrics' generate_params.py wrote into each job.
+# No min/max/steps: the values are read from each job's saved params.
+axes:   # order = x, y, panel row, panel column
+  - {key: COUPLING_STRENGTH, unit: "1",  label: "Coupling $C_e$"}
+  - {key: HR_X_NAUGHT,       unit: "1",  label: "Excitability $x_0$"}
+  - {key: G_INTRA,           unit: "uS", label: "$G_{intra}$ (µS)"}
+  - {key: G_INTER,           unit: "uS", label: "$G_{inter}$ (µS)"}

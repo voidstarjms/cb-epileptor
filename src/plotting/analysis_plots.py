@@ -42,22 +42,28 @@ def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     plt.savefig(os.path.join(filepaths.figures_dir, "auto_lfp.png"), format="png")
     plt.show()
 
-def plot_kop(filepaths: Any, phase_matrix: np.ndarray) -> None:
+def plot_kop(filepaths: Any, phase_matrix: np.ndarray, t_start: float, t_end: float) -> None:
     """Plot the interpolated phase trace of the first neuron.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
         phase_matrix (np.ndarray): (num_neurons, time) phase in radians, from
             synch.compute_phase.
-    
+        t_start (float): Start time of the phase grid in seconds (TRANSIENT).
+        t_end (float): End time of the phase grid in seconds (TRANSIENT + SIM_DURATION).
+
     Returns: void
     """
+    # compute_phase's grid includes both endpoints, so linspace reproduces it
+    t = np.linspace(t_start, t_end, phase_matrix.shape[1])
+
     # plot the first array in the phase matrix
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     plt.suptitle("Kop Phase For a Single Neuron")
-    ax.set_xlabel("Time (ms)")
+    ax.set_xlabel("Time (s)")
     ax.set_ylabel("Phase (angle in radians)")
-    ax.plot(phase_matrix[0])
+    ax.plot(t, phase_matrix[0])
+    ax.set_xlim(t_start, t_end)
     plt.savefig(os.path.join(filepaths.figures_dir, "kop.png"), format="png")
     plt.show()
 
@@ -155,24 +161,23 @@ def _output_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : f
     plt.savefig(os.path.join(fig_dir, fname + ".png"), format="png")
     plt.show()
 
-def plot_power_spec(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
+def plot_power_spec(filepaths: Any, x1: np.ndarray, x2: np.ndarray, fs: float,
                     fmax: float = 40.0, fname : str = "power") -> None:
     """Welch power spectrum of the 80/20 EPOP/IPOP weighted-mean signal.
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
-        params_dict (Dict): Needs TAU_CLOCK and DT_SCALING to set the sampling rate.
         x1 (np.ndarray): (num_cells, time) EPOP x.
         x2 (np.ndarray): (num_cells, time) IPOP x.
+        fs (float): Sampling rate of x1/x2 in Hz (see synch_metrics.sample_rate).
         fmax (float): Upper frequency limit for display in Hz. Default 100 Hz.
-    
+
     Returns: void
     """
     x1_mean = np.mean(x1, axis=0)
     x2_mean = np.mean(x2, axis=0)
     x_mean = (0.8 * x1_mean) + (0.2 * x2_mean)
 
-    fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
     _output_power_spec_plot(filepaths.figures_dir, [x_mean], fs, fmax, fname=fname)
 
 def plot_ephys_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
@@ -346,8 +351,8 @@ def ephys_normalized_power(lfp_list : list, fmax : float = 100.0,
     plt.close()
 
 def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
-                     t: np.ndarray = None, x0_t: np.ndarray = None, ce_t: np.ndarray = None,
-                     fmax: float = 100.0) -> None:
+                     fs: float, t: np.ndarray = None, x0_t: np.ndarray = None,
+                     ce_t: np.ndarray = None, fmax: float = 100.0) -> None:
     """Time-frequency spectrogram of the 80/20 EPOP/IPOP weighted-mean LFP.
 
     Optionally adds an x0/CE schedule panel below when t, x0_t, and ce_t
@@ -355,9 +360,10 @@ def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.n
 
     Args:
         filepaths (Any): FilePaths with figures_dir.
-        params_dict (Dict): Needs TAU_CLOCK, DT_SCALING, and TRANSIENT.
+        params_dict (Dict): Needs TRANSIENT.
         x1 (np.ndarray): (num_cells, time) EPOP x.
         x2 (np.ndarray): (num_cells, time) IPOP x.
+        fs (float): Sampling rate of x1/x2 in Hz (see synch_metrics.sample_rate).
         t (np.ndarray): Time vector matching x1/x2 (seconds). Required for param panel.
         x0_t (np.ndarray): Recorded x0 schedule over time. If None, param panel is skipped.
         ce_t (np.ndarray): Recorded CE schedule over time. If None, param panel is skipped.
@@ -366,8 +372,6 @@ def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.n
     Returns: void
     """
     x_lfp = 0.8 * np.mean(x1, axis=0) + 0.2 * np.mean(x2, axis=0)
-
-    fs = float(1 / (params_dict['TAU_CLOCK'] / params_dict['DT_SCALING']) / Hz)
 
     has_params = t is not None and x0_t is not None and ce_t is not None
     n_axes = 2 if has_params else 1

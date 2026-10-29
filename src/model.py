@@ -9,8 +9,11 @@ import numpy as np
 import data_processing
 from typing import Dict, Any
 
+# StateMonitor recording interval used when low_res is True
+
 def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
-            save: bool = True, timed_array: bool = False) -> None:
+            save: bool = True, use_timed_array: bool = False,
+            low_res: bool = False) -> None:
     """Build both populations and their synapses, run the sim, save the output.
 
     If cb_on is False, Wpre is dropped from the synaptic current (plasticity
@@ -25,11 +28,13 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
         save (bool): If True (default), also pickle the result. Set False
             for in-memory consumption (e.g. sweep jobs that compute metrics
             directly and don't need the full trace on disk).
-        timed_array (bool): If True, TimedArrays are used for Epop excite,
+        use_timed_array (bool): If True, TimedArrays are used for Epop excite,
             coupling strength, Gintra, and Ginter to allow these principal
             variables to be altered over the course of a run. If False, the
             TimedArray values from the parameter file are ignored and the
             respective scalar parameters are used instead.
+        low_res (bool): If True, StateMonitors record every DOWNSAMPLE_INTERVAL (params file)
+            instead of every defaultclock.dt. Spike monitors are unaffected.
 
     Returns:
         Dict[str, Any]: sim_data dict as built by data_processing.build_sim_dict.
@@ -48,11 +53,12 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
         'transient':    params_dict['TRANSIENT'],
     }
 
-    # Override timed arrays with scalar values if timed_array is False
-    params_dict['BASE_EXCITE_VALS'] = [params_dict['EPOP_BASE_EXCITE']]
-    params_dict['COUPLING_VALS'] = [params_dict['COUPLING_STRENGTH']]
-    params_dict['G_INTER_VALS'] = [params_dict['G_INTER']]
-    params_dict['G_INTRA_VALS'] = [params_dict['G_INTRA']]
+    # Override timed arrays with scalar values if use_timed_array is False
+    if not use_timed_array:
+        params_dict['BASE_EXCITE_VALS'] = [params_dict['EPOP_BASE_EXCITE']]
+        params_dict['COUPLING_VALS'] = [params_dict['COUPLING_STRENGTH']]
+        params_dict['G_INTER_VALS'] = [params_dict['G_INTER']]
+        params_dict['G_INTRA_VALS'] = [params_dict['G_INTRA']]
 
     # Time-varying schedules. Each VALS list is stepped through evenly across SIM_DURATION.
     timed_x_naught = TimedArray(params_dict['BASE_EXCITE_VALS'], dt=params_dict['BASE_EXCITE_DT'])
@@ -268,19 +274,21 @@ def run_sim(filepaths: Any, params_dict: Dict[str, Any], cb_on: bool = True,
     # Run the transient before attaching monitors so it isn't recorded.
     run(sim_namespace['transient']*second)
 
+    monitor_dt = params_dict['DOWNSAMPLE_INTERVAL'] if low_res else defaultclock.dt
+
     # Population state monitors
-    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True)
-    M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_intra', 'I_syn_inter'], record=True)
+    M_N1 = StateMonitor(N1, ['x', 'y', 'z', 'I_syn_inter', 'I_syn_intra'], record=True, dt=monitor_dt)
+    M_N2 = StateMonitor(N2, ['x', 'n', 'I_syn_intra', 'I_syn_inter'], record=True, dt=monitor_dt)
     # Parameter state monitor
-    M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0)
+    M_PARAM = StateMonitor(N1, ['x0_t', 'ce_t'], record=0, dt=monitor_dt)
     # Population spike monitors
     SM_N1 = SpikeMonitor(N1)
     SM_N2 = SpikeMonitor(N2)
     # Synaptic plasticity state monitors
-    M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca', 'u'], record=True)
-    M_S1_2 = StateMonitor(S1_to_2, ['Wpre', 'Ca', 'u'], record=True)
-    M_S2_2 = StateMonitor(S2_to_2, ['Wpre', 'Ca', 'u'], record=True)
-    M_S2_1 = StateMonitor(S2_to_1, ['Wpre', 'Ca', 'u'], record=True)
+    M_S1_1 = StateMonitor(S1_to_1, ['Wpre', 'Ca', 'u'], record=True, dt=monitor_dt)
+    M_S1_2 = StateMonitor(S1_to_2, ['Wpre', 'Ca', 'u'], record=True, dt=monitor_dt)
+    M_S2_2 = StateMonitor(S2_to_2, ['Wpre', 'Ca', 'u'], record=True, dt=monitor_dt)
+    M_S2_1 = StateMonitor(S2_to_1, ['Wpre', 'Ca', 'u'], record=True, dt=monitor_dt)
     
     # Run
     run(sim_namespace['sim_duration'])
