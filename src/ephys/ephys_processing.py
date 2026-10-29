@@ -18,10 +18,6 @@ STD_THRESH = 7.6
 EPHYS_FS = 10000
 MAX_PRE_PEP_SWEEP = sheet_parser.MAX_PRE_PEP_SWEEP
 MAX_POST_PEP_SWEEP = sheet_parser.MAX_POST_PEP_SWEEP
-NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
-                    'specgram_trace_pdf', 'power', 'detect_param_sweep',
-                    'lowpass_trace', 'esd', 'power_pdf', 'power_pdf',
-                    'power', 'power_raw', 'power_pdf_raw']
 
 def get_lfp_list(fname, df=None, entry_idx=None, df_start_pos=None):
     """"""
@@ -256,19 +252,16 @@ def get_sweeps_by_expt_type(sheet_df : pd.DataFrame, bin_dir : str, type_key : s
         verbose (bool): Print extra output info
     
     Returns:
-        tuple[np.array]:
-            prepep_array (np.array): Array of transient counts for each pre-PEP sweep
-                in each run of the given type, in order.
-            postpep_array (np.array): Array of transient counts for each post-PEP sweep
-                in each run of the given type, in order.
+        sweep_array (list[list[np.array]]): Outer list entries are lists of sweeps in each
+            experiment; inner list entries are arrays of sweep data.
     """
     subdirs = os.listdir(bin_dir)
     subdirs.sort(key=lambda x: datetime.strptime(x, '%m %d %Y'))
 
     # Iterate over all subdirectories
     i = 0 # Entry index in the DataFrame
-    prepep_sweep_list = []
-    postpep_sweep_list = []
+    expt_list = []
+    prepep_sweep_counts = []
     for d in subdirs:
         subdir_path = os.path.join(bin_dir, d)
         file_list = os.listdir(subdir_path)
@@ -280,7 +273,7 @@ def get_sweeps_by_expt_type(sheet_df : pd.DataFrame, bin_dir : str, type_key : s
             fdate = datetime.strptime("/".join(f.split(".")[0].rsplit("_", 3)[1:]),
                                       "%m/%d/%Y").date()
             frun = int(f.split("_", 1)[0][1])
-            sheet_date = datetime.strptime(sheet_df["date"][i], "%m/%d/%Y").date()
+            sheet_date = sheet_df["date"][i]
             sheet_run = sheet_df["run_num"][i]
             if fdate != sheet_date or frun != sheet_run:
                 print(f"""Entry in spreadsheet does not match. Sheet has \
@@ -294,34 +287,36 @@ def get_sweeps_by_expt_type(sheet_df : pd.DataFrame, bin_dir : str, type_key : s
                 continue
 
             sweep_idx = _find_first_transient_cell(sheet_df, i)
+            prepep_sweep_counts.append(-sweep_idx)
 
             # Skip confounded experiment
             if sheet_df["data_OK"][i] == False:
                 if verbose:
                     run_id = f"{sheet_df["date"][i]} {sheet_df["run_num"][i]}"
                     print("Skipping confounded experiment " + run_id)
+                i += 1
+                continue
             else:
                 fpath = os.path.join(subdir_path, f)
                 data = binarywave.load(fpath)['wave']['wData']
 
+                sweep_list = []
                 # Iterate over all sweeps in the file
                 for d in range(data.shape[1]):
                     df_sweep_name = "transient" + ("+" if sweep_idx >= 0 else "") + str(sweep_idx)
                     sweep_idx += 1
                     # Skip if the sweep is marked as nan in the sheet
                     if sheet_df[df_sweep_name][i] == np.nan:
+                        sweep_list.append(np.nan)
                         continue
 
-                    if sweep_idx < 0:
-                        prepep_sweep_list.append(data[:, d])
-                    else:
-                        postpep_sweep_list.append(data[:, d])
+                    #sweep_list.append(data[:, d])
+                    sweep_list.append(eh.butter_highpass_filter(data[:, d], 0.25, EPHYS_FS))
 
             i += 1 # Increment DataFrame index
+            expt_list.append(sweep_list)
 
-    prepep_array = np.array(prepep_sweep_list)
-    postpep_array = np.array(postpep_sweep_list)
-    return prepep_array, postpep_array
+    return expt_list, prepep_sweep_counts
 
 
 def _get_manual_transient_count_single(df : pd.DataFrame, idx : int):

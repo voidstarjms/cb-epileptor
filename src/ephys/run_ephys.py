@@ -12,6 +12,10 @@ DEFAULT_IN_DIR = os.path.join("..", "..", "ephys", "binaries")
 DEFAULT_SHEET_PATH = os.path.join("..", "..", "ephys", "master_sheet.ods")
 DEFAULT_OUT_DIR = os.path.join("..", "..", "figures", "ephys")
 DEFAULT_EXPERIMENT_FILE = "expt_types.csv"
+NO_ANALYZE_MODES = ['count', 'plot_sweep', 'specgram_pdf',
+                    'specgram_trace_pdf', 'power', 'detect_param_sweep',
+                    'lowpass_trace', 'esd', 'power_pdf', 'power_pdf',
+                    'power', 'power_raw', 'power_pdf_raw', 'power_by_type']
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
@@ -136,13 +140,13 @@ Subdirectories must have naming scheme [m]m dd yyyy.""")
                 print("Please specify a type of experiment to analyze with --type or -t")
                 sys.exit(1)
             else:
-                prepep_array, postpep_array = get_sweeps_by_expt_type(sheet_df, in_dir, etype, verbose)
-                if prepep_array.size == 0 or postpep_array.size == 0:
-                    print("Specified type had 0 matches. Make sure you spelled it correctly.")
+                lfp_list, start_sweep_count = get_sweeps_by_expt_type(sheet_df, in_dir, etype, verbose)
+                if len(lfp_list) == 0:
+                    print("Specified type had 0 matches.")
                     sys.exit(1)
-                analysis_plots.plot_ephys_mean_power_spec(out_dir, [prepep_array, postpep_array], fmax=40,
-                                                          fname="ephys_mean_power_"+etype,
-                                                          labels=["Pre-PEP", "Post-PEP"])
+                analysis_plots.plot_ephys_mean_power_spec(out_dir, lfp_list, start_sweep_count,
+                                                          fname="ephys_mean_power_"+etype+".pdf",
+                                                          fmax=20)
         case 'power_pdf_raw':
             if fname == None:
                 print("Please specify a file to plot with --fname")
