@@ -62,8 +62,8 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
                                 param2_label, param3_label, param4_label,
                                 title, vmin=0, vmax=1,
                                 save_name='synchrony_all_params.png', cbar_label=''):
-    """Grid of heatmap panels: param1 picks the panel row, param2 the panel column,
-    and each panel shows param3 (x) against param4 (y).
+    """Grid of heatmap panels: param1 picks the panel row (increasing upward),
+    param2 the panel column, and each panel shows param3 (x) against param4 (y).
 
     Args:
         filepaths: Object with figures_dir.
@@ -102,10 +102,12 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
 
     norm = Normalize(vmin=vmin, vmax=vmax)
 
+    # Row i of param1 goes into gridspec row (n-1-i), so param1 increases
+    # from the bottom of the figure to the top.
     axes = np.empty((n_outer_rows, n_outer_cols), dtype=object)
     for i in range(n_outer_rows):
         for j in range(n_outer_cols):
-            axes[i, j] = fig.add_subplot(gs[i, j])
+            axes[i, j] = fig.add_subplot(gs[n_outer_rows - 1 - i, j])
     for i, p1 in enumerate(param1_values):
         for j, p2 in enumerate(param2_values):
             ax = axes[i, j]
@@ -129,7 +131,8 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
             ax.set_yticks(range(len(param4_values)))
             ax.set_yticklabels([str(v) for v in param4_values], fontsize=7)
 
-            if i == n_outer_rows - 1:
+            # Bottom row of panels is now i == 0.
+            if i == 0:
                 ax.set_xlabel(param3_label, fontsize=15, labelpad=4)
             if j == 0:
                 ax.set_ylabel(param4_label, fontsize=15, labelpad=4)
@@ -145,7 +148,8 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
     row_height = (gs_top - gs_bottom) / n_outer_rows
 
     for i, p1 in enumerate(param1_values):
-        row_center = gs_top - (i + 0.5) * row_height
+        # Measured from the bottom to match the panel placement above.
+        row_center = gs_bottom + (i + 0.5) * row_height
 
         fig.add_artist(plt.Line2D(
             [gs_left - OUTER_AXIS_OFFSET - 0.01, gs_left - OUTER_AXIS_OFFSET],

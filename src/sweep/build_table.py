@@ -43,9 +43,9 @@ SCHEDULE_KEYS = {
 
 def find_raw_files(run_dir: str) -> List[str]:
     """All jobs/<job_id>/output.pkl files under run_dir, sorted by path."""
-    return sorted(glob.glob(os.path.join(run_dir, 'jobs', '*', 'output.pkl')))
+    return sorted(glob.glob(os.path.join(run_dir, 'jobs', '*', 'output_data.pkl')))
 
-
+# what does this function do....
 def used_value(params: dict, key: str):
     """The value of `key` the simulation actually used.
 
@@ -69,7 +69,9 @@ def used_value(params: dict, key: str):
 def in_axis_unit(value, axis: dict) -> float:
     """Express a value in the axis's declared unit, e.g. 5e-7 S -> 0.5 for unit 'uS'."""
     if isinstance(value, float) and math.isnan(value):
-        return value
+        return value # ??
+    if not isinstance(value, brian2.Quantity):
+        return float(value)
     # The unit is a string like 'uS' or '1'; look it up among Brian's names.
     unit = eval(str(axis['unit']), {}, vars(brian2))
     ratio = value / unit
@@ -79,7 +81,7 @@ def in_axis_unit(value, axis: dict) -> float:
     # Strip float noise from the unit division so equal values group together.
     return float(f'{number:.12g}')
 
-
+# why is this needed
 def to_seconds(value) -> float:
     """Seconds as a float, whether stored as a Brian quantity or a bare number."""
     if isinstance(value, brian2.Quantity):
@@ -109,6 +111,7 @@ def job_row(path: str, config: dict, cb_on_override: Optional[bool]) -> dict:
         'sim_duration_s': duration,
     })
     row.update(syn.summarize_run(results, num_cells, duration, t_start))
+    row['r_sum'] = row['r_inh'] + row['r_exc']
     row['source_path'] = os.path.abspath(path)
     return row
 
