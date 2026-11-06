@@ -1,8 +1,8 @@
 """Build a results table (one row per job) from a sweep's raw output files.
 
-    python build_table.py <run_output_dir> [--config PATH] [--out PATH]
+    python build_table.py <run_dir> [--config PATH] [--out PATH]
 
-Reads <run_output_dir>/jobs/<job_id>/output.pkl, computes every summary metric with synch_metrics.summarize_run, and
+Reads <run_dir>/runs/<job_id>.pkl, computes every summary metric with synch_metrics.summarize_run, and
 writes a CSV:
 
     job_id, <one column per swept key, in the config's units>, seed, cb_on, ...,
@@ -26,8 +26,8 @@ import synch_metrics as syn
 from sweep_config import load_sweep_config, sweep_param_keys
 
 def find_raw_files(run_dir: str) -> List[str]:
-    """All jobs/<job_id>/output.pkl files under run_dir, sorted by path."""
-    return sorted(glob.glob(os.path.join(run_dir, 'jobs', '*', 'output.pkl')))
+    """All runs/<job_id>.pkl files under run_dir, sorted by path."""
+    return sorted(glob.glob(os.path.join(run_dir, 'runs', '*.pkl')))
 
 
 def to_unit(value, unit: str) -> float:
@@ -59,7 +59,7 @@ def create_job_row(path: str, config: dict) -> dict:
     t_start = to_seconds(params['TRANSIENT'])
     num_cells = int(params['NUM_CELLS'])
 
-    row = {'job_id': os.path.basename(os.path.dirname(path))}
+    row = {'job_id': metadata['job_id']}
     for sweep_param in config['sweep_params']:
         key = sweep_param['key']
         row[key] = to_unit(params[key], sweep_param['unit'])
@@ -80,7 +80,7 @@ def build_table(run_dir: str, config: dict) -> pd.DataFrame:
     """Rows for every raw file in run_dir. Files that fail to load are reported and skipped."""
     paths = find_raw_files(run_dir)
     if not paths:
-        sys.exit(f"No jobs/*/output.pkl files under {run_dir}")
+        sys.exit(f"No runs/*.pkl files under {run_dir}")
 
     rows, failed = [], []
     for n, path in enumerate(paths, start=1):
@@ -109,7 +109,7 @@ def print_grid_summary(table: pd.DataFrame, config: dict) -> None:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Build results.csv from a sweep\'s raw output.')
-    parser.add_argument('run_dir', help='Folder containing jobs/<job_id>/output.pkl')
+    parser.add_argument('run_dir', help='Sweep folder, data/sweep/<run>/')
     parser.add_argument('--config', help='sweep_config.yaml (default: <run_dir>/sweep_config.yaml)')
     parser.add_argument('--out', help='Output CSV (default: <run_dir>/results.csv)')
     args = parser.parse_args(argv)

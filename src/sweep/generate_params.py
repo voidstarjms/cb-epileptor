@@ -2,12 +2,14 @@
 
     python generate_params.py <sweep_config.yaml> --name <run> [--overwrite]
 
-Writes, under src/sweep/params/<run>/:
+Writes, under data/sweep/<run>/:
 
     sweep_config.yaml        # verbatim copy of the input: what this run sweeps
     base_params.yaml         # verbatim copy of the base params every job starts from
     jobs/param_1.yaml ...    # one complete params file per job
     job_list.txt             # one job YAML path per line, for Condor's `Queue ... from`
+
+The same folder later holds runs/ (one raw .pkl per job), results.csv and figures/.
 
 Each job YAML is the base params file with the swept keys replaced (e.g.
 G_INTRA: "0.5*uS"), plus SEED, CB_ON and LOW_RES. One job per
@@ -24,8 +26,8 @@ import yaml
 
 from sweep_config import load_sweep_config, validate_sweep_params
 
-SWEEP_DIR = os.path.dirname(os.path.abspath(__file__))
-PARAMS_ROOT = os.path.join(SWEEP_DIR, 'params')
+PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SWEEP_DATA_ROOT = os.path.join(PROJ_DIR, 'data', 'sweep')
 
 
 def job_grid(config: dict) -> List[Tuple[str, Dict[str, str], int]]:
@@ -84,12 +86,17 @@ def prepare_run_dir(run_dir: str, overwrite: bool) -> None:
         if not overwrite:
             sys.exit(f"Run directory {run_dir} already exists. Pick a new --name, "
                      f"or pass --overwrite (only if none of its jobs are still queued).")
+        # The run directory also holds the simulation results; never delete those.
+        runs_dir = os.path.join(run_dir, 'runs')
+        if os.path.isdir(runs_dir) and os.listdir(runs_dir):
+            sys.exit(f"{runs_dir} already has results; --overwrite won't delete them. "
+                     f"Pick a new --name, or remove the folder yourself.")
         shutil.rmtree(run_dir)
     os.makedirs(os.path.join(run_dir, 'jobs'))
 
 
 def write_jobs(config: dict, run_dir: str) -> List[str]:
-    """Write every job YAML; return their paths relative to SWEEP_DIR."""
+    """Write every job YAML; return their paths relative to PROJ_DIR."""
     with open(config['base_params']) as f:
         base = yaml.safe_load(f)
 
@@ -98,9 +105,8 @@ def write_jobs(config: dict, run_dir: str) -> List[str]:
         path = os.path.join(run_dir, 'jobs', f'{job_id}.yaml')
         with open(path, 'w') as f:
             yaml.safe_dump(job_params(base, swept_values, seed, config), f, sort_keys=False)
-        # Relative to src/sweep/, which is the Condor Initialdir and the
-        # directory wrapper.sh runs jobs from.
-        job_paths.append(os.path.relpath(path, SWEEP_DIR))
+        # Relative to the project root, which is the Condor Initialdir.
+        job_paths.append(os.path.relpath(path, PROJ_DIR))
     return job_paths
 
 
@@ -115,7 +121,7 @@ def write_job_list(job_paths: List[str], run_dir: str) -> str:
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('config', help='Path to the sweep_config.yaml')
-    parser.add_argument('--name', '-n', required=True, help='Run name (folder under params/)')
+    parser.add_argument('--name', '-n', required=True, help='Run name (folder under data/sweep/)')
     parser.add_argument('--overwrite', action='store_true',
                         help='Replace an existing run with the same name')
     args = parser.parse_args(argv)
@@ -123,7 +129,7 @@ def main(argv=None):
     config = load_sweep_config(args.config)
     validate_sweep_params(config)
 
-    run_dir = os.path.join(PARAMS_ROOT, args.name)
+    run_dir = os.path.join(SWEEP_DATA_ROOT, args.name)
     prepare_run_dir(run_dir, args.overwrite)
     shutil.copyfile(args.config, os.path.join(run_dir, 'sweep_config.yaml'))
     shutil.copyfile(config['base_params'], os.path.join(run_dir, 'base_params.yaml'))

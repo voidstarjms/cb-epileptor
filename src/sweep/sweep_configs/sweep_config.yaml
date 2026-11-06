@@ -3,10 +3,13 @@
 #
 # Every job gets the base params file with the sweep_params keys below replaced.
 # Paths are relative to this file.
+
+
 base_params: ../../../parameters/params.yaml
 realizations: 2        # jobs per grid point; realization k uses SEED = k
 cb_on: false           # CB plasticity acting on synapses in every job
 low_res: true          # record traces at 1 ms instead of every sim step
+
 
 # Order is plot order: x, y, then panel row and panel column (4 sweep_params).
 # unit is a Brian unit expression ("1" for unitless); values are min..max in
