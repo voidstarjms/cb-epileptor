@@ -1,23 +1,23 @@
 #!/bin/bash
 # Write condor/condor.sub for one sweep run and create its runs/ folder.
 #
-#   condor/setup_condor.sh <run_name>
+#   condor/setup_condor.sh <sweep_name>
 #
-# Expects data/sweep/<run_name>/ from generate_params.py. Each job's raw output
-# comes back to data/sweep/<run_name>/runs/<job_id>.pkl, ready for build_table.py.
+# Expects data/<sweep_name>/ from generate_params.py. Each job's raw output
+# comes back to data/<sweep_name>/runs/<job_id>.pkl, ready for build_table.py.
 # Request_Memory defaults to 32GB; override with REQUEST_MEMORY=8GB once a job's
 # real usage is known (see the condor.log "Memory (MB)" usage line).
 set -e
 
 if [ $# != 1 ]; then
-    echo "Usage: $0 <run_name>"
+    echo "Usage: $0 <sweep_name>"
     exit 1
 fi
 RUN="$1"
 
 CONDOR_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJ_DIR="$(cd "$CONDOR_DIR/.." && pwd)"
-RUN_DIR="$PROJ_DIR/data/sweep/$RUN"
+RUN_DIR="$PROJ_DIR/data/$RUN"
 JOB_LIST="$RUN_DIR/job_list.txt"
 RUNS_DIR="$RUN_DIR/runs"
 LOG_DIR="$CONDOR_DIR/logs/$RUN"

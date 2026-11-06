@@ -110,7 +110,7 @@ def print_grid_summary(table: pd.DataFrame, config: dict) -> None:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Build results.csv from a sweep\'s raw output.')
-    parser.add_argument('run_dir', help='Sweep folder, data/sweep/<run>/')
+    parser.add_argument('run_dir', help='Sweep folder, data/<sweep>/')
     parser.add_argument('--config', help='sweep_config.yaml (default: <run_dir>/sweep_config.yaml)')
     parser.add_argument('--out', help='Output CSV (default: <run_dir>/results.csv)')
     args = parser.parse_args(argv)

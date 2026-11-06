@@ -1,8 +1,8 @@
 """Turn a sweep_config.yaml into one params YAML per Condor job.
 
-    python generate_params.py <sweep_config.yaml> --name <run> [--overwrite]
+    python generate_params.py <sweep_config.yaml> --name <sweep> [--overwrite]
 
-Writes, under data/sweep/<run>/:
+Writes, under data/<sweep>/:
 
     sweep_config.yaml        # verbatim copy of the input: what this run sweeps
     base_params.yaml         # verbatim copy of the base params every job starts from
@@ -27,7 +27,7 @@ import yaml
 from sweep_config import load_sweep_config, validate_sweep_params
 
 PROJ_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-SWEEP_DATA_ROOT = os.path.join(PROJ_DIR, 'data', 'sweep')
+DATA_ROOT = os.path.join(PROJ_DIR, 'data')
 
 
 def job_grid(config: dict) -> List[Tuple[str, Dict[str, str], int]]:
@@ -121,7 +121,7 @@ def write_job_list(job_paths: List[str], run_dir: str) -> str:
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('config', help='Path to the sweep_config.yaml')
-    parser.add_argument('--name', '-n', required=True, help='Run name (folder under data/sweep/)')
+    parser.add_argument('--name', '-n', required=True, help='Sweep name (folder under data/)')
     parser.add_argument('--overwrite', action='store_true',
                         help='Replace an existing run with the same name')
     args = parser.parse_args(argv)
@@ -129,7 +129,7 @@ def main(argv=None):
     config = load_sweep_config(args.config)
     validate_sweep_params(config)
 
-    run_dir = os.path.join(SWEEP_DATA_ROOT, args.name)
+    run_dir = os.path.join(DATA_ROOT, args.name)
     prepare_run_dir(run_dir, args.overwrite)
     shutil.copyfile(args.config, os.path.join(run_dir, 'sweep_config.yaml'))
     shutil.copyfile(config['base_params'], os.path.join(run_dir, 'base_params.yaml'))
