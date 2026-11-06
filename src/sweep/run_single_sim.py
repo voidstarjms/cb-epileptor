@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run one sweep job: simulate one job YAML and save its raw output.
 
-    python run_single_sim.py --params ../../data/sweep/<run>/jobs/param_7.yaml [--out-dir DIR] [--debug-plot]
+    python run_single_sim.py --params ../../data/<sweep>/jobs/param_7.yaml [--out-dir DIR] [--debug-plot]
 
 Condor runs one copy per line of job_list.txt. No metrics are computed here;
 build_table.py derives them from the raw files, so they can be recomputed later.
@@ -13,7 +13,7 @@ Output (same layout as older full-output pickles, minus the synaptic current tra
 
 Where it goes:
     - Under Condor: $_CONDOR_SCRATCH_DIR/output_<job_id>.pkl. Condor copies it to
-      data/sweep/<run>/runs/<job_id>.pkl (see condor/setup_condor.sh).
+      data/<sweep>/runs/<job_id>.pkl (see condor/setup_condor.sh).
     - Locally: <out-dir>/runs/<job_id>.pkl.
 """
 import argparse
