@@ -5,6 +5,7 @@
 Writes, under src/sweep/params/<run>/:
 
     sweep_config.yaml        # verbatim copy of the input: what this run sweeps
+    base_params.yaml         # verbatim copy of the base params every job starts from
     jobs/param_1.yaml ...    # one complete params file per job
     job_list.txt             # one job YAML path per line, for Condor's `Queue ... from`
 
@@ -21,7 +22,7 @@ from typing import Dict, List, Tuple
 
 import yaml
 
-from sweep_config import check_keys_in_base, load_sweep_config
+from sweep_config import load_sweep_config, validate_sweep_params
 
 SWEEP_DIR = os.path.dirname(os.path.abspath(__file__))
 PARAMS_ROOT = os.path.join(SWEEP_DIR, 'params')
@@ -39,13 +40,13 @@ def job_grid(config: dict) -> List[Tuple[str, Dict[str, str], int]]:
 
     # get values for each swept parameter into a list of lists
     sweep_values = [p['values'] for p in config['sweep_params']]
-    seeds = range(1, config['realizations'] + 1)
 
     jobs = []
-    job_number = 1
+    job_number = 1 # counter
     # Each grid point is a tuple with one value per swept parameter, e.g. (0.05, 0.5).
     # points are computed by unpacking the value lists and taking the cartesian product of their elements
     for grid_point in product(*sweep_values):
+        # grid point is a tuple of the sweep values. eg (ce, x0, gintra, ginter)
         swept_values = {}
         # runs for the number of dimensions swept over.
         # eg: for a 4d plot this runs 4 times
@@ -55,15 +56,15 @@ def job_grid(config: dict) -> List[Tuple[str, Dict[str, str], int]]:
             # add back the key and unit to the value
             swept_values[sweep_param['key']] = format_value(value, sweep_param['unit'])
 
-        # One job per realization at this grid point.
-        for seed in seeds:
+        # One job per realization at this grid point; realization k uses SEED = k.
+        for seed in range(1, config['realizations'] + 1):
             jobs.append((f'param_{job_number}', swept_values, seed))
             job_number += 1
     return jobs
 
 
 def format_value(value: float, unit: str) -> str:
-    """Write a swept value the way params YAMLs do, e.g. '0.5*uS' or '-4.5*1'."""
+    """Attach brian units to a value"""
     return f'{float(value)}*{unit}'
 
 
@@ -78,7 +79,7 @@ def job_params(base: dict, swept_values: Dict[str, str], seed: int, config: dict
 
 
 def prepare_run_dir(run_dir: str, overwrite: bool) -> None:
-    """Create an empty run directory, refusing to reuse a name unless asked."""
+    """Create an empty run directory."""
     if os.path.exists(run_dir):
         if not overwrite:
             sys.exit(f"Run directory {run_dir} already exists. Pick a new --name, "
@@ -120,11 +121,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     config = load_sweep_config(args.config)
-    check_keys_in_base(config)
+    validate_sweep_params(config)
 
     run_dir = os.path.join(PARAMS_ROOT, args.name)
     prepare_run_dir(run_dir, args.overwrite)
     shutil.copyfile(args.config, os.path.join(run_dir, 'sweep_config.yaml'))
+    shutil.copyfile(config['base_params'], os.path.join(run_dir, 'base_params.yaml'))
     job_paths = write_jobs(config, run_dir)
     list_path = write_job_list(job_paths, run_dir)
 
