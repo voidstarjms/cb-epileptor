@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import scipy
-from scipy import signal, ndimage
+from scipy import signal, stats
 from typing import Dict, Any
 from matplotlib.backends.backend_pdf import PdfPages
 
 import plotting.style  # noqa: F401
 
 EPHYS_FS = 10000
+EPHYS_POWER_NORMALIZE = 10e10
 
 def plot_auto_lfp(filepaths: Any, params_dict: Dict, data) -> None:
     """Overlay raw and Gaussian-smoothed traces for neuron 0, past the transient.
@@ -97,7 +98,7 @@ def plot_mean_potential():
     # ax1.set_ylabel("Weighted mean potential (a.u.)")
 
 def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
-                          amp_bounds : tuple = (None, None),
+                          bounds : tuple = (None, None),
                           labels : list = None):
     """Private core function for generating power spectral density plots.
     
@@ -107,9 +108,9 @@ def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
         fs (float): Sample frequency of LFPs.
         fmax (float): Max frequency to plot.
         fname (str): Output file name.
-        amp_bounds (tuple[None | float, None | float]):
-            min_amp: lower bound of amp axis.
-            max_amp: upper bound of amp axis.
+        bounds (tuple[None | float, None | float]):
+            min_bound: lower bound of y-axis (dB).
+            max_bound: upper bound of y-axis (dB).
         labels (list): L
 
     Returns: void
@@ -122,7 +123,7 @@ def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
     f_list = []
     Pxx_list = []
     for i in lfp_list:
-        f, Pxx = signal.welch(i, fs=fs, nperseg=16384)
+        f, Pxx = signal.welch(i, fs=fs, nperseg=16384, scaling='spectrum')
         f_list.append(f)
         Pxx_list.append(Pxx)
 
@@ -136,13 +137,13 @@ def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
             ax.semilogy(f, Pxx, label=l)
     
     ax.set_xlim(0, fmax)
-    min_amp, max_amp = amp_bounds
-    if min_amp != None:
-        ax.set_ylim(bottom=min_amp)
-    if max_amp != None:
-        ax.set_ylim(top=max_amp)
+    min_bound, max_bound = bounds
+    if min_bound != None:
+        ax.set_ylim(bottom=min_bound)
+    if max_bound != None:
+        ax.set_ylim(top=max_bound)
 
-    ax.set_ylabel("PSD (a.u.)")
+    ax.set_ylabel("Power (dB)")
     ax.set_xlabel("Frequency (Hz)")
     plt.xticks(np.arange(0, fmax, fmax / 10))
     if labels != None:
@@ -151,9 +152,10 @@ def _make_power_spec_plot(lfp_list : list, fs : float, fmax : float,
     return fig
 
 def _output_power_spec_plot(fig_dir : str, lfp_list : list, fs : float, fmax : float,
-                          fname : str = "power", amp_bounds : tuple = (None, None),
+                          fname : str = "power", bounds : tuple = (None, None),
                           labels : list = None):
-    fig = plt.figure(_make_power_spec_plot(lfp_list, fs, fmax, amp_bounds, labels))
+    fig = plt.figure(_make_power_spec_plot(lfp_list, fs, fmax,
+                                     bounds, labels))
     fig.suptitle("Power Spectrum")
     
     plt.savefig(os.path.join(fig_dir, fname + ".png"), format="png")
@@ -179,16 +181,10 @@ def plot_power_spec(filepaths: Any, x1: np.ndarray, x2: np.ndarray, fs: float,
     _output_power_spec_plot(filepaths.figures_dir, [x_mean], fs, fmax, fname=fname)
 
 def plot_ephys_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
-                          fname : str = "ephys_power", labels : list = None):
+                          fname : str = "ephys_power", labels : list = None,
+                          bounds=(None, None)):
     _output_power_spec_plot(fig_dir, lfp_list, EPHYS_FS, fmax, fname=fname,
-                          amp_bounds=(10e-17, 10e-11), labels=labels)
-
-def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, fmax : float = 100.0,
-                               fname : str = "ephys_mean_power", labels : list = None):
-    mean_list = []
-    for i in lfp_list:
-        mean_list.append(np.mean(i, axis=0))
-    plot_ephys_power_spec(fig_dir, mean_list, fmax, fname=fname, labels=labels)
+                          bounds=bounds, labels=labels)
 
 def ephys_power_spec_pdf(lfp_list : list, fmax : float = 100.0,
                         outfile : str = "ephys_mean_power", labels : list = None):
@@ -196,12 +192,163 @@ def ephys_power_spec_pdf(lfp_list : list, fmax : float = 100.0,
         for i, s in enumerate(lfp_list):
             if s is not np.nan:
                 fig = plt.figure(_make_power_spec_plot(lfp_list[i:i+1], EPHYS_FS, fmax,
-                                                 amp_bounds=(10e-17, 10e-11),
+                                                 #bounds=(10e-17, 10e-11),
                                                  labels=labels))
                 fig.suptitle(f"Power Spectrum (Sweep {i+1})")
 
                 pdf.savefig()
                 plt.close()
+
+def _normalize_power_spec(freq : list, spec_list : list):
+    freq_count = len(freq)
+    noise_floor_start_idx = 0
+    while noise_floor_start_idx < freq_count and freq[noise_floor_start_idx] < 70:
+        noise_floor_start_idx += 1
+    noise_floor_end_idx = noise_floor_start_idx
+    while noise_floor_end_idx < freq_count and freq[noise_floor_end_idx] < 100:
+        noise_floor_end_idx += 1
+
+    power_accum = 0
+    nan_sweep_count = 0
+    for s in spec_list:
+        if s is not np.nan:
+            power_accum += np.sum(np.square(s))
+            noise_floor = (np.mean(
+                s[noise_floor_start_idx:noise_floor_end_idx]))
+            s -= noise_floor
+        else:
+            nan_sweep_count += 1
+    spec_count = len(spec_list)
+    mean_total_power = np.sqrt(power_accum / (spec_count - nan_sweep_count))
+
+    for s in spec_list:
+        if s is not np.nan:
+            s /= mean_total_power
+
+    return spec_list
+
+def _compute_specgram_list(lfp_list : list, fs=EPHYS_FS):
+    spec_list = []
+    freq = None
+    for s in lfp_list:
+        if s is not np.nan:
+            freq, Pxx = signal.welch(s, fs=fs, nperseg=16384, scaling='spectrum')
+            spec_list.append(np.log10(Pxx * EPHYS_POWER_NORMALIZE))
+        else:
+            spec_list.append(np.nan)
+
+    return spec_list, freq
+
+def plot_ephys_mean_power_spec(fig_dir : str, lfp_list : list, prepep_sweep_counts : list[int],
+                                fmax : float = 100.0, fname : str = "ephys_mean_power",
+                                labels : list = None):
+    spec_list_list = []
+    freqs = None
+    for lfp in lfp_list:
+        spec_list, freqs = _compute_specgram_list(lfp)
+        #spec_list_list.append(spec_list)
+        spec_list_list.append(_normalize_power_spec(freqs, spec_list))
+    min_prepep_sweep_count = np.min(prepep_sweep_counts)
+    min_postpep_sweep_count = np.min([len(spec_list_list[i]) - prepep_sweep_counts[i]
+                                      for i in range(len(spec_list_list))])
+    for i, s in enumerate(spec_list_list):
+        spec_list_list[i] = s[prepep_sweep_counts[i] - min_prepep_sweep_count:
+              prepep_sweep_counts[i] + min_postpep_sweep_count]
+    
+    spec_list_array = np.asarray(spec_list_list)
+    spec_list_array = np.swapaxes(spec_list_array, 0, 1)
+    outfile = os.path.join(fig_dir, fname)
+
+    # TODO factor this out, the same code is used elsewhere
+    n_expts = len(spec_list_list)
+    with PdfPages(outfile) as pdf:
+        for i, s in enumerate(list(spec_list_array)):
+            if s is not np.nan:
+                fig = plt.figure()
+                ax = plt.gca()
+                mu = s.mean(axis=0)
+                ax.plot(freqs, mu)
+
+                # Compute and plot confidence interval
+                sem = s.std(axis=0, ddof=1) / np.sqrt(n_expts)
+                half_width = stats.t.ppf(0.975, df=n_expts - 1) * sem
+                ax.fill_between(freqs, mu - half_width, mu + half_width,
+                            color="C0", alpha=0.25, linewidth=0, label="95% CI")
+
+                plt.suptitle("PEP"+("+" if i >= min_prepep_sweep_count else "")
+                             +f"{i-min_prepep_sweep_count}", fontsize=25)
+                ax.set_xlim(0, fmax)
+                ax.set_ylim(-0.5e-3, 2e-3)
+            
+                ax.set_ylabel("Log-Power (dB)", fontsize=15)
+                ax.set_xlabel("Frequency (Hz)", fontsize=15)
+                ax.xaxis.set_tick_params('both', labelsize=10)
+                ax.yaxis.set_tick_params('both', labelsize=10)
+                plt.xticks(np.arange(0, fmax, fmax / 10))
+
+                plt.tight_layout()
+                pdf.savefig()
+                plt.close()
+
+def ephys_normalized_power_pdf(lfp_list : list, fmax : float = 100.0,
+                               outfile : str = "ephys_power_normalized"):
+    spec_list, freq = _compute_specgram_list(lfp_list)    
+    spec_list = _normalize_power_spec(freq, spec_list)
+
+    with PdfPages(outfile) as pdf:
+        for i, s in enumerate(spec_list):
+            if s is not np.nan:
+                fig = plt.figure(figsize=(12, 8))
+                ax = plt.gca()
+                
+                ax.plot(freq, s)
+
+                fig.suptitle(f"Sweep {i+1}")
+                ax.set_xlim(0, fmax)
+                ax.set_ylim(-1e-3, 5e-3)
+            
+                ax.set_ylabel("Log-Power (dB)")
+                ax.set_xlabel("Frequency (Hz)")
+                plt.xticks(np.arange(0, fmax, fmax / 10))
+
+                pdf.savefig()
+                plt.close()
+
+def ephys_normalized_power(lfp_list : list, fmax : float = 100.0,
+                            outfile : str = "ephys_power_normalized",
+                            sweep : int = -1):
+    # Ignore all sweeps except the requested one if sweep != -1
+    if sweep != -1:
+        lfp_list = lfp_list[sweep]
+    
+    spec_list, freq = _compute_specgram_list(lfp_list)
+    spec_list = _normalize_power_spec(freq, spec_list)
+    spec_count = len(spec_list)
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = plt.gca()
+    cmap = plt.cm.plasma
+    col_list = cmap(np.linspace(0, 1, spec_count))
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=spec_count)
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    plot_alpha = 0.4 if sweep == -1 else 1
+    for i, s in enumerate(spec_list):
+        if s is not np.nan:
+            ax.plot(freq, s, c=col_list[i], alpha=plot_alpha)
+    fig.colorbar(sm, ax=ax, location='right', aspect=25, pad=0.001, label="Sweep number")
+
+    fig.suptitle(f"Power Spectrum")
+    ax.set_xlim(0, fmax)
+    ax.set_ylim(-1e-3, 5e-3)
+    ax.set_facecolor("#000000")
+
+    ax.set_ylabel("Log-Power (dB)")
+    ax.set_xlabel("Frequency (Hz)")
+    plt.xticks(np.arange(0, fmax, fmax / 10))
+
+    plt.tight_layout()
+    plt.savefig(outfile)
+    plt.close()
 
 def plot_spectrogram(filepaths: Any, params_dict: Dict, x1: np.ndarray, x2: np.ndarray,
                      fs: float, t: np.ndarray = None, x0_t: np.ndarray = None,
