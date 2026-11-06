@@ -1,25 +1,21 @@
 """Plot sweep heatmaps from a results table (made by build_table.py).
 
-    python plot_sweep.py <results.csv> [--metric r_exc r_inh ...] [--sweep-params KEY ...]
-                         [--where KEY=VALUE ...] [--vmin V] [--vmax V]
+    python plot_sweep.py <results.csv> [--metric r_exc r_inh ...] [--vmin V] [--vmax V]
                          [--config PATH] [--out-dir DIR]
 
 For each metric, averages the realizations at every grid point and writes a
-mean figure and an SD figure. The plot type depends on how many swept parameters are plotted:
+mean figure and an SD figure. The plot type depends on how many parameters were swept:
     1 -> line plot with SD error bars
     2 -> heatmap: 1st on x, 2nd on y
     4 -> grid of heatmaps: 3rd picks the panel row, 4th the panel column;
          inside each panel the 1st is x and the 2nd is y
 
 Plot order and labels come from sweep_config.yaml (default: next to the CSV).
-Use --sweep-params to plot a subset, and --where to fix the other swept parameters,
-e.g. `--sweep-params COUPLING_STRENGTH EPOP_BASE_EXCITE --where G_INTRA=0.5 --where G_INTER=1.0`.
 """
 import argparse
 import os
 import sys
-import types
-from typing import Dict, List, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 import matplotlib
 matplotlib.use('Agg')
@@ -39,28 +35,6 @@ METRIC_LABELS = {
     'median_freq_inh_hz': 'Median frequency, I pop (Hz)',
     'isi_cv_exc': 'ISI CV (E pop)', 'isi_cv_inh': 'ISI CV (I pop)',
 }
-
-
-def select_rows(table: pd.DataFrame, where: Dict[str, float]) -> pd.DataFrame:
-    """Keep rows whose fixed parameters match (to float tolerance)."""
-    for key, value in where.items():
-        if key not in table.columns:
-            sys.exit(f"--where {key}: no such column")
-        table = table[np.isclose(table[key], value)]
-    if table.empty:
-        sys.exit(f"No rows match {where}")
-    return table
-
-
-def check_unplotted_fixed(table: pd.DataFrame, config: dict, plot_keys: List[str]) -> None:
-    """Every swept parameter that isn't plotted must have a single value left."""
-    for key in sweep_param_keys(config):
-        if key in plot_keys:
-            continue
-        values = sorted(table[key].unique())
-        if len(values) > 1:
-            sys.exit(f"{key} isn't plotted but has {len(values)} values {values}; "
-                     f"fix it with --where {key}=VALUE")
 
 
 def grid_stats(table: pd.DataFrame, keys: List[str], metric: str) -> pd.DataFrame:
@@ -116,8 +90,8 @@ def plot_2d(stats, sweep_params, metric_label, out_dir, name, vmin, vmax, with_s
     for stat, title, lo in figures:
         array, (y_values, x_values) = to_grid(stats, stat, [y['key'], x['key']])
         lo, hi = colour_range(array, lo, vmax if stat == 'mean' else None)
-        heatmap.plot_synchrony_single(
-            types.SimpleNamespace(figures_dir=out_dir), array, x_values, y_values,
+        heatmap.plot_heatmap(
+            out_dir, array, x_values, y_values,
             x['label'], y['label'], title=title, vmin=lo, vmax=hi,
             save_name=f'{name}_{stat}.png', cbar_label=title)
 
@@ -131,22 +105,23 @@ def plot_4d(stats, sweep_params, metric_label, out_dir, name, vmin, vmax, with_s
         array, (row_values, col_values, x_values, y_values) = to_grid(
             stats, stat, [row['key'], col['key'], x['key'], y['key']])
         lo, hi = colour_range(array, lo, vmax if stat == 'mean' else None)
-        heatmap.plot_synchrony_multifaceted_single(
-            types.SimpleNamespace(figures_dir=out_dir), array,
+        heatmap.plot_heatmap_grid(
+            out_dir, array,
             row_values, col_values, x_values, y_values,
             row['label'], col['label'], x['label'], y['label'],
             title=title, vmin=lo, vmax=hi,
             save_name=f'{name}_{stat}.png', cbar_label=title)
 
 
-def plot_metric(table, config, plot_keys, metric, out_dir, vmin, vmax):
+def plot_metric(table, config, metric, out_dir, vmin, vmax):
     """Write the mean figure, and the SD figure if there are repeat realizations, for one metric."""
     if metric not in table.columns:
         sys.exit(f"--metric {metric}: no such column")
-    sweep_params = [next(p for p in config['sweep_params'] if p['key'] == key) for key in plot_keys]
-    stats = grid_stats(table, plot_keys, metric)
+    sweep_params = config['sweep_params']
+    keys = sweep_param_keys(config)
+    stats = grid_stats(table, keys, metric)
     label = METRIC_LABELS.get(metric, metric)
-    name = f"{metric}_{'_'.join(plot_keys)}"
+    name = f"{metric}_{'_'.join(keys)}"
     # SD needs at least 2 realizations: pandas gives NaN for the SD of one value.
     with_sd = stats['count'].max() > 1
     if not with_sd:
@@ -158,19 +133,8 @@ def plot_metric(table, config, plot_keys, metric, out_dir, vmin, vmax):
     elif len(sweep_params) == 4:
         plot_4d(stats, sweep_params, label, out_dir, name, vmin, vmax, with_sd)
     else:
-        sys.exit("Plotting 3 swept parameters isn't supported; "
-                 "plot 2 with --sweep-params and fix the third with --where")
+        sys.exit("Plotting 3 swept parameters isn't supported")
     print(f"  {metric}: jobs per grid point min {stats['count'].min()}, max {stats['count'].max()}")
-
-
-def parse_where(items: List[str]) -> Dict[str, float]:
-    where = {}
-    for item in items:
-        key, sep, value = item.partition('=')
-        if not sep:
-            sys.exit(f"--where expects KEY=VALUE, got {item!r}")
-        where[key] = float(value)
-    return where
 
 
 def main(argv=None):
@@ -178,9 +142,6 @@ def main(argv=None):
     parser.add_argument('table', help='results.csv from build_table.py')
     parser.add_argument('--metric', nargs='+', default=['r_exc', 'r_inh'],
                         help='Column(s) to plot (default: r_exc r_inh)')
-    parser.add_argument('--sweep-params', nargs='+', metavar='KEY', help='Swept keys to plot, in plot order (default: all)')
-    parser.add_argument('--where', action='append', default=[],
-                        help='Fix a swept parameter: KEY=VALUE (repeatable)')
     parser.add_argument('--vmin', type=float, help='Colour scale minimum for mean plots')
     parser.add_argument('--vmax', type=float, help='Colour scale maximum for mean plots')
     parser.add_argument('--config', help='sweep_config.yaml (default: next to the table)')
@@ -190,16 +151,11 @@ def main(argv=None):
     table_dir = os.path.dirname(os.path.abspath(args.table))
     config_path = args.config or os.path.join(table_dir, 'sweep_config.yaml')
     config = load_sweep_config(config_path)
-    plot_keys = args.sweep_params or sweep_param_keys(config)
-    unknown = [key for key in plot_keys if key not in sweep_param_keys(config)]
-    if unknown:
-        sys.exit(f"--sweep-params {unknown} aren't swept in {config_path}")
 
-    table = select_rows(pd.read_csv(args.table), parse_where(args.where))
-    check_unplotted_fixed(table, config, plot_keys)
+    table = pd.read_csv(args.table)
     out_dir = args.out_dir or os.path.join(table_dir, 'figures')
     for metric in args.metric:
-        plot_metric(table, config, plot_keys, metric, out_dir, args.vmin, args.vmax)
+        plot_metric(table, config, metric, out_dir, args.vmin, args.vmax)
 
 
 if __name__ == '__main__':
