@@ -6,7 +6,7 @@ for what each sweep script does.
 ## Files
 
 - `make_env_bundle.sh`: packs the venv into `cn_venv.tar.gz`, which is sent to every job.
-- `setup_condor.sh`: writes `condor.sub` for one run and creates its output folders.
+- `setup_condor.sh`: writes `condor.sub` for one run and creates its `runs/` folder.
 - `wrapper.sh`: the Condor executable. Unpacks the venv, `cd`s to `src/sweep`, runs Python.
 - `logs/<run>/`: Condor stdout/stderr/log files.
 - `condor.sub`, `cn_venv.tar.gz`: generated, not committed.
@@ -22,30 +22,29 @@ for what each sweep script does.
 
 Commands run from the `cb-epileptor/` project root unless noted.
 
-**1. Write a sweep config** (what to sweep): copy `src/sweep/examples/sweep_config.yaml`
-and edit the axes, realizations, `cb_on` and `low_res`.
+**1. Write a sweep config** (what to sweep): copy `src/sweep/sweep_configs/sweep_config.yaml`
+and edit the sweep_params, realizations, `cb_on` and `low_res`.
 
 **2. Generate the job YAMLs**
 ```
 cd src/sweep
 python generate_params.py path/to/sweep_config.yaml --name <run>
 ```
-Creates `src/sweep/params/<run>/` (job YAMLs, `job_list.txt`, a copy of the config).
+Creates `data/sweep/<run>/` (job YAMLs, `job_list.txt`, copies of the config and base params).
 
 **3. Test one job locally**
 ```
-python run_single_sim.py --params params/<run>/jobs/param_1.yaml --out-dir /tmp/<run>_test
+python run_single_sim.py --params ../../data/sweep/<run>/jobs/param_1.yaml --out-dir /tmp/<run>_test
 cd ../..
 ```
-Confirm `/tmp/<run>_test/jobs/param_1/output.pkl` appears.
+Confirm `/tmp/<run>_test/runs/param_1.pkl` appears.
 
-**4. Write condor.sub and the output folders**
+**4. Write condor.sub**
 ```
 condor/setup_condor.sh <run>
 ```
-Creates `output/sweep/<run>/jobs/<job_id>/` for every job, copies the config to
-`output/sweep/<run>/`, and writes `condor/condor.sub`. Refuses a run whose output
-folder already holds results. Set `REQUEST_MEMORY=…` to change the per-job request
+Creates `data/sweep/<run>/runs/` and writes `condor/condor.sub`. Refuses a run whose
+`runs/` folder already holds results. Set `REQUEST_MEMORY=…` to change the per-job request
 (default 32GB; check the real usage in `condor/logs/<run>/condor.log` and lower it).
 
 **5. Submit**
@@ -53,20 +52,20 @@ folder already holds results. Set `REQUEST_MEMORY=…` to change the per-job req
 condor_submit condor/condor.sub
 condor_q
 ```
-Each line of `job_list.txt` becomes one job. Each job sends back its raw output to
-`output/sweep/<run>/jobs/<job_id>/output.pkl`.
+Each line of `job_list.txt` becomes one job. Condor sends each job its own job YAML,
+and the job sends back its raw output to `data/sweep/<run>/runs/<job_id>.pkl`.
 
 **6. Build the results table and plot**
 ```
 cd src/sweep
-python build_table.py ../../output/sweep/<run>
-python plot_sweep.py ../../output/sweep/<run>/results.csv --metric r_exc r_inh
+python build_table.py ../../data/sweep/<run>
+python plot_sweep.py ../../data/sweep/<run>/results.csv --metric r_exc r_inh
 ```
-Figures go to `output/sweep/<run>/figures/`.
+Figures go to `data/sweep/<run>/figures/`.
 
 ## Debugging a failed job
 
 Check its error log: `condor/logs/<run>/err_<process>.log`. Process N runs job
-`param_<N+1>` (line N+1 of `job_list.txt`). A job with no `output.pkl` in
-`output/sweep/<run>/jobs/<job_id>/` failed or hasn't finished; `build_table.py` skips
+`param_<N+1>` (line N+1 of `job_list.txt`). A job with no `<job_id>.pkl` in
+`data/sweep/<run>/runs/` failed or hasn't finished; `build_table.py` skips
 it and the plot shows that grid point as missing.
