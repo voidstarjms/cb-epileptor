@@ -33,8 +33,7 @@ def load_sweep_config(path: str) -> dict:
         raise ValueError(f"{path}: at most {MAX_SWEEP_PARAMS} sweep_params, got {len(config['sweep_params'])}")
 
     for sweep_param in config['sweep_params']:
-        # use the min, max, and steps of a sweep variable and construct the array of values
-
+        # construct the array of values a sweep param will take
         sweep_param['values'] = np.linspace(sweep_param['min'], sweep_param['max'], sweep_param['steps'])
 
     # base_params is written relative to the config file.
@@ -43,7 +42,7 @@ def load_sweep_config(path: str) -> dict:
     return config
 
 
-def check_keys_in_base(config: dict) -> None:
+def validate_sweep_params(config: dict) -> None:
     """Every swept key must exist in the base params, or it would be added as a new, unused key.
 
     Only generate_params calls this: copies of the config saved with a run's
