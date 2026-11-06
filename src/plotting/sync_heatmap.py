@@ -1,6 +1,6 @@
 """Sweep heatmaps for sweep/plot_sweep.py.
 
-plot_synchrony_single draws one 2D grid; plot_synchrony_multifaceted_single
+plot_heatmap draws one 2D grid; plot_heatmap_grid
 draws a grid of 2D panels for 4 swept parameters. Callers pass the title,
 colour range and colorbar label, so nothing here assumes a particular metric.
 """
@@ -13,16 +13,14 @@ import os
 
 import plotting.style  # noqa: F401
 
-def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
-                          param1_label, param2_label,
-                          title=r'Synchrony $\chi$',
-                          vmin=0, vmax=1,
-                          save_name='synchrony_single.png', cbar_label=''):
-    """pcolormesh of chi_matrix with param1 on x, param2 on y.
+def plot_heatmap(out_dir, matrix, param1_values, param2_values,
+                 param1_label, param2_label, title, vmin, vmax,
+                 save_name, cbar_label):
+    """pcolormesh of matrix with param1 on x, param2 on y.
 
     Args:
-        filepaths: FilePaths with figures_dir.
-        chi_matrix (np.ndarray): 2D array, shape (len(param2), len(param1)).
+        out_dir (str): Folder the figure is saved in.
+        matrix (np.ndarray): 2D array, shape (len(param2), len(param1)).
         param1_values: x-axis values.
         param2_values: y-axis values.
         param1_label (str): x-axis label.
@@ -30,18 +28,17 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
         title (str): Plot title.
         vmin (float): Colormap lower bound.
         vmax (float): Colormap upper bound.
-        save_name (str): Output filename inside filepaths.figures_dir.
+        save_name (str): Output filename inside out_dir.
         cbar_label (str): Colorbar label.
     """
-    if not os.path.exists(filepaths.figures_dir):
-        os.makedirs(filepaths.figures_dir)
+    os.makedirs(out_dir, exist_ok=True)
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 6))
 
     p1_edges = _make_edges(param1_values)
     p2_edges = _make_edges(param2_values)
 
-    im = ax.pcolormesh(p1_edges, p2_edges, chi_matrix,
+    im = ax.pcolormesh(p1_edges, p2_edges, matrix,
                        cmap='viridis', vmin=vmin, vmax=vmax, shading='flat')
     # Ticks on the swept values (cell centres), not matplotlib's round numbers.
     ax.set_xticks(param1_values, [f'{v:.4g}' for v in param1_values])
@@ -52,30 +49,29 @@ def plot_synchrony_single(filepaths, chi_matrix, param1_values, param2_values,
     fig.colorbar(im, ax=ax, pad=0.02, label=cbar_label)
 
     fig.tight_layout()
-    filepath = os.path.join(filepaths.figures_dir, save_name)
+    filepath = os.path.join(out_dir, save_name)
     fig.savefig(filepath, dpi=200, bbox_inches='tight')
     plt.close(fig)
     print(f"Saved to {filepath}")
 
-def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, param2_values,
-                                param3_values, param4_values, param1_label,
-                                param2_label, param3_label, param4_label,
-                                title, vmin=0, vmax=1,
-                                save_name='synchrony_all_params.png', cbar_label=''):
+def plot_heatmap_grid(out_dir, matrix, param1_values, param2_values,
+                      param3_values, param4_values, param1_label,
+                      param2_label, param3_label, param4_label,
+                      title, vmin, vmax, save_name, cbar_label):
     """Grid of heatmap panels: param1 picks the panel row, param2 the panel column,
     and each panel shows param3 (x) against param4 (y).
 
     Args:
-        filepaths: Object with figures_dir.
-        chi_matrix (np.ndarray): 4D array indexed [param1, param2, param3, param4].
+        out_dir (str): Folder the figure is saved in.
+        matrix (np.ndarray): 4D array indexed [param1, param2, param3, param4].
         param1_values .. param4_values: Values along each of those axes.
         param1_label .. param4_label (str): Axis labels (LaTeX allowed).
         title (str): Figure title.
         vmin, vmax (float): Colour range shared by every panel.
-        save_name (str): Output filename inside filepaths.figures_dir.
+        save_name (str): Output filename inside out_dir.
         cbar_label (str): Colorbar label.
     """
-    os.makedirs(filepaths.figures_dir, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
 
     n_outer_rows = len(param1_values)
     n_outer_cols = len(param2_values)
@@ -102,18 +98,12 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
 
     norm = Normalize(vmin=vmin, vmax=vmax)
 
-    axes = np.empty((n_outer_rows, n_outer_cols), dtype=object)
     for i in range(n_outer_rows):
         for j in range(n_outer_cols):
-            axes[i, j] = fig.add_subplot(gs[i, j])
-    for i, p1 in enumerate(param1_values):
-        for j, p2 in enumerate(param2_values):
-            ax = axes[i, j]
-            data = chi_matrix[i, j, :, :]
-            # print(data)
-
-            im = ax.imshow(
-                data.T,
+            ax = fig.add_subplot(gs[i, j])
+            # Each panel's slice is indexed [x, y]; imshow wants [y, x].
+            ax.imshow(
+                matrix[i, j].T,
                 origin="lower",
                 aspect="auto",
                 cmap='viridis',
@@ -225,7 +215,7 @@ def plot_synchrony_multifaceted_single(filepaths, chi_matrix, param1_values, par
 
     fig.suptitle(title, fontsize=24, fontweight="bold", y=0.98)
 
-    fname = os.path.join(filepaths.figures_dir, save_name)
+    fname = os.path.join(out_dir, save_name)
     fig.savefig(fname, dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved to {fname}")
