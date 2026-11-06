@@ -13,12 +13,12 @@ sweep_config.yaml ──generate_params.py──► params/<run>/jobs/param_N.ya
 ```
 
 ## sweep_config.yaml: what to sweep
-The input you write. Lists the swept parameters ("axes") and run-wide settings; see
-[examples/sweep_config.yaml](examples/sweep_config.yaml).
+The input you write. Lists the swept parameters (`sweep_params`) and run-wide settings; see
+[sweep_configs/sweep_config.yaml](sweep_configs/sweep_config.yaml).
 
-- `axes`: 1 to 4 entries of `{key, unit, min, max, steps, label}`. `key` must exist in
+- `sweep_params`: 1 to 4 entries of `{key, unit, min, max, steps, label}`. `key` must exist in
   the base params file; `unit` is a Brian unit expression (`uS`, or `1` if unitless).
-  Values are `np.linspace(min, max, steps)`. Axis order is plot order: x, y, then
+  Values are `np.linspace(min, max, steps)`. Their order is plot order: x, y, then
   panel row and panel column.
 - `base_params`: params file every job starts from (relative to the config file).
 - `realizations`: jobs per grid point. Realization k uses `SEED = k` at every grid point.
@@ -59,18 +59,14 @@ when the parameter has one, otherwise the scalar key. A schedule with more than 
 entry means the parameter wasn't held fixed in that job; its value is written as NaN
 with a warning.
 
-**Old sweeps:** put the raw files in `<dir>/jobs/<job_id>/output.pkl`, write a
-`sweep_config.yaml` with just `key`, `unit` and `label` per axis, and pass `--cb-on`
-(old files don't record it).
-
 ## plot_sweep.py
 ```
 python plot_sweep.py ../../output/sweep/<run>/results.csv [--metric r_exc r_inh ...]
-                     [--axes KEY ...] [--where KEY=VALUE ...] [--vmin V --vmax V]
+                     [--sweep-params KEY ...] [--where KEY=VALUE ...] [--vmin V --vmax V]
 ```
 Averages the realizations at each grid point and writes mean and SD figures per metric:
-a line plot (1 axis), a heatmap (2 axes) or a grid of heatmaps (4 axes). To plot two
-axes of a four-axis sweep, fix the others, e.g.
-`--axes COUPLING_STRENGTH EPOP_BASE_EXCITE --where G_INTRA=0.5 --where G_INTER=1.0`.
+a line plot (1 swept parameter), a heatmap (2) or a grid of heatmaps (4). To plot two
+parameters of a four-parameter sweep, fix the others, e.g.
+`--sweep-params COUPLING_STRENGTH EPOP_BASE_EXCITE --where G_INTRA=0.5 --where G_INTER=1.0`.
 
 See [../../condor/README.md](../../condor/README.md) for submitting to Condor.

@@ -1,19 +1,19 @@
 """Plot sweep heatmaps from a results table (made by build_table.py).
 
-    python plot_sweep.py <results.csv> [--metric r_exc r_inh ...] [--axes KEY ...]
+    python plot_sweep.py <results.csv> [--metric r_exc r_inh ...] [--sweep-params KEY ...]
                          [--where KEY=VALUE ...] [--vmin V] [--vmax V]
                          [--config PATH] [--out-dir DIR]
 
 For each metric, averages the realizations at every grid point and writes a
-mean figure and an SD figure. The plot type depends on how many axes are plotted:
-    1 axis  -> line plot with SD error bars
-    2 axes  -> heatmap: 1st axis on x, 2nd on y
-    4 axes  -> grid of heatmaps: 3rd axis picks the panel row, 4th the panel
-               column; inside each panel the 1st axis is x and the 2nd is y
+mean figure and an SD figure. The plot type depends on how many swept parameters are plotted:
+    1 -> line plot with SD error bars
+    2 -> heatmap: 1st on x, 2nd on y
+    4 -> grid of heatmaps: 3rd picks the panel row, 4th the panel column;
+         inside each panel the 1st is x and the 2nd is y
 
-Axis order and labels come from sweep_config.yaml (default: next to the CSV).
-Use --axes to plot a subset, and --where to fix the other swept parameters,
-e.g. `--axes COUPLING_STRENGTH EPOP_BASE_EXCITE --where G_INTRA=0.5 --where G_INTER=1.0`.
+Plot order and labels come from sweep_config.yaml (default: next to the CSV).
+Use --sweep-params to plot a subset, and --where to fix the other swept parameters,
+e.g. `--sweep-params COUPLING_STRENGTH EPOP_BASE_EXCITE --where G_INTRA=0.5 --where G_INTER=1.0`.
 """
 import argparse
 import os
@@ -29,7 +29,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import plotting.sync_heatmap as heatmap
-from sweep_config import axis_keys, load_sweep_config
+from sweep_config import load_sweep_config, sweep_param_keys
 
 METRIC_LABELS = {
     'r_exc': 'KOP r (E pop)', 'r_inh': 'KOP r (I pop)',
@@ -52,9 +52,9 @@ def select_rows(table: pd.DataFrame, where: Dict[str, float]) -> pd.DataFrame:
     return table
 
 
-def check_other_axes_fixed(table: pd.DataFrame, config: dict, plot_keys: List[str]) -> None:
+def check_unplotted_fixed(table: pd.DataFrame, config: dict, plot_keys: List[str]) -> None:
     """Every swept parameter that isn't plotted must have a single value left."""
-    for key in axis_keys(config):
+    for key in sweep_param_keys(config):
         if key in plot_keys:
             continue
         values = sorted(table[key].unique())
@@ -93,12 +93,12 @@ def colour_range(array: np.ndarray, vmin, vmax) -> Tuple[float, float]:
     return lo, hi
 
 
-def plot_1d(stats, axis, metric_label, out_dir, name):
-    mean, (x_values,) = to_grid(stats, 'mean', [axis['key']])
-    sd, _ = to_grid(stats, 'std', [axis['key']])
+def plot_1d(stats, x, metric_label, out_dir, name):
+    mean, (x_values,) = to_grid(stats, 'mean', [x['key']])
+    sd, _ = to_grid(stats, 'std', [x['key']])
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.errorbar(x_values, mean, yerr=sd, marker='o', capsize=3)
-    ax.set_xlabel(axis['label'])
+    ax.set_xlabel(x['label'])
     ax.set_ylabel(metric_label)
     ax.set_title(f'{metric_label}: mean ± SD over realizations', fontweight='bold')
     os.makedirs(out_dir, exist_ok=True)
@@ -108,8 +108,8 @@ def plot_1d(stats, axis, metric_label, out_dir, name):
     print(f"Saved to {path}")
 
 
-def plot_2d(stats, axes, metric_label, out_dir, name, vmin, vmax, with_sd):
-    x, y = axes
+def plot_2d(stats, sweep_params, metric_label, out_dir, name, vmin, vmax, with_sd):
+    x, y = sweep_params
     figures = [('mean', metric_label, vmin)]
     if with_sd:
         figures.append(('std', f'SD of {metric_label}', 0))
@@ -122,8 +122,8 @@ def plot_2d(stats, axes, metric_label, out_dir, name, vmin, vmax, with_sd):
             save_name=f'{name}_{stat}.png', cbar_label=title)
 
 
-def plot_4d(stats, axes, metric_label, out_dir, name, vmin, vmax, with_sd):
-    x, y, row, col = axes
+def plot_4d(stats, sweep_params, metric_label, out_dir, name, vmin, vmax, with_sd):
+    x, y, row, col = sweep_params
     figures = [('mean', metric_label, vmin)]
     if with_sd:
         figures.append(('std', f'SD of {metric_label}', 0))
@@ -143,7 +143,7 @@ def plot_metric(table, config, plot_keys, metric, out_dir, vmin, vmax):
     """Write the mean figure, and the SD figure if there are repeat realizations, for one metric."""
     if metric not in table.columns:
         sys.exit(f"--metric {metric}: no such column")
-    axes = [next(a for a in config['axes'] if a['key'] == key) for key in plot_keys]
+    sweep_params = [next(p for p in config['sweep_params'] if p['key'] == key) for key in plot_keys]
     stats = grid_stats(table, plot_keys, metric)
     label = METRIC_LABELS.get(metric, metric)
     name = f"{metric}_{'_'.join(plot_keys)}"
@@ -151,14 +151,15 @@ def plot_metric(table, config, plot_keys, metric, out_dir, vmin, vmax):
     with_sd = stats['count'].max() > 1
     if not with_sd:
         print(f"  {metric}: one realization per grid point, so no SD figure")
-    if len(axes) == 1:
-        plot_1d(stats, axes[0], label, out_dir, name)
-    elif len(axes) == 2:
-        plot_2d(stats, axes, label, out_dir, name, vmin, vmax, with_sd)
-    elif len(axes) == 4:
-        plot_4d(stats, axes, label, out_dir, name, vmin, vmax, with_sd)
+    if len(sweep_params) == 1:
+        plot_1d(stats, sweep_params[0], label, out_dir, name)
+    elif len(sweep_params) == 2:
+        plot_2d(stats, sweep_params, label, out_dir, name, vmin, vmax, with_sd)
+    elif len(sweep_params) == 4:
+        plot_4d(stats, sweep_params, label, out_dir, name, vmin, vmax, with_sd)
     else:
-        sys.exit("Plotting 3 axes isn't supported; plot 2 with --axes and fix the third with --where")
+        sys.exit("Plotting 3 swept parameters isn't supported; "
+                 "plot 2 with --sweep-params and fix the third with --where")
     print(f"  {metric}: jobs per grid point min {stats['count'].min()}, max {stats['count'].max()}")
 
 
@@ -177,7 +178,7 @@ def main(argv=None):
     parser.add_argument('table', help='results.csv from build_table.py')
     parser.add_argument('--metric', nargs='+', default=['r_exc', 'r_inh'],
                         help='Column(s) to plot (default: r_exc r_inh)')
-    parser.add_argument('--axes', nargs='+', help='Swept keys to plot, in plot order (default: all)')
+    parser.add_argument('--sweep-params', nargs='+', metavar='KEY', help='Swept keys to plot, in plot order (default: all)')
     parser.add_argument('--where', action='append', default=[],
                         help='Fix a swept parameter: KEY=VALUE (repeatable)')
     parser.add_argument('--vmin', type=float, help='Colour scale minimum for mean plots')
@@ -189,13 +190,13 @@ def main(argv=None):
     table_dir = os.path.dirname(os.path.abspath(args.table))
     config_path = args.config or os.path.join(table_dir, 'sweep_config.yaml')
     config = load_sweep_config(config_path)
-    plot_keys = args.axes or axis_keys(config)
-    unknown = [key for key in plot_keys if key not in axis_keys(config)]
+    plot_keys = args.sweep_params or sweep_param_keys(config)
+    unknown = [key for key in plot_keys if key not in sweep_param_keys(config)]
     if unknown:
-        sys.exit(f"--axes {unknown} aren't swept in {config_path}")
+        sys.exit(f"--sweep-params {unknown} aren't swept in {config_path}")
 
     table = select_rows(pd.read_csv(args.table), parse_where(args.where))
-    check_other_axes_fixed(table, config, plot_keys)
+    check_unplotted_fixed(table, config, plot_keys)
     out_dir = args.out_dir or os.path.join(table_dir, 'figures')
     for metric in args.metric:
         plot_metric(table, config, plot_keys, metric, out_dir, args.vmin, args.vmax)

@@ -33,27 +33,27 @@ def job_grid(config: dict) -> List[Tuple[str, Dict[str, str], int]]:
     swept_values holds this job's value for each swept parameter, e.g.
     {'COUPLING_STRENGTH': '0.05*1', 'G_INTRA': '0.5*uS'}.
 
-    Jobs are numbered from 1. The first axis changes slowest and the
+    Jobs are numbered from 1. The first swept parameter changes slowest and the
     realization changes fastest.
     """
 
-    # get values for each sweep axis into a list of lists
-    axis_values = [axis['values'] for axis in config['axes']]
+    # get values for each swept parameter into a list of lists
+    sweep_values = [p['values'] for p in config['sweep_params']]
     seeds = range(1, config['realizations'] + 1)
 
     jobs = []
     job_number = 1
-    # Each grid point is a tuple with one value per axis, e.g. (0.05, 0.5).
-    # points are computed by unpacking the axis value lists and taking the cartesian product of their elements
-    for grid_point in product(*axis_values):
+    # Each grid point is a tuple with one value per swept parameter, e.g. (0.05, 0.5).
+    # points are computed by unpacking the value lists and taking the cartesian product of their elements
+    for grid_point in product(*sweep_values):
         swept_values = {}
         # runs for the number of dimensions swept over.
         # eg: for a 4d plot this runs 4 times
-        for axis, value in zip(config['axes'], grid_point):
+        for sweep_param, value in zip(config['sweep_params'], grid_point):
             # forms a dict of the values being swept over
             # grid_point is purely a tuple of values
             # add back the key and unit to the value
-            swept_values[axis['key']] = format_value(value, axis['unit'])
+            swept_values[sweep_param['key']] = format_value(value, sweep_param['unit'])
 
         # One job per realization at this grid point.
         for seed in seeds:
@@ -128,7 +128,7 @@ def main(argv=None):
     job_paths = write_jobs(config, run_dir)
     list_path = write_job_list(job_paths, run_dir)
 
-    shape = ' x '.join(f"{len(axis['values'])} {axis['key']}" for axis in config['axes'])
+    shape = ' x '.join(f"{len(p['values'])} {p['key']}" for p in config['sweep_params'])
     print(f"Grid: {shape} x {config['realizations']} realizations = {len(job_paths)} jobs")
     print(f"Wrote {run_dir}/jobs/ and {list_path}")
 

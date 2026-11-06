@@ -2,16 +2,14 @@
 
     python build_table.py <run_output_dir> [--config PATH] [--out PATH] [--cb-on true|false]
 
-Reads <run_output_dir>/jobs/<job_id>/output.pkl (new and old sweeps use this
-layout), computes every summary metric with synch_metrics.summarize_run, and
+Reads <run_output_dir>/jobs/<job_id>/output.pkl, computes every summary metric with synch_metrics.summarize_run, and
 writes a CSV:
 
     job_id, <one column per swept key, in the config's units>, seed, cb_on, ...,
     chi_exc, chi_inh, r_exc, r_inh, rate_exc_hz, ..., source_path
 
 The raw files are never modified, so the table can be rebuilt at any time,
-e.g. after a metric fix. For an old sweep, write a sweep_config.yaml by hand
-(only key, unit and label are needed per axis) and pass it with --config.
+e.g. after a metric fix.
 """
 import argparse
 import glob
@@ -27,7 +25,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import synch_metrics as syn
-from sweep_config import axis_keys, load_sweep_config
+from sweep_config import load_sweep_config, sweep_param_keys
 
 # For these keys the model reads a schedule list, not the scalar key, so the
 # schedule holds the value the simulation actually used. Older runs named the
@@ -51,7 +49,7 @@ def used_value(params: dict, key: str):
 
     Returns the schedule's single entry if the key has one, else the scalar.
     Returns NaN (with a warning) if the schedule has more than one entry: that
-    job didn't hold the parameter at one value, so it has no place on the axis.
+    job didn't hold the parameter at one value, so it has no single swept value.
     """
     for schedule_key in SCHEDULE_KEYS.get(key, ()):
         if schedule_key in params:
@@ -66,15 +64,15 @@ def used_value(params: dict, key: str):
     return params[key]
 
 
-def in_axis_unit(value, axis: dict) -> float:
-    """Express a value in the axis's declared unit, e.g. 5e-7 S -> 0.5 for unit 'uS'."""
+def in_declared_unit(value, sweep_param: dict) -> float:
+    """Express a value in the swept parameter's declared unit, e.g. 5e-7 S -> 0.5 for unit 'uS'."""
     if isinstance(value, float) and math.isnan(value):
         return value
     # The unit is a string like 'uS' or '1'; look it up among Brian's names.
-    unit = eval(str(axis['unit']), {}, vars(brian2))
+    unit = eval(str(sweep_param['unit']), {}, vars(brian2))
     ratio = value / unit
     if isinstance(ratio, brian2.Quantity) and not ratio.is_dimensionless:
-        raise ValueError(f"{axis['key']} = {value} can't be expressed in {axis['unit']}")
+        raise ValueError(f"{sweep_param['key']} = {value} can't be expressed in {sweep_param['unit']}")
     number = float(ratio)
     # Strip float noise from the unit division so equal values group together.
     return float(f'{number:.12g}')
@@ -99,8 +97,9 @@ def job_row(path: str, config: dict, cb_on_override: Optional[bool]) -> dict:
     num_cells = int(params['NUM_CELLS'])
 
     row = {'job_id': os.path.basename(os.path.dirname(path))}
-    for axis in config['axes']:
-        row[axis['key']] = in_axis_unit(used_value(params, axis['key']), axis)
+    for sweep_param in config['sweep_params']:
+        key = sweep_param['key']
+        row[key] = in_declared_unit(used_value(params, key), sweep_param)
     row.update({
         'seed': params.get('SEED'),
         'cb_on': metadata.get('cb_on', cb_on_override),
@@ -130,17 +129,17 @@ def build_table(run_dir: str, config: dict, cb_on_override: Optional[bool]) -> p
         print(f"FAILED {path}: {reason}")
     if not rows:
         sys.exit("Every file failed; no table written")
-    return pd.DataFrame(rows).sort_values(axis_keys(config) + ['seed'], ignore_index=True)
+    return pd.DataFrame(rows).sort_values(sweep_param_keys(config) + ['seed'], ignore_index=True)
 
 
 def report(table: pd.DataFrame, config: dict) -> None:
-    """Print what each axis looks like, so a wrong config or a broken sweep is obvious."""
+    """Print each swept parameter's values, so a wrong config or a broken sweep is obvious."""
     print(f"\n{len(table)} rows")
-    for key in axis_keys(config):
+    for key in sweep_param_keys(config):
         values = sorted(float(v) for v in table[key].dropna().unique())
         print(f"  {key}: {len(values)} values {values}"
               + (f"  ({table[key].isna().sum()} rows NaN)" if table[key].isna().any() else ''))
-    counts = table.groupby(axis_keys(config), dropna=False).size()
+    counts = table.groupby(sweep_param_keys(config), dropna=False).size()
     print(f"  jobs per grid point: min {counts.min()}, max {counts.max()}")
 
 
