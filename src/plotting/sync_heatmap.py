@@ -98,9 +98,11 @@ def plot_heatmap_grid(out_dir, matrix, param1_values, param2_values,
 
     norm = Normalize(vmin=vmin, vmax=vmax)
 
+    # Row i of param1 goes into gridspec row (n-1-i), so param1 increases
+    # from the bottom of the figure to the top.
     for i in range(n_outer_rows):
         for j in range(n_outer_cols):
-            ax = fig.add_subplot(gs[i, j])
+            ax = fig.add_subplot(gs[n_outer_rows - 1 - i, j])
             # Each panel's slice is indexed [x, y]; imshow wants [y, x].
             ax.imshow(
                 matrix[i, j].T,
