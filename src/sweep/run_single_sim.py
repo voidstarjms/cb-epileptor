@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run one sweep job: simulate one job YAML and save its raw output.
 
-    python run_single_sim.py --params params/<run>/jobs/param_7.yaml [--out-dir DIR] [--debug-plot]
+    python run_single_sim.py --params ../../data/<sweep>/jobs/param_7.yaml [--out-dir DIR] [--debug-plot]
 
 Condor runs one copy per line of job_list.txt. No metrics are computed here;
 build_table.py derives them from the raw files, so they can be recomputed later.
@@ -13,8 +13,8 @@ Output (same layout as older full-output pickles, minus the synaptic current tra
 
 Where it goes:
     - Under Condor: $_CONDOR_SCRATCH_DIR/output_<job_id>.pkl. Condor copies it to
-      output/sweep/<run>/jobs/<job_id>/output.pkl (see condor/setup_condor.sh).
-    - Locally: <out-dir>/jobs/<job_id>/output.pkl.
+      data/<sweep>/runs/<job_id>.pkl (see condor/setup_condor.sh).
+    - Locally: <out-dir>/runs/<job_id>.pkl.
 """
 import argparse
 import os
@@ -64,15 +64,15 @@ def raw_output(sim_data: dict, settings: dict) -> dict:
 
 
 def output_path(job_id: str, out_dir: str) -> str:
-    """Condor scratch root if running under Condor, else <out_dir>/jobs/<job_id>/output.pkl."""
+    """Condor scratch root if running under Condor, else <out_dir>/runs/<job_id>.pkl."""
     scratch = os.environ.get('_CONDOR_SCRATCH_DIR')
     if scratch:
         return os.path.join(scratch, f'output_{job_id}.pkl')
     if out_dir is None:
         sys.exit("Not running under Condor: pass --out-dir for local runs")
-    job_dir = os.path.join(out_dir, 'jobs', job_id)
-    os.makedirs(job_dir, exist_ok=True)
-    return os.path.join(job_dir, 'output.pkl')
+    runs_dir = os.path.join(out_dir, 'runs')
+    os.makedirs(runs_dir, exist_ok=True)
+    return os.path.join(runs_dir, f'{job_id}.pkl')
 
 
 def save_debug_plot(sim_data: dict, params: dict, figures_dir: str) -> None:
@@ -105,7 +105,7 @@ def main(argv=None):
     parser.add_argument('--params', required=True,
                         help='Job YAML written by generate_params.py')
     parser.add_argument('--out-dir', default=None,
-                        help='Local runs only: write <out-dir>/jobs/<job_id>/output.pkl')
+                        help='Local runs only: write <out-dir>/runs/<job_id>.pkl')
     parser.add_argument('--debug-plot', action='store_true',
                         help='Local runs only: also write <out-dir>/figures/<job_id>/ plots')
     args = parser.parse_args(argv)
